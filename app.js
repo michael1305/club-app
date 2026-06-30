@@ -448,7 +448,7 @@ function showAddPayment() {
         </div>
         <div class="form-group">
             <label>כמות כניסות שנרכשה</label>
-            <input type="number" id="pay-quantity" placeholder="10" min="1">
+            <input type="number" id="pay-quantity" value="11" min="1">
         </div>
         <div class="form-group">
             <label>סכום ששולם (₪) - לתיעוד בלבד</label>
