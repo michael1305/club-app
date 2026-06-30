@@ -739,6 +739,10 @@ function startNfc() {
             const memberId = parseNfcMessage(event.message) ||
                 getMembers().find(m => m.nfcTag === event.serialNumber)?.id;
 
+            // Stop reading immediately so repeated reads (while the card stays near
+            // the phone) don't keep re-opening the single/couple choice modal.
+            stopNfc();
+
             if (memberId) {
                 doCheckin(memberId);
             } else {
