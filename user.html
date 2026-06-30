@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6c5ce7">
+    <title>הכרטיסיה שלי</title>
+    <link rel="stylesheet" href="style.css?v=4">
+    <style>
+        .user-page {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .user-header {
+            background: var(--primary);
+            color: white;
+            padding: 24px 20px;
+            border-radius: 0 0 24px 24px;
+            margin: -20px -20px 20px -20px;
+            text-align: center;
+        }
+        .user-header h1 { font-size: 1.3rem; margin-bottom: 4px; }
+        .balance-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .balance-number {
+            font-size: 3.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+        }
+        .balance-label {
+            color: var(--text-light);
+            margin-top: 8px;
+            font-size: 1rem;
+        }
+        .balance-card.empty .balance-number { color: var(--danger); }
+        .balance-card.low .balance-number { color: var(--warning); }
+        .empty-msg {
+            margin-top: 14px;
+            padding: 10px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 10px;
+            font-size: 0.9rem;
+        }
+        .section-title {
+            font-weight: 700;
+            margin: 20px 0 10px;
+            font-size: 1.05rem;
+        }
+        .not-found {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+    </style>
+</head>
+<body>
+    <div id="content"></div>
+    <script src="app.js?v=4"></script>
+    <script>
+        (function() {
+            const params = new URLSearchParams(location.search);
+            const id = params.get('id');
+            const content = document.getElementById('content');
+            const member = id ? getMembers().find(m => m.id === id) : null;
+
+            if (!member) {
+                content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
+                return;
+            }
+
+            const balance = member.balance || 0;
+            const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
+            const checkins = getCheckins()
+                .filter(c => c.memberId === id)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            const historyHtml = checkins.slice(0, 15).map(c => `
+                <div class="recent-item">
+                    <span>${formatDateTime(new Date(c.timestamp))}</span>
+                    <span>${c.entryType === 'couple' ? 'כניסה זוגית (-2)' : 'כניסה בודדת (-1)'}</span>
+                </div>
+            `).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות עדיין</p>';
+
+            content.innerHTML = `
+                <div class="user-page">
+                    <div class="user-header">
+                        <h1>👋 שלום, ${escHtml(member.name)}</h1>
+                        <p>הכרטיסיה האישית שלך</p>
+                    </div>
+                    <div class="balance-card ${balanceClass}">
+                        <div class="balance-number">${balance}</div>
+                        <div class="balance-label">כניסות נותרו</div>
+                        ${balance <= 0 ? '<div class="empty-msg">אין יתרת כניסות. יש לפנות למנהל כדי להוסיף כניסות.</div>' : ''}
+                    </div>
+                    <div class="section-title">היסטוריית כניסות</div>
+                    <div class="recent-list">${historyHtml}</div>
+                </div>
+            `;
+        })();
+    </script>
+</body>
+</html>

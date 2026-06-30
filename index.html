@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6c5ce7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>מערכת ניהול מועדון</title>
+    <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+    <div id="app">
+        <!-- Top Bar -->
+        <header class="top-bar">
+            <h1>🎫 ניהול מועדון</h1>
+            <button class="icon-btn" onclick="showPage('settings')">⚙️</button>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-page="members" onclick="showPage('members')">
+                <span class="nav-icon">👥</span>
+                <span>משתתפים</span>
+            </button>
+            <button class="nav-btn" data-page="checkin" onclick="showPage('checkin')">
+                <span class="nav-icon">📷</span>
+                <span>כניסה</span>
+            </button>
+            <button class="nav-btn" data-page="payments" onclick="showPage('payments')">
+                <span class="nav-icon">💳</span>
+                <span>כרטיסיות</span>
+            </button>
+            <button class="nav-btn" data-page="reports" onclick="showPage('reports')">
+                <span class="nav-icon">📊</span>
+                <span>דוחות</span>
+            </button>
+        </nav>
+
+        <!-- Members Page -->
+        <main id="page-members" class="page active">
+            <div class="search-bar">
+                <input type="text" id="search-members" placeholder="🔍 חיפוש משתתף..." oninput="filterMembers()">
+                <button class="btn btn-primary" onclick="showAddMember()">+ הוספה</button>
+            </div>
+            <div id="members-list" class="card-list"></div>
+        </main>
+
+        <!-- Check-in Page -->
+        <main id="page-checkin" class="page">
+            <div class="checkin-container">
+                <div class="checkin-tabs">
+                    <button class="tab-btn active" onclick="switchCheckinTab('qr')">📷 QR</button>
+                    <button class="tab-btn" onclick="switchCheckinTab('nfc')">📱 NFC</button>
+                    <button class="tab-btn" onclick="switchCheckinTab('manual')">✍️ ידני</button>
+                </div>
+                <div id="checkin-qr" class="checkin-tab-content active">
+                    <div id="qr-reader" class="qr-reader-box">
+                        <p>לחץ להפעלת המצלמה</p>
+                        <button class="btn btn-primary" onclick="startQrScanner()">הפעל סורק QR</button>
+                    </div>
+                    <video id="qr-video" class="qr-video" playsinline></video>
+                    <canvas id="qr-canvas" hidden></canvas>
+                </div>
+                <div id="checkin-nfc" class="checkin-tab-content">
+                    <div class="nfc-container">
+                        <div class="nfc-icon">📱</div>
+                        <p>קרב את הכרטיס/טלפון למכשיר</p>
+                        <button class="btn btn-primary" id="nfc-btn" onclick="toggleNfc()">הפעל NFC</button>
+                        <p id="nfc-status" class="status-msg"></p>
+                    </div>
+                </div>
+                <div id="checkin-manual" class="checkin-tab-content">
+                    <div class="manual-checkin">
+                        <input type="text" id="manual-checkin-search" placeholder="🔍 חפש משתתף לצ'ק-אין..." oninput="filterCheckinMembers()">
+                        <div id="checkin-members-list" class="card-list"></div>
+                    </div>
+                </div>
+                <div id="checkin-result" class="checkin-result" hidden></div>
+            </div>
+        </main>
+
+        <!-- Payments Page -->
+        <main id="page-payments" class="page">
+            <div class="search-bar">
+                <input type="text" id="search-payments" placeholder="🔍 חיפוש..." oninput="filterPayments()">
+                <button class="btn btn-primary" onclick="showAddPayment()">+ כניסות</button>
+            </div>
+            <div id="payments-list" class="card-list"></div>
+        </main>
+
+        <!-- Reports Page -->
+        <main id="page-reports" class="page">
+            <div class="reports-container">
+                <div class="report-card summary-card">
+                    <h3>סיכום כללי</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <span class="stat-value" id="stat-members">0</span>
+                            <span class="stat-label">משתתפים</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-revenue">₪0</span>
+                            <span class="stat-label">הכנסות החודש</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-checkins">0</span>
+                            <span class="stat-label">כניסות היום</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-active-subs">0</span>
+                            <span class="stat-label">ללא יתרה</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="report-card">
+                    <h3>הכנסות לפי תקופה</h3>
+                    <div class="period-selector">
+                        <button class="filter-btn active" onclick="showReport('week')">שבוע</button>
+                        <button class="filter-btn" onclick="showReport('month')">חודש</button>
+                        <button class="filter-btn" onclick="showReport('year')">שנה</button>
+                    </div>
+                    <div id="report-details" class="report-details"></div>
+                </div>
+                <div class="report-card">
+                    <h3>⚠ יתרה נמוכה / אפסית</h3>
+                    <div id="low-balance-list" class="recent-list"></div>
+                </div>
+                <div class="report-card">
+                    <h3>כניסות אחרונות</h3>
+                    <div id="recent-checkins" class="recent-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Settings Page -->
+        <main id="page-settings" class="page">
+            <div class="settings-container">
+                <h2>⚙️ הגדרות</h2>
+                <div class="setting-group">
+                    <label>שם האירוע</label>
+                    <input type="text" id="setting-event-name" placeholder="שם האירוע" onchange="saveSetting('eventName', this.value)">
+                </div>
+                <div class="setting-group">
+                    <label>מחיר לכניסה בודדת (₪) - לתיעוד בלבד</label>
+                    <input type="number" id="setting-price" placeholder="0" onchange="saveSetting('singlePrice', this.value)">
+                </div>
+                <div class="setting-group">
+                    <label>מחיר לכניסה זוגית (₪) - לתיעוד בלבד</label>
+                    <input type="number" id="setting-sub-price" placeholder="0" onchange="saveSetting('couplePrice', this.value)">
+                </div>
+                <div class="setting-group">
+                    <label>ימי פעילות</label>
+                    <div class="days-selector">
+                        <label><input type="checkbox" value="0" onchange="saveDays()"> ראשון</label>
+                        <label><input type="checkbox" value="1" onchange="saveDays()"> שני</label>
+                        <label><input type="checkbox" value="2" onchange="saveDays()"> שלישי</label>
+                        <label><input type="checkbox" value="3" onchange="saveDays()"> רביעי</label>
+                        <label><input type="checkbox" value="4" onchange="saveDays()"> חמישי</label>
+                        <label><input type="checkbox" value="5" onchange="saveDays()"> שישי</label>
+                        <label><input type="checkbox" value="6" onchange="saveDays()"> שבת</label>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>גיבוי ושחזור</h3>
+                    <button class="btn btn-primary" onclick="exportData()">📥 ייצוא נתונים</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 ייבוא נתונים</button>
+                    <input type="file" id="import-file" accept=".json" hidden onchange="importData(event)">
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="modal-title"></h3>
+                <button class="icon-btn" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modal-body" class="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="jsQR.js"></script>
+    <script src="qrcode.min.js"></script>
+    <script src="app.js?v=4"></script>
+</body>
+</html>
