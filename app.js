@@ -139,11 +139,87 @@ function photoFieldHtml(existingPhoto) {
     return `
         <div class="form-group">
             <label>תמונה (אופציונלי)</label>
-            <div style="display:flex;align-items:center;gap:14px">
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
                 <div id="photo-preview">${existingPhoto ? `<img src="${existingPhoto}" class="avatar" style="width:90px;height:90px">` : '<div class="avatar avatar-placeholder" style="width:90px;height:90px;font-size:36px">?</div>'}</div>
-                <input type="file" accept="image/*" capture="environment" onchange="handlePhotoSelect(event,'photo-preview')">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                    <button type="button" class="btn btn-primary" onclick="openCameraCapture('photo-preview')">📷 צלם תמונה</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('photo-file-input').click()">🖼️ בחר מהגלריה</button>
+                </div>
+                <input type="file" id="photo-file-input" accept="image/*" hidden onchange="handlePhotoSelect(event,'photo-preview')">
             </div>
         </div>`;
+}
+
+// ===== CAMERA PHOTO CAPTURE =====
+let cameraStream = null;
+let cameraFacingMode = 'environment';
+let cameraTargetPreviewId = null;
+
+function openCameraCapture(previewId) {
+    cameraFacingMode = 'environment';
+    cameraTargetPreviewId = previewId;
+    document.getElementById('camera-error').textContent = '';
+    document.getElementById('camera-overlay').classList.add('visible');
+    startCameraStream();
+}
+
+function startCameraStream() {
+    stopCameraStream();
+    const video = document.getElementById('camera-video');
+    const errorEl = document.getElementById('camera-error');
+    if (!video) return;
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacingMode } })
+        .then(stream => {
+            cameraStream = stream;
+            video.srcObject = stream;
+        })
+        .catch(() => {
+            if (errorEl) errorEl.textContent = 'לא ניתן לגשת למצלמה. ודא שניתנה הרשאת מצלמה לאתר.';
+        });
+}
+
+function stopCameraStream() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+    }
+}
+
+function switchCameraFacing() {
+    cameraFacingMode = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    startCameraStream();
+}
+
+function capturePhoto() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('camera-canvas');
+    if (!video || !video.videoWidth) return;
+
+    const maxSize = 300;
+    let width = video.videoWidth;
+    let height = video.videoHeight;
+    if (width > height && width > maxSize) {
+        height = Math.round(height * (maxSize / width));
+        width = maxSize;
+    } else if (height > maxSize) {
+        width = Math.round(width * (maxSize / height));
+        height = maxSize;
+    }
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+    pendingPhotoData = dataUrl;
+    const preview = document.getElementById(cameraTargetPreviewId);
+    if (preview) preview.innerHTML = `<img src="${dataUrl}" class="avatar" style="width:90px;height:90px">`;
+
+    closeCameraCapture();
+}
+
+function closeCameraCapture() {
+    stopCameraStream();
+    document.getElementById('camera-overlay').classList.remove('visible');
 }
 
 function showAddMember() {

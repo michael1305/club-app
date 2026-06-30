@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <title>מערכת ניהול מועדון</title>
-    <link rel="stylesheet" href="style.css?v=6">
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
     <div id="app">
@@ -183,11 +183,31 @@
         </div>
     </div>
 
+    <!-- Camera Capture Overlay (separate from modal so it can layer on top of forms) -->
+    <div id="camera-overlay" class="modal-overlay" style="z-index:300">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>צילום תמונה</h3>
+                <button class="icon-btn" onclick="closeCameraCapture()">✕</button>
+            </div>
+            <div class="modal-body" style="text-align:center">
+                <video id="camera-video" autoplay playsinline style="width:100%;border-radius:12px;background:#000"></video>
+                <canvas id="camera-canvas" hidden></canvas>
+                <p id="camera-error" style="color:var(--danger);margin-top:10px"></p>
+                <div style="display:flex;gap:10px;margin-top:14px;justify-content:center">
+                    <button class="btn btn-success" id="camera-capture-btn" onclick="capturePhoto()">📸 צלם</button>
+                    <button class="btn btn-secondary" onclick="switchCameraFacing()">🔄 החלף מצלמה</button>
+                    <button class="btn btn-danger" onclick="closeCameraCapture()">ביטול</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast" hidden></div>
 
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=6"></script>
+    <script src="app.js?v=7"></script>
 </body>
 </html>
