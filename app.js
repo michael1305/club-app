@@ -501,6 +501,9 @@ function addPayment() {
 
     closeModal();
     renderPayments();
+    if (document.getElementById('page-members').classList.contains('active')) {
+        renderMembers();
+    }
     showToast(`נוספו ${quantity} כניסות ✓`);
 }
 
