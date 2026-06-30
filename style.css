@@ -171,11 +171,27 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     transition: transform 0.2s;
 }
 
 .card:active {
     transform: scale(0.98);
+}
+
+.avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.avatar-placeholder {
+    background: var(--primary-light);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
 }
 
 .card-info {

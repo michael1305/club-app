@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c5ce7">
     <title>הכרטיסיה שלי</title>
-    <link rel="stylesheet" href="style.css?v=4">
+    <link rel="stylesheet" href="style.css?v=5">
     <style>
         .user-page {
             max-width: 480px;
@@ -65,7 +65,7 @@
 </head>
 <body>
     <div id="content"></div>
-    <script src="app.js?v=4"></script>
+    <script src="app.js?v=5"></script>
     <script>
         (function() {
             const params = new URLSearchParams(location.search);
@@ -94,6 +94,7 @@
             content.innerHTML = `
                 <div class="user-page">
                     <div class="user-header">
+                        ${member.photo ? `<img src="${member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
                         <h1>👋 שלום, ${escHtml(member.name)}</h1>
                         <p>הכרטיסיה האישית שלך</p>
                     </div>

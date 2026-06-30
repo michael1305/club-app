@@ -76,6 +76,7 @@ function renderMembers() {
         else badge = `<span class="badge badge-success">${balance} כניסות</span>`;
         return `
         <div class="card" onclick="showMemberDetails('${m.id}')">
+            ${avatarHtml(m)}
             <div class="card-info">
                 <h4>${escHtml(m.name)}</h4>
                 <p>${escHtml(m.phone)}</p>
@@ -88,9 +89,65 @@ function renderMembers() {
     }).join('');
 }
 
+function avatarHtml(member, size = 44) {
+    if (member.photo) {
+        return `<img src="${member.photo}" class="avatar" style="width:${size}px;height:${size}px">`;
+    }
+    const initial = (member.name || '?').trim().charAt(0);
+    return `<div class="avatar avatar-placeholder" style="width:${size}px;height:${size}px;font-size:${Math.round(size * 0.4)}px">${escHtml(initial)}</div>`;
+}
+
 function filterMembers() { renderMembers(); }
 
+let pendingPhotoData = null;
+
+function resizeImageToBase64(file, maxSize, callback) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+            let { width, height } = img;
+            if (width > height && width > maxSize) {
+                height = Math.round(height * (maxSize / width));
+                width = maxSize;
+            } else if (height > maxSize) {
+                width = Math.round(width * (maxSize / height));
+                height = maxSize;
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            callback(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function handlePhotoSelect(event, previewId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    resizeImageToBase64(file, 300, dataUrl => {
+        pendingPhotoData = dataUrl;
+        const preview = document.getElementById(previewId);
+        if (preview) preview.innerHTML = `<img src="${dataUrl}" class="avatar" style="width:90px;height:90px">`;
+    });
+}
+
+function photoFieldHtml(existingPhoto) {
+    return `
+        <div class="form-group">
+            <label>תמונה (אופציונלי)</label>
+            <div style="display:flex;align-items:center;gap:14px">
+                <div id="photo-preview">${existingPhoto ? `<img src="${existingPhoto}" class="avatar" style="width:90px;height:90px">` : '<div class="avatar avatar-placeholder" style="width:90px;height:90px;font-size:36px">?</div>'}</div>
+                <input type="file" accept="image/*" capture="environment" onchange="handlePhotoSelect(event,'photo-preview')">
+            </div>
+        </div>`;
+}
+
 function showAddMember() {
+    pendingPhotoData = null;
     openModal('הוספת משתתף', `
         <div class="form-group">
             <label>שם מלא</label>
@@ -104,6 +161,7 @@ function showAddMember() {
             <label>אימייל (אופציונלי)</label>
             <input type="email" id="member-email" placeholder="email@example.com">
         </div>
+        ${photoFieldHtml(null)}
         <button class="btn btn-primary btn-block" onclick="addMember()">הוסף משתתף</button>
     `);
     setTimeout(() => document.getElementById('member-name').focus(), 300);
@@ -123,12 +181,14 @@ function addMember() {
         name,
         phone,
         email,
+        photo: pendingPhotoData,
         nfcTag: null,
         balance: 0,
         createdAt: new Date().toISOString()
     };
     members.push(member);
     saveMembers(members);
+    pendingPhotoData = null;
     closeModal();
     renderMembers();
     showToast('משתתף נוסף בהצלחה ✓');
@@ -149,6 +209,7 @@ function showMemberDetails(id) {
     else balanceBadge = `<span class="badge badge-success">${balance} כניסות נותרו</span>`;
 
     openModal(member.name, `
+        <div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 90)}</div>
         <div style="margin-bottom:16px">
             <p>📞 ${escHtml(member.phone)}</p>
             ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
@@ -190,6 +251,7 @@ function showEditMember(id) {
     const member = getMembers().find(m => m.id === id);
     if (!member) return;
 
+    pendingPhotoData = member.photo || null;
     openModal('עריכת משתתף', `
         <div class="form-group">
             <label>שם מלא</label>
@@ -203,7 +265,9 @@ function showEditMember(id) {
             <label>אימייל</label>
             <input type="email" id="edit-email" value="${escHtml(member.email || '')}">
         </div>
-        <button class="btn btn-primary btn-block" onclick="updateMember('${id}')">שמור שינויים</button>
+        ${photoFieldHtml(member.photo)}
+        ${member.photo ? `<button class="btn btn-secondary" onclick="document.getElementById('photo-preview').innerHTML='<div class=&quot;avatar avatar-placeholder&quot; style=&quot;width:90px;height:90px;font-size:36px&quot;>?</div>';pendingPhotoData=null">הסר תמונה</button>` : ''}
+        <button class="btn btn-primary btn-block" onclick="updateMember('${id}')" style="margin-top:12px">שמור שינויים</button>
     `);
 }
 
@@ -215,7 +279,9 @@ function updateMember(id) {
     members[idx].name = document.getElementById('edit-name').value.trim();
     members[idx].phone = document.getElementById('edit-phone').value.trim();
     members[idx].email = document.getElementById('edit-email').value.trim();
+    members[idx].photo = pendingPhotoData;
     saveMembers(members);
+    pendingPhotoData = null;
     closeModal();
     renderMembers();
     showToast('עודכן בהצלחה ✓');
@@ -388,6 +454,7 @@ function renderCheckinMembers() {
 
     list.innerHTML = filtered.map(m => `
         <div class="card" onclick="doCheckin('${m.id}')">
+            ${avatarHtml(m)}
             <div class="card-info">
                 <h4>${escHtml(m.name)}</h4>
                 <p>${escHtml(m.phone)}</p>
@@ -415,7 +482,11 @@ function doCheckin(memberId) {
     }
 
     openModal('בחירת סוג כניסה', `
-        <p style="margin-bottom:16px">${escHtml(member.name)} · יתרה נוכחית: ${balance} כניסות</p>
+        <div style="text-align:center;margin-bottom:16px">
+            ${avatarHtml(member, 140)}
+            <p style="margin-top:10px;font-size:1.2rem;font-weight:700">${escHtml(member.name)}</p>
+            <p style="color:var(--text-light)">יתרה נוכחית: ${balance} כניסות</p>
+        </div>
         <div style="display:flex;flex-direction:column;gap:10px">
             <button class="btn btn-primary btn-block" onclick="performCheckin('${memberId}','single')">כניסה בודדת (-1)</button>
             <button class="btn btn-secondary btn-block" onclick="performCheckin('${memberId}','couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (-2)</button>
