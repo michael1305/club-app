@@ -1,7 +1,8 @@
 {
     "name": "ניהול מועדון",
     "short_name": "מועדון",
-    "start_url": "/",
+    "start_url": "/club-app/",
+    "scope": "/club-app/",
     "display": "standalone",
     "background_color": "#f8f9fa",
     "theme_color": "#6c5ce7",
