@@ -855,15 +855,15 @@ function renderReports() {
 
 function showReport(period) {
     document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
-    const clicked = event?.target;
-    if (clicked) clicked.classList.add('active');
-    else document.querySelector('.period-selector .filter-btn')?.classList.add('active');
+    document.querySelector(`.period-selector .filter-btn[data-period="${period}"]`)?.classList.add('active');
 
     const payments = getPayments();
     const now = new Date();
     let startDate;
 
-    if (period === 'week') {
+    if (period === 'day') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'week') {
         startDate = new Date(now);
         startDate.setDate(startDate.getDate() - 7);
     } else if (period === 'month') {

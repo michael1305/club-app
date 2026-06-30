@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <title>מערכת ניהול מועדון</title>
-    <link rel="stylesheet" href="style.css?v=11">
+    <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
     <div id="app">
@@ -117,9 +117,10 @@
                 <div class="report-card">
                     <h3>הכנסות לפי תקופה</h3>
                     <div class="period-selector">
-                        <button class="filter-btn active" onclick="showReport('week')">שבוע</button>
-                        <button class="filter-btn" onclick="showReport('month')">חודש</button>
-                        <button class="filter-btn" onclick="showReport('year')">שנה</button>
+                        <button class="filter-btn" data-period="day" onclick="showReport('day')">יום</button>
+                        <button class="filter-btn active" data-period="week" onclick="showReport('week')">שבוע</button>
+                        <button class="filter-btn" data-period="month" onclick="showReport('month')">חודש</button>
+                        <button class="filter-btn" data-period="year" onclick="showReport('year')">שנה</button>
                     </div>
                     <div id="report-details" class="report-details"></div>
                 </div>
@@ -208,6 +209,6 @@
 
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=11"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
