@@ -672,6 +672,7 @@ function performCheckin(memberId, entryType) {
         id: generateId(),
         memberId,
         entryType,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
         timestamp: new Date().toISOString()
     };
     _saveCheckin(checkin);
@@ -922,43 +923,64 @@ function renderReports() {
     document.getElementById('recent-checkins').innerHTML = recentCheckins || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות</p>';
 }
 
-function showReport(period) {
-    document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector(`.period-selector .filter-btn[data-period="${period}"]`)?.classList.add('active');
+function showReport() {
+    const periodEl = document.querySelector('.period-selector .filter-btn.active');
+    const period = periodEl?.dataset.period || 'week';
 
-    const payments = getPayments();
+    // Update active period button if clicked directly
+    document.querySelectorAll('.period-selector .filter-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.period === period);
+    });
+    // If a period button triggered this call, update active
+    if (event?.target?.dataset?.period) {
+        document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+
     const now = new Date();
     let startDate;
-
-    if (period === 'day') {
+    const activePeriod = document.querySelector('.period-selector .filter-btn.active')?.dataset.period || 'week';
+    if (activePeriod === 'day') {
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (period === 'week') {
-        startDate = new Date(now);
-        startDate.setDate(startDate.getDate() - 7);
-    } else if (period === 'month') {
+    } else if (activePeriod === 'week') {
+        startDate = new Date(now); startDate.setDate(startDate.getDate() - 7);
+    } else if (activePeriod === 'month') {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1);
     } else {
         startDate = new Date(now.getFullYear(), 0, 1);
     }
 
-    const filtered = payments.filter(p => new Date(p.date) >= startDate);
-    const total = filtered.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const entriesSold = filtered.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    const terminalFilter = document.getElementById('report-terminal')?.value || '';
 
-    const checkins = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
+    // Populate terminal dropdown with known terminals
+    const allTerminals = [...new Set(getCheckins().map(c => c.terminal).filter(Boolean))];
+    const sel = document.getElementById('report-terminal');
+    if (sel) {
+        const current = sel.value;
+        sel.innerHTML = '<option value="">כל המסופים</option>' +
+            allTerminals.map(t => `<option value="${escHtml(t)}" ${t === current ? 'selected' : ''}>${escHtml(t)}</option>`).join('');
+    }
+
+    const payments = getPayments().filter(p => new Date(p.date) >= startDate);
+    const total = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const entriesSold = payments.reduce((sum, p) => sum + (p.quantity || 0), 0);
+
+    let checkins = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
+    if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
     const entriesUsed = checkins.reduce((sum, c) => sum + (c.entryType === 'couple' ? 2 : 1), 0);
 
     document.getElementById('report-details').innerHTML = `
         <div class="report-row"><span>סה"כ הכנסות כספיות</span><strong>₪${total}</strong></div>
         <div class="report-row"><span>כניסות שנמכרו</span><span>${entriesSold}</span></div>
-        <div class="report-row"><span>כניסות שנוצלו</span><span>${entriesUsed}</span></div>
-        <div class="report-row"><span>מספר רכישות</span><span>${filtered.length}</span></div>
+        <div class="report-row"><span>כניסות שנוצלו ${terminalFilter ? '('+terminalFilter+')' : ''}</span><span>${entriesUsed}</span></div>
+        <div class="report-row"><span>מספר רכישות</span><span>${payments.length}</span></div>
     `;
 }
 
 // ===== SETTINGS =====
 function loadSettings() {
     document.getElementById('setting-event-name').value = DB.getSetting('eventName', '');
+    document.getElementById('setting-terminal').value = DB.getSetting('terminalName', '');
     document.getElementById('setting-price').value = DB.getSetting('singlePrice', '');
     document.getElementById('setting-sub-price').value = DB.getSetting('couplePrice', '');
 

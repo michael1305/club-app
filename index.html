@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <title>מערכת ניהול מועדון</title>
-    <link rel="stylesheet" href="style.css?v=17">
+    <link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
     <div id="app">
@@ -118,10 +118,15 @@
                 <div class="report-card">
                     <h3>הכנסות לפי תקופה</h3>
                     <div class="period-selector">
-                        <button class="filter-btn" data-period="day" onclick="showReport('day')">יום</button>
-                        <button class="filter-btn active" data-period="week" onclick="showReport('week')">שבוע</button>
-                        <button class="filter-btn" data-period="month" onclick="showReport('month')">חודש</button>
-                        <button class="filter-btn" data-period="year" onclick="showReport('year')">שנה</button>
+                        <button class="filter-btn" data-period="day" onclick="showReport()">יום</button>
+                        <button class="filter-btn active" data-period="week" onclick="showReport()">שבוע</button>
+                        <button class="filter-btn" data-period="month" onclick="showReport()">חודש</button>
+                        <button class="filter-btn" data-period="year" onclick="showReport()">שנה</button>
+                    </div>
+                    <div style="margin-top:10px">
+                        <select id="report-terminal" onchange="showReport()" style="width:100%;padding:8px;border-radius:10px;border:1px solid #ddd;font-size:0.95rem">
+                            <option value="">כל המסופים</option>
+                        </select>
                     </div>
                     <div id="report-details" class="report-details"></div>
                 </div>
@@ -143,6 +148,10 @@
                 <div class="setting-group">
                     <label>שם האירוע</label>
                     <input type="text" id="setting-event-name" placeholder="שם האירוע" onchange="saveSetting('eventName', this.value)">
+                </div>
+                <div class="setting-group">
+                    <label>שם המסוף (מזהה מכשיר זה בדוחות)</label>
+                    <input type="text" id="setting-terminal" placeholder="לדוגמה: כניסה ראשית" onchange="saveSetting('terminalName', this.value)">
                 </div>
                 <div class="setting-group">
                     <label>מחיר לכניסה בודדת (₪) - לתיעוד בלבד</label>
@@ -212,6 +221,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=18"></script>
 </body>
 </html>
