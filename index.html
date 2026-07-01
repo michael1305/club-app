@@ -37,6 +37,10 @@
                 <span class="nav-icon">📊</span>
                 <span>דוחות</span>
             </button>
+            <button class="nav-btn" data-page="guestlist" onclick="showPage('guestlist')">
+                <span class="nav-icon">⭐</span>
+                <span>אורחים</span>
+            </button>
         </nav>
 
         <!-- Members Page -->
@@ -133,6 +137,10 @@
                             <span class="stat-value" id="stat-entries-used">0</span>
                             <span class="stat-label">כניסות בפועל</span>
                         </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-guests-today">0</span>
+                            <span class="stat-label">אורחים היום</span>
+                        </div>
                     </div>
                 </div>
                 <div class="report-card">
@@ -142,6 +150,25 @@
                 <div class="report-card">
                     <h3>כניסות אחרונות</h3>
                     <div id="recent-checkins" class="recent-list"></div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Guest List Page -->
+        <main id="page-guestlist" class="page">
+            <div class="reports-container">
+                <div class="report-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h3 style="margin:0">⭐ כניסות חופשיות קבועות</h3>
+                    </div>
+                    <div id="guestlist-vip" class="recent-list"></div>
+                </div>
+                <div class="report-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                        <h3 style="margin:0">🕐 אורחים זמניים (48 שעות)</h3>
+                        <button class="btn btn-primary" style="font-size:0.85rem;padding:6px 12px" onclick="showAddTempGuest()">+ הוסף</button>
+                    </div>
+                    <div id="guestlist-temp" class="recent-list"></div>
                 </div>
             </div>
         </main>
@@ -229,6 +256,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=24"></script>
+    <script src="app.js?v=25"></script>
 </body>
 </html>

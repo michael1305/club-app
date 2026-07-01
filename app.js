@@ -9,6 +9,8 @@ let _db = null;
 let _members = [];
 let _payments = [];
 let _checkins = [];
+let _guests = [];
+let _guestCheckins = [];
 
 // Settings stay in localStorage (device-specific preferences)
 const DB = {
@@ -40,6 +42,16 @@ function _initFirebase() {
             _onDataChange();
         }, () => {});
 
+        _db.collection('guests').onSnapshot(snap => {
+            _guests = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
+
+        _db.collection('guestcheckins').onSnapshot(snap => {
+            _guestCheckins = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
+
         _migrateFromLocalStorage();
     }).catch(() => {
         showToast('שגיאת חיבור — נסה שוב');
@@ -53,6 +65,7 @@ function _onDataChange() {
     else if (activePage === 'page-payments') renderPayments();
     else if (activePage === 'page-reports') renderReports();
     else if (activePage === 'page-checkin') renderCheckinMembers();
+    else if (activePage === 'page-guestlist') renderGuestList();
 }
 
 // One-time migration of existing localStorage data to Firestore
@@ -77,16 +90,21 @@ function _migrateFromLocalStorage() {
 }
 
 // Sync reads (from in-memory cache kept up-to-date by onSnapshot)
-function getMembers()  { return _members; }
-function getPayments() { return _payments; }
-function getCheckins() { return _checkins; }
+function getMembers()       { return _members; }
+function getPayments()      { return _payments; }
+function getCheckins()      { return _checkins; }
+function getGuests()        { return _guests; }
+function getGuestCheckins() { return _guestCheckins; }
 
 // Targeted async writes to Firestore
-function _saveMember(member)            { if (_db) _db.collection('members').doc(member.id).set(member); }
-function _updateMember(id, fields)      { if (_db) _db.collection('members').doc(id).update(fields); }
-function _deleteMemberDoc(id)           { if (_db) _db.collection('members').doc(id).delete(); }
-function _savePayment(payment)          { if (_db) _db.collection('payments').doc(payment.id).set(payment); }
-function _saveCheckin(checkin)          { if (_db) _db.collection('checkins').doc(checkin.id).set(checkin); }
+function _saveMember(member)              { if (_db) _db.collection('members').doc(member.id).set(member); }
+function _updateMember(id, fields)        { if (_db) _db.collection('members').doc(id).update(fields); }
+function _deleteMemberDoc(id)             { if (_db) _db.collection('members').doc(id).delete(); }
+function _savePayment(payment)            { if (_db) _db.collection('payments').doc(payment.id).set(payment); }
+function _saveCheckin(checkin)            { if (_db) _db.collection('checkins').doc(checkin.id).set(checkin); }
+function _saveGuest(g)                    { if (_db) _db.collection('guests').doc(g.id).set(g); }
+function _deleteGuest(id)                 { if (_db) _db.collection('guests').doc(id).delete(); }
+function _saveGuestCheckin(gc)            { if (_db) _db.collection('guestcheckins').doc(gc.id).set(gc); }
 
 function getBaseUrl() {
     return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
@@ -124,6 +142,7 @@ function showPage(page) {
     if (page === 'payments') renderPayments();
     if (page === 'reports') renderReports();
     if (page === 'checkin') renderCheckinMembers();
+    if (page === 'guestlist') renderGuestList();
     if (page === 'settings') loadSettings();
 }
 
@@ -143,8 +162,10 @@ function renderMembers() {
 
     list.innerHTML = filtered.map(m => {
         const balance = m.balance || 0;
+        const vip = m.vipSlots || 0;
         let badge;
-        if (balance <= 0) badge = `<span class="badge badge-danger">אין יתרה</span>`;
+        if (vip > 0) badge = `<span class="badge badge-warning">⭐ חופשי${vip > 1 ? ' ×2' : ''}</span>`;
+        else if (balance <= 0) badge = `<span class="badge badge-danger">אין יתרה</span>`;
         else if (balance <= 2) badge = `<span class="badge badge-warning">${balance} כניסות</span>`;
         else badge = `<span class="badge badge-success">${balance} כניסות</span>`;
         return `
@@ -364,10 +385,12 @@ function showMemberDetails(id) {
             <p>💰 שילם סה"כ: ₪${totalPaid}</p>
             <p>🚪 כניסות בפועל: ${checkins.length}</p>
             <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
+            <p>⭐ כניסה חופשית: ${(member.vipSlots||0) > 0 ? `<span class="badge badge-warning">${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
             <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
+            <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
             <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
             <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
             ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
@@ -632,6 +655,11 @@ function doCheckin(memberId) {
         return;
     }
 
+    if ((member.vipSlots || 0) > 0) {
+        doVipCheckin(member);
+        return;
+    }
+
     const balance = member.balance || 0;
     if (balance <= 0) {
         showCheckinResult(`✕ ל${member.name} אין יתרת כניסות. יש להוסיף כניסות לפני הכניסה.`, false);
@@ -882,6 +910,203 @@ function removeNfc(memberId) {
     showToast('שיוך הכרטיס בוטל');
 }
 
+// ===== VIP =====
+function showVipSettings(id) {
+    const member = getMembers().find(m => m.id === id);
+    if (!member) return;
+    const current = member.vipSlots || 0;
+    openModal('כניסה חופשית - ' + member.name, `
+        <p style="color:var(--text-light);margin-bottom:16px">הגדר כמה מקומות חופשיים לחבר זה</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn ${current===0?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',0)">ביטול כניסה חופשית</button>
+            <button class="btn ${current===1?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',1)">⭐ כניסה חופשית — 1 אדם</button>
+            <button class="btn ${current===2?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',2)">⭐⭐ כניסה חופשית — 2 אנשים</button>
+        </div>
+    `);
+}
+
+function setMemberVip(id, slots) {
+    _updateMember(id, { vipSlots: slots });
+    closeModal();
+    showToast(slots > 0 ? `כניסה חופשית הוגדרה ל-${slots} ${slots>1?'אנשים':'אדם'} ✓` : 'כניסה חופשית בוטלה');
+}
+
+function doVipCheckin(member) {
+    const today = new Date().toISOString().split('T')[0];
+    const existing = getGuestCheckins().find(gc => gc.refId === member.id && gc.date === today);
+    openModal('כניסה חופשית — ' + member.name, `
+        <div style="text-align:center;margin-bottom:16px">
+            ${avatarHtml(member, 80)}
+            <p style="margin-top:8px;font-size:1.1rem;font-weight:700">${escHtml(member.name)}</p>
+            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'})</p>
+            ${existing ? `<p style="color:var(--warning);font-size:0.9rem">כבר בוצעה כניסה היום (${existing.count} ${existing.count>1?'אנשים':'אדם'})</p>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-success btn-block" onclick="performVipCheckin('${member.id}',1)">✓ כניסה בודדת (1)</button>
+            ${member.vipSlots >= 2 ? `<button class="btn btn-primary btn-block" onclick="performVipCheckin('${member.id}',2)">✓ כניסה זוגית (2)</button>` : ''}
+        </div>
+    `);
+}
+
+function performVipCheckin(memberId, count) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    const today = new Date().toISOString().split('T')[0];
+    const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today);
+    _saveGuestCheckin({
+        id: existing?.id || generateId(),
+        refId: memberId,
+        name: member.name,
+        type: 'vip',
+        date: today,
+        count,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+    _saveCheckin({
+        id: generateId(),
+        memberId,
+        entryType: count === 2 ? 'vip-couple' : 'vip-single',
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+    closeModal();
+    showCheckinResult(`✓ ${member.name} — כניסה חופשית (${count} ${count>1?'אנשים':'אדם'})`, true);
+    if ('NDEFReader' in window) setTimeout(startNfc, 1500);
+}
+
+// ===== GUEST LIST =====
+function renderGuestList() {
+    const today = new Date().toISOString().split('T')[0];
+    const todayCheckins = getGuestCheckins().filter(gc => gc.date === today);
+    const now = new Date();
+
+    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0);
+    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now);
+
+    const vipHtml = vipMembers.length === 0
+        ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין חברים עם כניסה חופשית קבועה</p>'
+        : vipMembers.map(m => {
+            const checkin = todayCheckins.find(gc => gc.refId === m.id);
+            return `<div class="recent-item" style="align-items:center;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+                    ${avatarHtml(m, 36)}
+                    <div>
+                        <div style="font-weight:600">${escHtml(m.name)}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light)">⭐ עד ${m.vipSlots} ${m.vipSlots>1?'אנשים':'אדם'}</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+                    ${checkin ? `<span class="badge badge-success">הגיע (${checkin.count})</span>` : ''}
+                    <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',1)">✓1</button>
+                    ${m.vipSlots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',2)">✓2</button>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+    const tempHtml = activeGuests.length === 0
+        ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין אורחים זמניים פעילים</p>'
+        : activeGuests.map(g => {
+            const checkin = todayCheckins.find(gc => gc.refId === g.id);
+            const hoursLeft = Math.round((new Date(g.expiresAt) - now) / 3600000);
+            return `<div class="recent-item" style="align-items:center;gap:8px">
+                <div style="flex:1;min-width:0">
+                    <div style="font-weight:600">${escHtml(g.name)}</div>
+                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${g.slots} ${g.slots>1?'אנשים':'אדם'}</div>
+                </div>
+                <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+                    ${checkin ? `<span class="badge badge-success">הגיע (${checkin.count})</span>` : ''}
+                    <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',1)">✓1</button>
+                    ${g.slots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',2)">✓2</button>` : ''}
+                    <button class="btn btn-danger" style="padding:5px 9px;font-size:0.82rem" onclick="deleteTempGuest('${g.id}')">✕</button>
+                </div>
+            </div>`;
+        }).join('');
+
+    document.getElementById('guestlist-vip').innerHTML = vipHtml;
+    document.getElementById('guestlist-temp').innerHTML = tempHtml;
+}
+
+function markVipArrival(memberId, count) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    const today = new Date().toISOString().split('T')[0];
+    const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today);
+    _saveGuestCheckin({
+        id: existing?.id || generateId(),
+        refId: memberId,
+        name: member.name,
+        type: 'vip',
+        date: today,
+        count,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+    showToast(`${member.name} סומן כהגיע (${count}) ✓`);
+}
+
+function markTempArrival(guestId, count) {
+    const guest = getGuests().find(g => g.id === guestId);
+    if (!guest) return;
+    const today = new Date().toISOString().split('T')[0];
+    const existing = getGuestCheckins().find(gc => gc.refId === guestId && gc.date === today);
+    _saveGuestCheckin({
+        id: existing?.id || generateId(),
+        refId: guestId,
+        name: guest.name,
+        type: 'temp',
+        date: today,
+        count,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+    showToast(`${guest.name} סומן כהגיע (${count}) ✓`);
+}
+
+function showAddTempGuest() {
+    openModal('הוספת אורח זמני (48 שעות)', `
+        <div class="form-group">
+            <label>שם האורח</label>
+            <input type="text" id="temp-guest-name" placeholder="שם מלא">
+        </div>
+        <div class="form-group">
+            <label>כמות מקומות</label>
+            <div style="display:flex;gap:16px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="radio" name="temp-slots" value="1" checked> 1 אדם
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="radio" name="temp-slots" value="2"> 2 אנשים
+                </label>
+            </div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addTempGuest()">הוסף לרשימה</button>
+    `);
+    setTimeout(() => document.getElementById('temp-guest-name')?.focus(), 200);
+}
+
+function addTempGuest() {
+    const name = document.getElementById('temp-guest-name').value.trim();
+    const slots = parseInt(document.querySelector('input[name="temp-slots"]:checked')?.value || '1');
+    if (!name) { showToast('נא להזין שם'); return; }
+    const now = new Date();
+    _saveGuest({
+        id: generateId(),
+        name,
+        slots,
+        createdAt: now.toISOString(),
+        expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
+    });
+    closeModal();
+    showToast(`${name} נוסף לרשימה ל-48 שעות ✓`);
+}
+
+function deleteTempGuest(id) {
+    if (!confirm('להסיר אורח זה מהרשימה?')) return;
+    _deleteGuest(id);
+    showToast('הוסר מהרשימה');
+}
+
 // ===== REPORTS =====
 function _getReportRange() {
     if (event?.target?.dataset?.period) {
@@ -942,12 +1167,17 @@ function showReport() {
     const entriesUsed = checkins.reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
 
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayGuests = getGuestCheckins().filter(gc => gc.date === todayStr);
+    const todayGuestsCount = todayGuests.reduce((s, gc) => s + (gc.count || 1), 0);
+
     document.getElementById('stat-members').textContent      = members.length;
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
     document.getElementById('stat-checkins').textContent     = checkins.length;
     document.getElementById('stat-active-subs').textContent  = zeroBalance;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
+    document.getElementById('stat-guests-today').textContent = todayGuestsCount;
 }
 
 function exportExcel() {
