@@ -895,10 +895,17 @@ function renderReports() {
 
     const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
 
+    const monthTickets = payments.filter(p => new Date(p.date) >= startOfMonth).length;
+    const monthEntries = checkins
+        .filter(c => new Date(c.timestamp) >= startOfMonth)
+        .reduce((sum, c) => sum + (c.entryType === 'couple' ? 2 : 1), 0);
+
     document.getElementById('stat-members').textContent = members.length;
     document.getElementById('stat-revenue').textContent = '₪' + monthRevenue;
     document.getElementById('stat-checkins').textContent = todayCheckins;
     document.getElementById('stat-active-subs').textContent = zeroBalance;
+    document.getElementById('stat-tickets-sold').textContent = monthTickets;
+    document.getElementById('stat-entries-used').textContent = monthEntries;
 
     showReport('week');
 

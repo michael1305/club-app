@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <title>מערכת ניהול מועדון</title>
-    <link rel="stylesheet" href="style.css?v=18">
+    <link rel="stylesheet" href="style.css?v=19">
 </head>
 <body>
     <div id="app">
@@ -112,6 +112,14 @@
                         <div class="stat">
                             <span class="stat-value" id="stat-active-subs">0</span>
                             <span class="stat-label">ללא יתרה</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-tickets-sold">0</span>
+                            <span class="stat-label">כרטיסיות החודש</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-entries-used">0</span>
+                            <span class="stat-label">כניסות החודש</span>
                         </div>
                     </div>
                 </div>
@@ -221,6 +229,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=18"></script>
+    <script src="app.js?v=19"></script>
 </body>
 </html>
