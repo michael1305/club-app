@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6c5ce7">
+    <title>הרשמה למועדון</title>
+    <link rel="stylesheet" href="style.css?v=21">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        .reg-page {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 24px 20px;
+            min-height: 100vh;
+        }
+        .reg-logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .reg-logo img {
+            width: 110px;
+            height: auto;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+        }
+        .reg-card {
+            background: white;
+            border-radius: 20px;
+            padding: 28px 22px;
+            box-shadow: var(--shadow);
+        }
+        .reg-card h2 {
+            text-align: center;
+            margin-bottom: 6px;
+            font-size: 1.4rem;
+            color: var(--primary);
+        }
+        .reg-card p.subtitle {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+        }
+        .reg-field {
+            margin-bottom: 16px;
+        }
+        .reg-field label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 0.95rem;
+        }
+        .reg-field input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid #ddd;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .reg-field input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .reg-field input.error {
+            border-color: var(--danger);
+        }
+        .reg-error {
+            color: var(--danger);
+            font-size: 0.82rem;
+            margin-top: 4px;
+            display: none;
+        }
+        .reg-error.show { display: block; }
+        .reg-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            font-family: inherit;
+            transition: opacity 0.2s;
+        }
+        .reg-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .reg-success {
+            display: none;
+            text-align: center;
+            padding: 20px 0 10px;
+        }
+        .reg-success .success-icon {
+            font-size: 3.5rem;
+            margin-bottom: 12px;
+        }
+        .reg-success h3 {
+            color: var(--success);
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+        .reg-success p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="reg-page">
+        <div class="reg-logo">
+            <img src="LOGO BIG.jpg" alt="לוגו המועדון">
+        </div>
+        <div class="reg-card">
+            <div id="reg-form-section">
+                <h2>הרשמה למועדון</h2>
+                <p class="subtitle">מלא את הפרטים ואנו נוסיף אותך בהקדם</p>
+
+                <div class="reg-field">
+                    <label for="reg-name">שם מלא</label>
+                    <input type="text" id="reg-name" placeholder="ישראל ישראלי" autocomplete="name">
+                    <div class="reg-error" id="err-name">נא להזין שם מלא</div>
+                </div>
+
+                <div class="reg-field">
+                    <label for="reg-phone">טלפון</label>
+                    <input type="tel" id="reg-phone" placeholder="050-0000000" autocomplete="tel">
+                    <div class="reg-error" id="err-phone">נא להזין מספר טלפון תקין</div>
+                </div>
+
+                <button class="reg-submit" id="reg-btn" onclick="submitReg()">הרשמה</button>
+            </div>
+
+            <div class="reg-success" id="reg-success">
+                <div class="success-icon">✅</div>
+                <h3>ההרשמה התקבלה!</h3>
+                <p>פרטיך נשמרו בהצלחה.<br>המנהל יוסיף את כרטיסיית הכניסות שלך בקרוב.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const _cfg = {
+                apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
+                projectId: "club-app-8f954",
+                appId: "1:181296970595:web:6cd7578d10d563f3c73156"
+            };
+            if (!firebase.apps.length) firebase.initializeApp(_cfg);
+            const db = firebase.firestore();
+            db.enablePersistence().catch(() => {});
+
+            function genId() {
+                return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+            }
+
+            function validatePhone(p) {
+                return /^[\d\-\+\s]{7,15}$/.test(p.trim());
+            }
+
+            window.submitReg = function () {
+                const name = document.getElementById('reg-name').value.trim();
+                const phone = document.getElementById('reg-phone').value.trim();
+                let valid = true;
+
+                document.getElementById('err-name').classList.toggle('show', !name);
+                document.getElementById('reg-name').classList.toggle('error', !name);
+                if (!name) valid = false;
+
+                const phoneOk = validatePhone(phone);
+                document.getElementById('err-phone').classList.toggle('show', !phoneOk);
+                document.getElementById('reg-phone').classList.toggle('error', !phoneOk);
+                if (!phoneOk) valid = false;
+
+                if (!valid) return;
+
+                const btn = document.getElementById('reg-btn');
+                btn.disabled = true;
+                btn.textContent = 'שולח...';
+
+                firebase.auth().signInAnonymously().then(() => {
+                    const id = genId();
+                    return db.collection('members').doc(id).set({
+                        id,
+                        name,
+                        phone,
+                        balance: 0,
+                        createdAt: new Date().toISOString(),
+                        registeredSelf: true
+                    });
+                }).then(() => {
+                    document.getElementById('reg-form-section').style.display = 'none';
+                    document.getElementById('reg-success').style.display = 'block';
+                }).catch(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'הרשמה';
+                    alert('שגיאה בשליחה, נסה שוב');
+                });
+            };
+        })();
+    </script>
+</body>
+</html>

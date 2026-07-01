@@ -1,5 +1,5 @@
-const CACHE_NAME = 'club-v23';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './user.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
+const CACHE_NAME = 'club-v24';
+const ASSETS = ['./', './index.html', './style.css', './app.js', './user.html', './register.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
