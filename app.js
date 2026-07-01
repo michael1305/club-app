@@ -109,7 +109,6 @@ function extractMemberIdFromText(text) {
 function showPage(page) {
     if (page !== 'checkin') {
         stopQrScanner();
-        stopNfc();
     }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -689,6 +688,9 @@ function performCheckin(memberId, entryType) {
     if (document.getElementById('page-checkin').classList.contains('active')) {
         renderCheckinMembers();
     }
+
+    // Restart NFC automatically for the next person
+    if ('NDEFReader' in window) setTimeout(startNfc, 1500);
 }
 
 function showCheckinResult(msg, success) {
@@ -786,38 +788,40 @@ function toggleNfc() {
     }
 }
 
+function _setNfcUi(active) {
+    const topBtn = document.getElementById('top-nfc-btn');
+    const btn = document.getElementById('nfc-btn');
+    const statusEl = document.getElementById('nfc-status');
+    if (topBtn) topBtn.textContent = active ? '📡' : '📵';
+    if (btn) btn.textContent = active ? 'עצור NFC' : 'הפעל NFC';
+    if (statusEl) statusEl.textContent = active ? 'NFC פעיל - קרב כרטיס' : '';
+    if (statusEl) statusEl.style.color = 'var(--success)';
+}
+
 function startNfc() {
     const statusEl = document.getElementById('nfc-status');
-    const btn = document.getElementById('nfc-btn');
 
     if (!('NDEFReader' in window)) {
-        statusEl.textContent = 'NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד)';
-        statusEl.style.color = 'var(--danger)';
+        if (statusEl) { statusEl.textContent = 'NFC לא נתמך (נדרש Chrome באנדרואיד)'; statusEl.style.color = 'var(--danger)'; }
         return;
     }
 
     stopNfc();
-    statusEl.textContent = 'ממתין לסריקה...';
-    statusEl.style.color = 'var(--primary)';
 
     nfcAbortController = new AbortController();
     const ndef = new NDEFReader();
     ndef.scan({ signal: nfcAbortController.signal }).then(() => {
-        statusEl.textContent = 'NFC פעיל - קרב כרטיס';
-        statusEl.style.color = 'var(--success)';
-        if (btn) btn.textContent = 'עצור NFC';
+        _setNfcUi(true);
 
         ndef.onreading = event => {
             const memberId = parseNfcMessage(event.message) ||
                 getMembers().find(m => m.nfcTag === event.serialNumber)?.id;
-
-            // Stop reading immediately so repeated reads don't re-open the choice modal
-            stopNfc();
-
             if (memberId) {
                 doCheckin(memberId);
             } else {
                 showCheckinResult('כרטיס NFC לא מזוהה. יש לשייך אותו למשתתף תחילה.', false);
+                // Restart after unrecognized card
+                setTimeout(startNfc, 1500);
             }
         };
 
@@ -825,10 +829,9 @@ function startNfc() {
             showCheckinResult('שגיאה בקריאת הכרטיס. נסה שוב.', false);
         };
     }).catch(err => {
-        statusEl.textContent = 'שגיאה בהפעלת NFC: ' + (err.message || '');
-        statusEl.style.color = 'var(--danger)';
+        if (statusEl) { statusEl.textContent = 'שגיאה: ' + (err.message || ''); statusEl.style.color = 'var(--danger)'; }
         nfcAbortController = null;
-        if (btn) btn.textContent = 'הפעל NFC';
+        _setNfcUi(false);
     });
 }
 
@@ -837,10 +840,9 @@ function stopNfc() {
         nfcAbortController.abort();
         nfcAbortController = null;
     }
+    _setNfcUi(false);
     const statusEl = document.getElementById('nfc-status');
-    const btn = document.getElementById('nfc-btn');
-    if (statusEl) { statusEl.textContent = ''; }
-    if (btn) { btn.textContent = 'הפעל NFC'; }
+    if (statusEl) statusEl.textContent = '';
 }
 
 function assignNfc(memberId) {
