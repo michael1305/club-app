@@ -6,6 +6,8 @@
     <meta name="theme-color" content="#6c5ce7">
     <title>הכרטיסיה שלי</title>
     <link rel="stylesheet" href="style.css?v=14">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <style>
         .user-page {
             max-width: 480px;
@@ -76,51 +78,91 @@
 </head>
 <body>
     <div id="content"></div>
-    <script src="app.js?v=14"></script>
     <script>
         (function() {
+            const _cfg = {
+                apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
+                projectId: "club-app-8f954",
+                appId: "1:181296970595:web:6cd7578d10d563f3c73156"
+            };
+
+            function esc(str) {
+                const d = document.createElement('div');
+                d.textContent = str || '';
+                return d.innerHTML;
+            }
+            function fmtDateTime(date) {
+                return date.toLocaleDateString('he-IL') + ' ' +
+                    date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+            }
+
             const params = new URLSearchParams(location.search);
             const id = params.get('id');
             const content = document.getElementById('content');
-            const member = id ? getMembers().find(m => m.id === id) : null;
 
-            if (!member) {
+            if (!id) {
                 content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
                 return;
             }
 
-            const balance = member.balance || 0;
-            const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
-            const checkins = getCheckins()
-                .filter(c => c.memberId === id)
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            content.innerHTML = '<div style="text-align:center;padding:60px;color:#b2bec3;">טוען...</div>';
 
-            const historyHtml = checkins.slice(0, 15).map(c => `
-                <div class="recent-item">
-                    <span>${formatDateTime(new Date(c.timestamp))}</span>
-                    <span>${c.entryType === 'couple' ? 'כניסה זוגית (-2)' : 'כניסה בודדת (-1)'}</span>
-                </div>
-            `).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות עדיין</p>';
+            if (!firebase.apps.length) firebase.initializeApp(_cfg);
+            const db = firebase.firestore();
+            db.enablePersistence().catch(() => {});
 
-            content.innerHTML = `
-                <div class="user-page">
-                    <div class="club-logo">
-                        <img src="LOGO.jpg" alt="לוגו המועדון">
+            let _member = null;
+            let _checkins = [];
+
+            function render() {
+                if (!_member) {
+                    content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
+                    return;
+                }
+                const balance = _member.balance || 0;
+                const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
+                const sorted = _checkins.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const historyHtml = sorted.slice(0, 15).map(c => `
+                    <div class="recent-item">
+                        <span>${fmtDateTime(new Date(c.timestamp))}</span>
+                        <span>${c.entryType === 'couple' ? 'כניסה זוגית (-2)' : 'כניסה בודדת (-1)'}</span>
                     </div>
-                    <div class="user-header">
-                        ${member.photo ? `<img src="${member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
-                        <h1>👋 שלום, ${escHtml(member.name)}</h1>
-                        <p>הכרטיסיה האישית שלך</p>
+                `).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות עדיין</p>';
+
+                content.innerHTML = `
+                    <div class="user-page">
+                        <div class="club-logo">
+                            <img src="LOGO.jpg" alt="לוגו המועדון">
+                        </div>
+                        <div class="user-header">
+                            ${_member.photo ? `<img src="${_member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
+                            <h1>👋 שלום, ${esc(_member.name)}</h1>
+                            <p>הכרטיסיה האישית שלך</p>
+                        </div>
+                        <div class="balance-card ${balanceClass}">
+                            <div class="balance-number">${balance}</div>
+                            <div class="balance-label">כניסות נותרו</div>
+                            ${balance <= 0 ? '<div class="empty-msg">אין יתרת כניסות. יש לפנות למנהל כדי להוסיף כניסות.</div>' : ''}
+                        </div>
+                        <div class="section-title">היסטוריית כניסות</div>
+                        <div class="recent-list">${historyHtml}</div>
                     </div>
-                    <div class="balance-card ${balanceClass}">
-                        <div class="balance-number">${balance}</div>
-                        <div class="balance-label">כניסות נותרו</div>
-                        ${balance <= 0 ? '<div class="empty-msg">אין יתרת כניסות. יש לפנות למנהל כדי להוסיף כניסות.</div>' : ''}
-                    </div>
-                    <div class="section-title">היסטוריית כניסות</div>
-                    <div class="recent-list">${historyHtml}</div>
-                </div>
-            `;
+                `;
+            }
+
+            // Listen to member doc in real-time
+            db.collection('members').doc(id).onSnapshot(doc => {
+                _member = doc.exists ? doc.data() : null;
+                render();
+            }, () => {
+                content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
+            });
+
+            // Listen to this member's checkins in real-time
+            db.collection('checkins').where('memberId', '==', id).onSnapshot(snap => {
+                _checkins = snap.docs.map(d => d.data());
+                render();
+            }, () => {});
         })();
     </script>
 </body>

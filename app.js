@@ -1,15 +1,88 @@
-// ===== DATA STORE =====
+// ===== FIREBASE CONFIG & DATA LAYER =====
+const _firebaseConfig = {
+    apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
+    projectId: "club-app-8f954",
+    appId: "1:181296970595:web:6cd7578d10d563f3c73156"
+};
+
+let _db = null;
+let _members = [];
+let _payments = [];
+let _checkins = [];
+
+// Settings stay in localStorage (device-specific preferences)
 const DB = {
-    get(key) {
-        try { return JSON.parse(localStorage.getItem('club_' + key)) || []; }
-        catch { return []; }
-    },
-    set(key, val) { localStorage.setItem('club_' + key, JSON.stringify(val)); },
     getSetting(key, fallback = '') {
         return localStorage.getItem('club_setting_' + key) || fallback;
     },
     setSetting(key, val) { localStorage.setItem('club_setting_' + key, val); }
 };
+
+function _initFirebase() {
+    if (typeof firebase === 'undefined') return;
+    if (!firebase.apps.length) firebase.initializeApp(_firebaseConfig);
+    _db = firebase.firestore();
+    _db.enablePersistence().catch(() => {});
+
+    _db.collection('members').onSnapshot(snap => {
+        _members = snap.docs.map(d => d.data());
+        _onDataChange();
+    }, () => {});
+
+    _db.collection('payments').onSnapshot(snap => {
+        _payments = snap.docs.map(d => d.data());
+        _onDataChange();
+    }, () => {});
+
+    _db.collection('checkins').onSnapshot(snap => {
+        _checkins = snap.docs.map(d => d.data());
+        _onDataChange();
+    }, () => {});
+
+    _migrateFromLocalStorage();
+}
+
+function _onDataChange() {
+    if (!document.getElementById('members-list')) return;
+    const activePage = document.querySelector('.page.active')?.id;
+    if (activePage === 'page-members') renderMembers();
+    else if (activePage === 'page-payments') renderPayments();
+    else if (activePage === 'page-reports') renderReports();
+    else if (activePage === 'page-checkin') renderCheckinMembers();
+}
+
+// One-time migration of existing localStorage data to Firestore
+function _migrateFromLocalStorage() {
+    if (localStorage.getItem('club_firebase_migrated_v1')) return;
+    const parse = key => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
+    const members  = parse('club_members');
+    const payments = parse('club_payments');
+    const checkins = parse('club_checkins');
+    if (!members.length && !payments.length && !checkins.length) {
+        localStorage.setItem('club_firebase_migrated_v1', '1');
+        return;
+    }
+    const batch = _db.batch();
+    members.forEach(m  => batch.set(_db.collection('members').doc(m.id),  m));
+    payments.forEach(p => batch.set(_db.collection('payments').doc(p.id), p));
+    checkins.forEach(c => batch.set(_db.collection('checkins').doc(c.id), c));
+    batch.commit().then(() => {
+        localStorage.setItem('club_firebase_migrated_v1', '1');
+        showToast('נתוני המערכת הועברו לענן ✓');
+    }).catch(() => {});
+}
+
+// Sync reads (from in-memory cache kept up-to-date by onSnapshot)
+function getMembers()  { return _members; }
+function getPayments() { return _payments; }
+function getCheckins() { return _checkins; }
+
+// Targeted async writes to Firestore
+function _saveMember(member)            { if (_db) _db.collection('members').doc(member.id).set(member); }
+function _updateMember(id, fields)      { if (_db) _db.collection('members').doc(id).update(fields); }
+function _deleteMemberDoc(id)           { if (_db) _db.collection('members').doc(id).delete(); }
+function _savePayment(payment)          { if (_db) _db.collection('payments').doc(payment.id).set(payment); }
+function _saveCheckin(checkin)          { if (_db) _db.collection('checkins').doc(checkin.id).set(checkin); }
 
 function getBaseUrl() {
     return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
@@ -52,9 +125,6 @@ function showPage(page) {
 }
 
 // ===== MEMBERS =====
-function getMembers() { return DB.get('members'); }
-function saveMembers(members) { DB.set('members', members); }
-
 function renderMembers() {
     const members = getMembers();
     const search = document.getElementById('search-members').value.toLowerCase();
@@ -251,7 +321,6 @@ function addMember() {
     if (!name) { showToast('נא להזין שם'); return; }
     if (!phone) { showToast('נא להזין טלפון'); return; }
 
-    const members = getMembers();
     const member = {
         id: generateId(),
         name,
@@ -262,11 +331,9 @@ function addMember() {
         balance: 0,
         createdAt: new Date().toISOString()
     };
-    members.push(member);
-    saveMembers(members);
+    _saveMember(member);
     pendingPhotoData = null;
     closeModal();
-    renderMembers();
     showToast('משתתף נוסף בהצלחה ✓');
 }
 
@@ -348,27 +415,26 @@ function showEditMember(id) {
 }
 
 function updateMember(id) {
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === id);
-    if (idx === -1) return;
+    const member = getMembers().find(m => m.id === id);
+    if (!member) return;
 
-    members[idx].name = document.getElementById('edit-name').value.trim();
-    members[idx].phone = document.getElementById('edit-phone').value.trim();
-    members[idx].email = document.getElementById('edit-email').value.trim();
-    members[idx].photo = pendingPhotoData;
-    saveMembers(members);
+    const updated = {
+        ...member,
+        name: document.getElementById('edit-name').value.trim(),
+        phone: document.getElementById('edit-phone').value.trim(),
+        email: document.getElementById('edit-email').value.trim(),
+        photo: pendingPhotoData
+    };
+    _saveMember(updated);
     pendingPhotoData = null;
     closeModal();
-    renderMembers();
     showToast('עודכן בהצלחה ✓');
 }
 
 function deleteMember(id) {
     if (!confirm('למחוק את המשתתף? הפעולה לא ניתנת לביטול.')) return;
-    const members = getMembers().filter(m => m.id !== id);
-    saveMembers(members);
+    _deleteMemberDoc(id);
     closeModal();
-    renderMembers();
     showToast('משתתף נמחק');
 }
 
@@ -390,14 +456,10 @@ function showMemberQR(id) {
 }
 
 // ===== PAYMENTS =====
-function getPayments() { return DB.get('payments'); }
-function savePayments(payments) { DB.set('payments', payments); }
-
 function renderPayments() {
     const payments = getPayments();
     const members = getMembers();
     const search = document.getElementById('search-payments').value.toLowerCase();
-    const activeFilter = document.querySelector('.payment-filters .filter-btn.active')?.dataset.filter || 'all';
 
     let filtered = payments.map(p => {
         const member = members.find(m => m.id === p.memberId);
@@ -481,36 +543,26 @@ function addPayment() {
     if (!memberId) { showToast('בחר משתתף'); return; }
     if (!quantity || quantity <= 0) { showToast('הזן כמות כניסות תקינה'); return; }
 
-    const payments = getPayments();
-    payments.push({
+    const payment = {
         id: generateId(),
         memberId,
         quantity,
         amount,
         note,
         date: new Date().toISOString()
-    });
-    savePayments(payments);
+    };
+    _savePayment(payment);
 
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === memberId);
-    if (idx !== -1) {
-        members[idx].balance = (members[idx].balance || 0) + quantity;
-        saveMembers(members);
+    const member = getMembers().find(m => m.id === memberId);
+    if (member) {
+        _updateMember(memberId, { balance: (member.balance || 0) + quantity });
     }
 
     closeModal();
-    renderPayments();
-    if (document.getElementById('page-members').classList.contains('active')) {
-        renderMembers();
-    }
     showToast(`נוספו ${quantity} כניסות ✓`);
 }
 
 // ===== CHECK-IN =====
-function getCheckins() { return DB.get('checkins'); }
-function saveCheckins(checkins) { DB.set('checkins', checkins); }
-
 function switchCheckinTab(tab) {
     document.querySelectorAll('.checkin-tabs .tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.checkin-tab-content').forEach(c => c.classList.remove('active'));
@@ -575,16 +627,15 @@ function doCheckin(memberId) {
 }
 
 function performCheckin(memberId, entryType) {
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === memberId);
-    if (idx === -1) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) {
         closeModal();
         showCheckinResult('משתתף לא נמצא', false);
         return;
     }
 
     const cost = entryType === 'couple' ? 2 : 1;
-    const balance = members[idx].balance || 0;
+    const balance = member.balance || 0;
 
     if (balance < cost) {
         closeModal();
@@ -592,24 +643,22 @@ function performCheckin(memberId, entryType) {
         return;
     }
 
-    members[idx].balance = balance - cost;
-    saveMembers(members);
+    const newBalance = balance - cost;
+    _updateMember(memberId, { balance: newBalance });
 
-    const checkins = getCheckins();
-    checkins.push({
+    const checkin = {
         id: generateId(),
         memberId,
         entryType,
         timestamp: new Date().toISOString()
-    });
-    saveCheckins(checkins);
+    };
+    _saveCheckin(checkin);
 
     closeModal();
 
-    const remaining = members[idx].balance;
-    let msg = `✓ ${members[idx].name} נכנס/ה בהצלחה! (${entryType === 'couple' ? 'זוגית' : 'בודדת'})\nנותרו ${remaining} כניסות`;
-    if (remaining <= 0) msg += '\n⚠ זו הכניסה האחרונה - יש להוסיף כניסות';
-    else if (remaining <= 2) msg += '\n⚠ יתרה נמוכה';
+    let msg = `✓ ${member.name} נכנס/ה בהצלחה! (${entryType === 'couple' ? 'זוגית' : 'בודדת'})\nנותרו ${newBalance} כניסות`;
+    if (newBalance <= 0) msg += '\n⚠ זו הכניסה האחרונה - יש להוסיף כניסות';
+    else if (newBalance <= 2) msg += '\n⚠ יתרה נמוכה';
 
     showCheckinResult(msg, true);
     showToast('צ\'ק-אין בוצע ✓');
@@ -739,8 +788,7 @@ function startNfc() {
             const memberId = parseNfcMessage(event.message) ||
                 getMembers().find(m => m.nfcTag === event.serialNumber)?.id;
 
-            // Stop reading immediately so repeated reads (while the card stays near
-            // the phone) don't keep re-opening the single/couple choice modal.
+            // Stop reading immediately so repeated reads don't re-open the choice modal
             stopNfc();
 
             if (memberId) {
@@ -788,12 +836,7 @@ function assignNfc(memberId) {
     const url = getUserUrl(memberId);
 
     ndef.write({ records: [{ recordType: 'url', data: url }] }).then(() => {
-        const members = getMembers();
-        const idx = members.findIndex(m => m.id === memberId);
-        if (idx !== -1) {
-            members[idx].nfcTag = url;
-            saveMembers(members);
-        }
+        _updateMember(memberId, { nfcTag: url });
         showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
     }).catch(err => {
         showToast('שגיאה בכתיבה לכרטיס: ' + (err.message || 'ודא שהכרטיס ניתן לכתיבה'));
@@ -802,13 +845,8 @@ function assignNfc(memberId) {
 
 function removeNfc(memberId) {
     if (!confirm('לבטל את שיוך כרטיס ה-NFC למשתתף זה?')) return;
-    const members = getMembers();
-    const idx = members.findIndex(m => m.id === memberId);
-    if (idx === -1) return;
-    members[idx].nfcTag = null;
-    saveMembers(members);
+    _updateMember(memberId, { nfcTag: null });
     closeModal();
-    showMemberDetails(memberId);
     showToast('שיוך הכרטיס בוטל');
 }
 
@@ -953,17 +991,19 @@ function importData(event) {
     reader.onload = e => {
         try {
             const data = JSON.parse(e.target.result);
-            if (data.members) saveMembers(data.members);
-            if (data.payments) savePayments(data.payments);
-            if (data.checkins) saveCheckins(data.checkins);
+            if (_db) {
+                const batch = _db.batch();
+                (data.members  || []).forEach(m => batch.set(_db.collection('members').doc(m.id),  m));
+                (data.payments || []).forEach(p => batch.set(_db.collection('payments').doc(p.id), p));
+                (data.checkins || []).forEach(c => batch.set(_db.collection('checkins').doc(c.id), c));
+                batch.commit().then(() => showToast('נתונים יובאו בהצלחה!')).catch(() => showToast('שגיאה בייבוא'));
+            }
             if (data.settings) {
                 Object.entries(data.settings).forEach(([k, v]) => {
                     if (v) DB.setSetting(k, v);
                 });
             }
-            showToast('נתונים יובאו בהצלחה!');
             loadSettings();
-            renderMembers();
         } catch {
             showToast('שגיאה בקריאת הקובץ');
         }
@@ -1030,11 +1070,16 @@ function showToast(msg) {
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('members-list')) return;
+
     const eventName = DB.getSetting('eventName');
     if (eventName) {
         document.querySelector('.top-bar h1').textContent = '🎫 ' + eventName;
     }
-    renderMembers();
+
+    document.getElementById('members-list').innerHTML =
+        '<div style="text-align:center;padding:40px;color:#b2bec3;">מתחבר לענן...</div>';
+
+    _initFirebase();
 });
 
 // PWA Service Worker
