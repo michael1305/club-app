@@ -1,4 +1,4 @@
-const CACHE_NAME = 'club-v16';
+const CACHE_NAME = 'club-v17';
 const ASSETS = ['./', './index.html', './style.css', './app.js', './user.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
 
 self.addEventListener('install', e => {

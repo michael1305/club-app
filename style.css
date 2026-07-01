@@ -55,10 +55,15 @@ body {
     border-radius: 8px;
     transition: background 0.2s;
 }
+#top-nfc-btn {
+    font-size: 1.5rem;
+    padding: 6px 10px;
+    min-width: 44px;
+    min-height: 44px;
+}
 #top-nfc-btn.nfc-active {
     background: var(--success);
     border-radius: 8px;
-    padding: 4px 8px;
 }
 
 .bottom-nav {

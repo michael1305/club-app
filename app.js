@@ -804,7 +804,7 @@ function startNfc() {
     const statusEl = document.getElementById('nfc-status');
 
     if (!('NDEFReader' in window)) {
-        if (statusEl) { statusEl.textContent = 'NFC לא נתמך (נדרש Chrome באנדרואיד)'; statusEl.style.color = 'var(--danger)'; }
+        showToast('NFC לא נתמך — נדרש Chrome באנדרואיד');
         return;
     }
 
@@ -831,7 +831,7 @@ function startNfc() {
             showCheckinResult('שגיאה בקריאת הכרטיס. נסה שוב.', false);
         };
     }).catch(err => {
-        if (statusEl) { statusEl.textContent = 'שגיאה: ' + (err.message || ''); statusEl.style.color = 'var(--danger)'; }
+        showToast('שגיאת NFC: ' + (err.message || 'נסה שוב'));
         nfcAbortController = null;
         _setNfcUi(false);
     });
