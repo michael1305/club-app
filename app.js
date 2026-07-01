@@ -939,7 +939,7 @@ function showReport() {
     const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
 
     document.getElementById('stat-members').textContent      = members.length;
-    document.getElementById('stat-revenue').textContent      = '&#8362;' + revenue;
+    document.getElementById('stat-revenue').textContent      = '₪' + revenue;
     document.getElementById('stat-checkins').textContent     = checkins.length;
     document.getElementById('stat-active-subs').textContent  = zeroBalance;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
