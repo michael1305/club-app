@@ -1001,6 +1001,16 @@ function loadSettings() {
     }
 }
 
+function saveAllSettings() {
+    DB.setSetting('eventName',    document.getElementById('setting-event-name').value.trim());
+    DB.setSetting('terminalName', document.getElementById('setting-terminal').value.trim());
+    DB.setSetting('singlePrice',  document.getElementById('setting-price').value);
+    DB.setSetting('couplePrice',  document.getElementById('setting-sub-price').value);
+    const eventName = DB.getSetting('eventName');
+    if (eventName) document.querySelector('.top-bar h1').textContent = '🎫 ' + eventName;
+    showToast('הגדרות נשמרו ✓');
+}
+
 function saveSetting(key, value) {
     DB.setSetting(key, value);
     if (key === 'eventName' && value) {

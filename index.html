@@ -152,20 +152,21 @@
                 <h2>⚙️ הגדרות</h2>
                 <div class="setting-group">
                     <label>שם האירוע</label>
-                    <input type="text" id="setting-event-name" placeholder="שם האירוע" onchange="saveSetting('eventName', this.value)">
+                    <input type="text" id="setting-event-name" placeholder="שם האירוע">
                 </div>
                 <div class="setting-group">
                     <label>שם המסוף (מזהה מכשיר זה בדוחות)</label>
-                    <input type="text" id="setting-terminal" placeholder="לדוגמה: כניסה ראשית" onchange="saveSetting('terminalName', this.value)">
+                    <input type="text" id="setting-terminal" placeholder="לדוגמה: כניסה ראשית">
                 </div>
                 <div class="setting-group">
                     <label>מחיר לכניסה בודדת (₪) - לתיעוד בלבד</label>
-                    <input type="number" id="setting-price" placeholder="0" onchange="saveSetting('singlePrice', this.value)">
+                    <input type="number" id="setting-price" placeholder="0">
                 </div>
                 <div class="setting-group">
                     <label>מחיר לכניסה זוגית (₪) - לתיעוד בלבד</label>
-                    <input type="number" id="setting-sub-price" placeholder="0" onchange="saveSetting('couplePrice', this.value)">
+                    <input type="number" id="setting-sub-price" placeholder="0">
                 </div>
+                <button class="btn btn-primary btn-block" onclick="saveAllSettings()" style="margin-bottom:16px">💾 שמור הגדרות</button>
                 <div class="setting-group">
                     <label>ימי פעילות</label>
                     <div class="days-selector">
@@ -227,6 +228,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=21"></script>
+    <script src="app.js?v=22"></script>
 </body>
 </html>
