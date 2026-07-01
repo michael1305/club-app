@@ -1406,6 +1406,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelector('.top-bar h1').textContent = '🎫 ' + eventName;
     }
 
+    // Set sticky top offset based on actual top-bar height
+    const topBarH = document.querySelector('.top-bar')?.offsetHeight || 56;
+    document.documentElement.style.setProperty('--topbar-h', topBarH + 'px');
+
     document.getElementById('members-list').innerHTML =
         '<div style="text-align:center;padding:40px;color:#b2bec3;">מתחבר לענן...</div>';
 

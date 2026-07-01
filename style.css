@@ -119,7 +119,7 @@ body {
     margin-bottom: 16px;
     position: -webkit-sticky;
     position: sticky;
-    top: 56px;
+    top: var(--topbar-h, 56px);
     z-index: 90;
     background: var(--bg);
     padding: 8px 0;
@@ -270,8 +270,9 @@ body {
     display: flex;
     gap: 8px;
     margin-bottom: 20px;
+    position: -webkit-sticky;
     position: sticky;
-    top: 57px;
+    top: var(--topbar-h, 56px);
     z-index: 90;
     background: var(--bg);
     padding: 8px 0;
