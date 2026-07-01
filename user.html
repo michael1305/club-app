@@ -280,8 +280,8 @@
                             <h1>👋 שלום, ${esc(_member.name)}</h1>
                             <p>הכרטיסיה האישית שלך</p>
                             <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
-                                <button class="photo-edit-btn" onclick="uOpenCamera()">📷 עדכן תמונה</button>
-                                <button class="photo-edit-btn" onclick="document.getElementById('u-photo-file').click()">🖼️ מהגלריה</button>
+                                <button class="photo-edit-btn" id="btn-camera">📷 עדכן תמונה</button>
+                                <button class="photo-edit-btn" id="btn-gallery">🖼️ מהגלריה</button>
                             </div>
                         </div>
                         <div class="balance-card ${balanceClass}">
@@ -293,6 +293,8 @@
                         <div class="recent-list">${historyHtml}</div>
                     </div>
                 `;
+                document.getElementById('btn-camera')?.addEventListener('click', uOpenCamera);
+                document.getElementById('btn-gallery')?.addEventListener('click', () => document.getElementById('u-photo-file').click());
             }
 
             // Listen to member doc in real-time
