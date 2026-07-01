@@ -364,6 +364,7 @@ function showMemberDetails(id) {
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
+            <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
             <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
             <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
             ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
@@ -436,6 +437,28 @@ function deleteMember(id) {
     _deleteMemberDoc(id);
     closeModal();
     showToast('משתתף נמחק');
+}
+
+function showEditBalance(id) {
+    const member = getMembers().find(m => m.id === id);
+    if (!member) return;
+    openModal('עריכת יתרת כניסות - ' + member.name, `
+        <p style="color:var(--text-light);margin-bottom:16px">יתרה נוכחית: <strong>${member.balance || 0} כניסות</strong></p>
+        <div class="form-group">
+            <label>יתרה חדשה</label>
+            <input type="number" id="edit-balance-val" value="${member.balance || 0}" min="0">
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveEditedBalance('${id}')">שמור</button>
+    `);
+    setTimeout(() => document.getElementById('edit-balance-val')?.select(), 200);
+}
+
+function saveEditedBalance(id) {
+    const val = parseInt(document.getElementById('edit-balance-val').value, 10);
+    if (isNaN(val) || val < 0) { showToast('יתרה לא תקינה'); return; }
+    _updateMember(id, { balance: val });
+    closeModal();
+    showToast('יתרה עודכנה ✓');
 }
 
 function showMemberQR(id) {
