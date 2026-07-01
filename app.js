@@ -549,6 +549,7 @@ function showAddPayment() {
         return;
     }
 
+    const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
     openModal('הוספת כניסות', `
         <div class="form-group">
             <label>משתתף</label>
@@ -558,12 +559,22 @@ function showAddPayment() {
             </select>
         </div>
         <div class="form-group">
-            <label>כמות כניסות שנרכשה</label>
-            <input type="number" id="pay-quantity" value="11" min="1">
+            <label>כמות כניסות</label>
+            <input type="number" id="pay-quantity" value="11" min="1" oninput="updatePayCalc()">
         </div>
         <div class="form-group">
-            <label>סכום ששולם (₪) - לתיעוד בלבד</label>
-            <input type="number" id="pay-amount" placeholder="0">
+            <label>אמצעי תשלום</label>
+            <div style="display:flex;gap:12px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="radio" name="pay-method" value="cash" checked onchange="updatePayCalc()"> 💵 מזומן
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="radio" name="pay-method" value="credit" onchange="updatePayCalc()"> 💳 אשראי
+                </label>
+            </div>
+        </div>
+        <div id="pay-calc-display" style="background:#f0eeff;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:600;color:var(--primary)">
+            ${bookletPrice > 0 ? `סה"כ לתשלום: ₪${bookletPrice}` : 'הגדר מחיר כרטיסיה בהגדרות'}
         </div>
         <div class="form-group">
             <label>הערה (אופציונלי)</label>
@@ -571,6 +582,18 @@ function showAddPayment() {
         </div>
         <button class="btn btn-success btn-block" onclick="addPayment()">אישור והוספת כניסות</button>
     `);
+}
+
+function updatePayCalc() {
+    const qty = parseInt(document.getElementById('pay-quantity')?.value || '11', 10);
+    const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
+    const amount = bookletPrice > 0 ? Math.round((qty / 11) * bookletPrice * 100) / 100 : 0;
+    const display = document.getElementById('pay-calc-display');
+    if (display) {
+        display.textContent = bookletPrice > 0
+            ? `סה"כ לתשלום: ₪${amount}`
+            : 'הגדר מחיר כרטיסיה בהגדרות';
+    }
 }
 
 function showAddPaymentFor(memberId) {
@@ -586,17 +609,21 @@ function showAddEntriesFor(memberId) { showAddPaymentFor(memberId); }
 function addPayment() {
     const memberId = document.getElementById('pay-member').value;
     const quantity = parseInt(document.getElementById('pay-quantity').value, 10);
-    const amount = parseFloat(document.getElementById('pay-amount').value) || 0;
     const note = document.getElementById('pay-note').value.trim();
+    const paymentMethod = document.querySelector('input[name="pay-method"]:checked')?.value || 'cash';
 
     if (!memberId) { showToast('בחר משתתף'); return; }
     if (!quantity || quantity <= 0) { showToast('הזן כמות כניסות תקינה'); return; }
+
+    const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
+    const amount = bookletPrice > 0 ? Math.round((quantity / 11) * bookletPrice * 100) / 100 : 0;
 
     const payment = {
         id: generateId(),
         memberId,
         quantity,
         amount,
+        paymentMethod,
         note,
         date: new Date().toISOString()
     };
@@ -1163,9 +1190,11 @@ function showReport() {
     let checkins   = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
     if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
 
-    const revenue     = payments.reduce((s, p) => s + (p.amount || 0), 0);
-    const entriesUsed = checkins.reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
-    const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
+    const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
+    const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
+    const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
+    const entriesUsed   = checkins.reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const zeroBalance   = members.filter(m => (m.balance || 0) <= 0).length;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const todayGuests = getGuestCheckins().filter(gc => gc.date === todayStr);
@@ -1173,7 +1202,8 @@ function showReport() {
 
     document.getElementById('stat-members').textContent      = members.length;
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
-    document.getElementById('stat-checkins').textContent     = checkins.length;
+    const detail = document.getElementById('stat-revenue-detail');
+    if (detail) detail.textContent = revenue > 0 ? `\u{1F4B5} ₪${cashRevenue} | \u{1F4B3} ₪${creditRevenue}` : '';
     document.getElementById('stat-active-subs').textContent  = zeroBalance;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
