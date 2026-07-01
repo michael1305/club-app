@@ -1196,9 +1196,8 @@ function showReport() {
     const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const todayGuests = getGuestCheckins().filter(gc => gc.date === todayStr);
-    const todayGuestsCount = todayGuests.reduce((s, gc) => s + (gc.count || 1), 0);
+    const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp) >= startDate);
+    const todayGuestsCount = periodGuests.reduce((s, gc) => s + (gc.count || 1), 0);
 
     document.getElementById('stat-members').textContent      = members.length;
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
