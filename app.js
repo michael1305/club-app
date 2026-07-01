@@ -1373,7 +1373,10 @@ function formatDate(date) {
 }
 
 function formatDateTime(date) {
-    return date.toLocaleDateString('he-IL') + ' ' + date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    const day = date.toLocaleDateString('he-IL', { weekday: 'long' });
+    const d = date.toLocaleDateString('he-IL');
+    const t = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return `${day} ${d} ${t}`;
 }
 
 function formatDateFile(date) {
