@@ -7,6 +7,7 @@
     <title>הכרטיסיה שלי</title>
     <link rel="stylesheet" href="style.css?v=14">
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <style>
         .user-page {
@@ -175,6 +176,7 @@
 
             let _member = null;
             let _checkins = [];
+            let _authReady = false;
 
             function uToast(msg) {
                 const t = document.getElementById('u-toast');
@@ -297,19 +299,22 @@
                 document.getElementById('btn-gallery')?.addEventListener('click', () => document.getElementById('u-photo-file').click());
             }
 
-            // Listen to member doc in real-time
-            db.collection('members').doc(id).onSnapshot(doc => {
-                _member = doc.exists ? doc.data() : null;
-                render();
-            }, () => {
+            // Sign in anonymously, then start Firestore listeners
+            firebase.auth().signInAnonymously().then(() => {
+                db.collection('members').doc(id).onSnapshot(doc => {
+                    _member = doc.exists ? doc.data() : null;
+                    render();
+                }, () => {
+                    content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
+                });
+
+                db.collection('checkins').where('memberId', '==', id).onSnapshot(snap => {
+                    _checkins = snap.docs.map(d => d.data());
+                    render();
+                }, () => {});
+            }).catch(() => {
                 content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
             });
-
-            // Listen to this member's checkins in real-time
-            db.collection('checkins').where('memberId', '==', id).onSnapshot(snap => {
-                _checkins = snap.docs.map(d => d.data());
-                render();
-            }, () => {});
         })();
     </script>
 </body>

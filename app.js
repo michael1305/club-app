@@ -24,22 +24,26 @@ function _initFirebase() {
     _db = firebase.firestore();
     _db.enablePersistence().catch(() => {});
 
-    _db.collection('members').onSnapshot(snap => {
-        _members = snap.docs.map(d => d.data());
-        _onDataChange();
-    }, () => {});
+    firebase.auth().signInAnonymously().then(() => {
+        _db.collection('members').onSnapshot(snap => {
+            _members = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
 
-    _db.collection('payments').onSnapshot(snap => {
-        _payments = snap.docs.map(d => d.data());
-        _onDataChange();
-    }, () => {});
+        _db.collection('payments').onSnapshot(snap => {
+            _payments = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
 
-    _db.collection('checkins').onSnapshot(snap => {
-        _checkins = snap.docs.map(d => d.data());
-        _onDataChange();
-    }, () => {});
+        _db.collection('checkins').onSnapshot(snap => {
+            _checkins = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
 
-    _migrateFromLocalStorage();
+        _migrateFromLocalStorage();
+    }).catch(() => {
+        showToast('שגיאת חיבור — נסה שוב');
+    });
 }
 
 function _onDataChange() {
