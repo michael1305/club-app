@@ -53,7 +53,9 @@
             margin-bottom: 6px;
             font-size: 0.95rem;
         }
-        .reg-field input {
+        .reg-field input[type="text"],
+        .reg-field input[type="tel"],
+        .reg-field input[type="email"] {
             width: 100%;
             padding: 12px 14px;
             border: 1.5px solid #ddd;
@@ -77,6 +79,50 @@
             display: none;
         }
         .reg-error.show { display: block; }
+
+        /* Photo picker */
+        .photo-picker {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 4px;
+        }
+        .photo-preview {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            display: none;
+        }
+        .photo-placeholder {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: #f0eeff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            border: 2px dashed #b2a4f5;
+        }
+        .photo-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .photo-btn {
+            background: #f0eeff;
+            color: var(--primary);
+            border: none;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 0.88rem;
+            font-family: inherit;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         .reg-submit {
             width: 100%;
             padding: 14px;
@@ -111,6 +157,26 @@
             font-size: 0.95rem;
             line-height: 1.5;
         }
+
+        /* Camera overlay */
+        #reg-camera-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        #reg-camera-overlay.visible { display: flex; }
+        #reg-camera-box {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            width: 92vw;
+            max-width: 400px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -135,7 +201,24 @@
                     <div class="reg-error" id="err-phone">נא להזין מספר טלפון תקין</div>
                 </div>
 
-                <button class="reg-submit" id="reg-btn" onclick="submitReg()">הרשמה</button>
+                <div class="reg-field">
+                    <label for="reg-email">אימייל <span style="font-weight:400;color:var(--text-light)">(אופציונלי)</span></label>
+                    <input type="email" id="reg-email" placeholder="israel@example.com" autocomplete="email">
+                </div>
+
+                <div class="reg-field">
+                    <label>תמונה <span style="font-weight:400;color:var(--text-light)">(אופציונלי)</span></label>
+                    <div class="photo-picker">
+                        <div class="photo-placeholder" id="reg-photo-placeholder">👤</div>
+                        <img id="reg-photo-preview" class="photo-preview" alt="תמונה">
+                        <div class="photo-btns">
+                            <button type="button" class="photo-btn" id="btn-reg-camera">📷 צלם</button>
+                            <button type="button" class="photo-btn" id="btn-reg-gallery">🖼️ גלריה</button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="reg-submit" id="reg-btn">הרשמה</button>
             </div>
 
             <div class="reg-success" id="reg-success">
@@ -145,6 +228,21 @@
             </div>
         </div>
     </div>
+
+    <!-- Camera overlay -->
+    <div id="reg-camera-overlay">
+        <div id="reg-camera-box">
+            <video id="reg-camera-video" autoplay playsinline style="width:100%;border-radius:12px;background:#000"></video>
+            <canvas id="reg-camera-canvas" hidden></canvas>
+            <p id="reg-camera-error" style="color:#e17055;margin-top:8px;font-size:0.85rem"></p>
+            <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+                <button id="btn-capture" style="background:var(--success);color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">📸 צלם</button>
+                <button id="btn-switch" style="background:#636e72;color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">🔄 החלף</button>
+                <button id="btn-close-cam" style="background:#d63031;color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">ביטול</button>
+            </div>
+        </div>
+    </div>
+    <input type="file" id="reg-photo-file" accept="image/*" hidden>
 
     <script>
         (function () {
@@ -157,6 +255,10 @@
             const db = firebase.firestore();
             db.enablePersistence().catch(() => {});
 
+            let _photoDataUrl = null;
+            let _cameraStream = null;
+            let _facing = 'user';
+
             function genId() {
                 return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
             }
@@ -165,9 +267,82 @@
                 return /^[\d\-\+\s]{7,15}$/.test(p.trim());
             }
 
-            window.submitReg = function () {
+            function resizeImage(src, cb) {
+                const img = new Image();
+                img.onload = () => {
+                    const max = 300;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+                    else if (h > max) { w = Math.round(w * max / h); h = max; }
+                    const c = document.createElement('canvas');
+                    c.width = w; c.height = h;
+                    c.getContext('2d').drawImage(img, 0, 0, w, h);
+                    cb(c.toDataURL('image/jpeg', 0.75));
+                };
+                img.src = src;
+            }
+
+            function setPhotoPreview(dataUrl) {
+                _photoDataUrl = dataUrl;
+                document.getElementById('reg-photo-placeholder').style.display = 'none';
+                const prev = document.getElementById('reg-photo-preview');
+                prev.src = dataUrl;
+                prev.style.display = 'block';
+            }
+
+            // Camera
+            function openCamera() {
+                _facing = 'user';
+                document.getElementById('reg-camera-overlay').classList.add('visible');
+                document.getElementById('reg-camera-error').textContent = '';
+                startStream();
+            }
+
+            function startStream() {
+                if (_cameraStream) _cameraStream.getTracks().forEach(t => t.stop());
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: _facing } })
+                    .then(s => { _cameraStream = s; document.getElementById('reg-camera-video').srcObject = s; })
+                    .catch(() => { document.getElementById('reg-camera-error').textContent = 'לא ניתן לגשת למצלמה'; });
+            }
+
+            function closeCamera() {
+                if (_cameraStream) { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
+                document.getElementById('reg-camera-overlay').classList.remove('visible');
+            }
+
+            document.getElementById('btn-reg-camera').addEventListener('click', openCamera);
+            document.getElementById('btn-switch').addEventListener('click', () => { _facing = _facing === 'user' ? 'environment' : 'user'; startStream(); });
+            document.getElementById('btn-close-cam').addEventListener('click', closeCamera);
+            document.getElementById('btn-capture').addEventListener('click', () => {
+                const video = document.getElementById('reg-camera-video');
+                const canvas = document.getElementById('reg-camera-canvas');
+                if (!video.videoWidth) return;
+                const max = 300;
+                let w = video.videoWidth, h = video.videoHeight;
+                if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+                else if (h > max) { w = Math.round(w * max / h); h = max; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+                closeCamera();
+                setPhotoPreview(canvas.toDataURL('image/jpeg', 0.75));
+            });
+
+            // Gallery
+            document.getElementById('btn-reg-gallery').addEventListener('click', () => document.getElementById('reg-photo-file').click());
+            document.getElementById('reg-photo-file').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => resizeImage(ev.target.result, setPhotoPreview);
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            });
+
+            // Submit
+            document.getElementById('reg-btn').addEventListener('click', () => {
                 const name = document.getElementById('reg-name').value.trim();
                 const phone = document.getElementById('reg-phone').value.trim();
+                const email = document.getElementById('reg-email').value.trim();
                 let valid = true;
 
                 document.getElementById('err-name').classList.toggle('show', !name);
@@ -187,14 +362,17 @@
 
                 firebase.auth().signInAnonymously().then(() => {
                     const id = genId();
-                    return db.collection('members').doc(id).set({
+                    const data = {
                         id,
                         name,
                         phone,
                         balance: 0,
                         createdAt: new Date().toISOString(),
                         registeredSelf: true
-                    });
+                    };
+                    if (email) data.email = email;
+                    if (_photoDataUrl) data.photo = _photoDataUrl;
+                    return db.collection('members').doc(id).set(data);
                 }).then(() => {
                     document.getElementById('reg-form-section').style.display = 'none';
                     document.getElementById('reg-success').style.display = 'block';
@@ -203,7 +381,7 @@
                     btn.textContent = 'הרשמה';
                     alert('שגיאה בשליחה, נסה שוב');
                 });
-            };
+            });
         })();
     </script>
 </body>
