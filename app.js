@@ -1193,8 +1193,8 @@ function showReport() {
     const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
-    const entriesUsed   = checkins.reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
-    const zeroBalance   = members.filter(m => (m.balance || 0) <= 0).length;
+    const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const todayGuests = getGuestCheckins().filter(gc => gc.date === todayStr);
