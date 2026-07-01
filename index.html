@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
     <title>מערכת ניהול מועדון</title>
-    <link rel="stylesheet" href="style.css?v=19">
+    <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
     <div id="app">
@@ -95,7 +95,19 @@
         <main id="page-reports" class="page">
             <div class="reports-container">
                 <div class="report-card summary-card">
-                    <h3>סיכום כללי</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                        <h3 style="margin:0">סיכום</h3>
+                        <button class="btn btn-success" onclick="exportExcel()" style="font-size:0.85rem;padding:6px 12px">📊 ייצוא Excel</button>
+                    </div>
+                    <div class="period-selector" style="margin-bottom:12px">
+                        <button class="filter-btn" data-period="day" onclick="showReport()">יום</button>
+                        <button class="filter-btn active" data-period="week" onclick="showReport()">שבוע</button>
+                        <button class="filter-btn" data-period="month" onclick="showReport()">חודש</button>
+                        <button class="filter-btn" data-period="year" onclick="showReport()">שנה</button>
+                    </div>
+                    <select id="report-terminal" onchange="showReport()" style="width:100%;padding:8px;border-radius:10px;border:1px solid #ddd;font-size:0.95rem;margin-bottom:12px">
+                        <option value="">כל המסופים</option>
+                    </select>
                     <div class="stats-grid">
                         <div class="stat">
                             <span class="stat-value" id="stat-members">0</span>
@@ -103,11 +115,11 @@
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-revenue">₪0</span>
-                            <span class="stat-label">הכנסות החודש</span>
+                            <span class="stat-label">הכנסות</span>
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-checkins">0</span>
-                            <span class="stat-label">כניסות היום</span>
+                            <span class="stat-label">כניסות</span>
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-active-subs">0</span>
@@ -115,28 +127,13 @@
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-tickets-sold">0</span>
-                            <span class="stat-label">כרטיסיות החודש</span>
+                            <span class="stat-label">כרטיסיות</span>
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-entries-used">0</span>
-                            <span class="stat-label">כניסות החודש</span>
+                            <span class="stat-label">כניסות בפועל</span>
                         </div>
                     </div>
-                </div>
-                <div class="report-card">
-                    <h3>הכנסות לפי תקופה</h3>
-                    <div class="period-selector">
-                        <button class="filter-btn" data-period="day" onclick="showReport()">יום</button>
-                        <button class="filter-btn active" data-period="week" onclick="showReport()">שבוע</button>
-                        <button class="filter-btn" data-period="month" onclick="showReport()">חודש</button>
-                        <button class="filter-btn" data-period="year" onclick="showReport()">שנה</button>
-                    </div>
-                    <div style="margin-top:10px">
-                        <select id="report-terminal" onchange="showReport()" style="width:100%;padding:8px;border-radius:10px;border:1px solid #ddd;font-size:0.95rem">
-                            <option value="">כל המסופים</option>
-                        </select>
-                    </div>
-                    <div id="report-details" class="report-details"></div>
                 </div>
                 <div class="report-card">
                     <h3>⚠ יתרה נמוכה / אפסית</h3>
@@ -225,10 +222,11 @@
     <!-- Toast -->
     <div id="toast" class="toast" hidden></div>
 
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=19"></script>
+    <script src="app.js?v=20"></script>
 </body>
 </html>

@@ -879,87 +879,47 @@ function removeNfc(memberId) {
 }
 
 // ===== REPORTS =====
-function renderReports() {
-    const members = getMembers();
-    const payments = getPayments();
-    const checkins = getCheckins();
+function _getReportRange() {
+    if (event?.target?.dataset?.period) {
+        document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    const period = document.querySelector('.period-selector .filter-btn.active')?.dataset.period || 'week';
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate;
+    if (period === 'day')        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    else if (period === 'week')  { startDate = new Date(now); startDate.setDate(startDate.getDate() - 7); }
+    else if (period === 'month') startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    else                         startDate = new Date(now.getFullYear(), 0, 1);
+    return startDate;
+}
 
-    const monthRevenue = payments
-        .filter(p => new Date(p.date) >= startOfMonth)
-        .reduce((sum, p) => sum + p.amount, 0);
+function renderReports() {
+    showReport();
 
-    const todayCheckins = checkins.filter(c => new Date(c.timestamp) >= startOfDay).length;
+    const members = getMembers();
+    const checkins = getCheckins();
 
-    const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
-
-    const monthTickets = payments.filter(p => new Date(p.date) >= startOfMonth).length;
-    const monthEntries = checkins
-        .filter(c => new Date(c.timestamp) >= startOfMonth)
-        .reduce((sum, c) => sum + (c.entryType === 'couple' ? 2 : 1), 0);
-
-    document.getElementById('stat-members').textContent = members.length;
-    document.getElementById('stat-revenue').textContent = '₪' + monthRevenue;
-    document.getElementById('stat-checkins').textContent = todayCheckins;
-    document.getElementById('stat-active-subs').textContent = zeroBalance;
-    document.getElementById('stat-tickets-sold').textContent = monthTickets;
-    document.getElementById('stat-entries-used').textContent = monthEntries;
-
-    showReport('week');
-
-    const lowBalanceMembers = members
+    document.getElementById('low-balance-list').innerHTML = members
         .filter(m => (m.balance || 0) <= 2)
-        .sort((a, b) => (a.balance || 0) - (b.balance || 0));
-    const lowBalanceHtml = lowBalanceMembers.map(m => `
-        <div class="recent-item">
+        .sort((a, b) => (a.balance || 0) - (b.balance || 0))
+        .map(m => `<div class="recent-item">
             <span>${escHtml(m.name)}</span>
-            <span style="color:${(m.balance || 0) <= 0 ? 'var(--danger)' : 'var(--warning)'};font-weight:700">${m.balance || 0} כניסות</span>
-        </div>
-    `).join('');
-    document.getElementById('low-balance-list').innerHTML = lowBalanceHtml || '<p style="color:#b2bec3;text-align:center;padding:20px">כולם עם יתרה תקינה</p>';
+            <span style="color:${(m.balance||0)<=0?'var(--danger)':'var(--warning)'};font-weight:700">${m.balance||0} כניסות</span>
+        </div>`).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">כולם עם יתרה תקינה</p>';
 
-    const recentCheckins = checkins.slice(-10).reverse().map(c => {
+    document.getElementById('recent-checkins').innerHTML = checkins.slice(-10).reverse().map(c => {
         const member = members.find(m => m.id === c.memberId);
         return `<div class="recent-item">
             <span>${member ? escHtml(member.name) : 'לא ידוע'}</span>
             <span>${c.entryType === 'couple' ? 'זוגית' : 'בודדת'} · ${formatDateTime(new Date(c.timestamp))}</span>
         </div>`;
-    }).join('');
-    document.getElementById('recent-checkins').innerHTML = recentCheckins || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות</p>';
+    }).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות</p>';
 }
 
 function showReport() {
-    const periodEl = document.querySelector('.period-selector .filter-btn.active');
-    const period = periodEl?.dataset.period || 'week';
+    const startDate = _getReportRange();
 
-    // Update active period button if clicked directly
-    document.querySelectorAll('.period-selector .filter-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.period === period);
-    });
-    // If a period button triggered this call, update active
-    if (event?.target?.dataset?.period) {
-        document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
-    }
-
-    const now = new Date();
-    let startDate;
-    const activePeriod = document.querySelector('.period-selector .filter-btn.active')?.dataset.period || 'week';
-    if (activePeriod === 'day') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    } else if (activePeriod === 'week') {
-        startDate = new Date(now); startDate.setDate(startDate.getDate() - 7);
-    } else if (activePeriod === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else {
-        startDate = new Date(now.getFullYear(), 0, 1);
-    }
-
-    const terminalFilter = document.getElementById('report-terminal')?.value || '';
-
-    // Populate terminal dropdown with known terminals
     const allTerminals = [...new Set(getCheckins().map(c => c.terminal).filter(Boolean))];
     const sel = document.getElementById('report-terminal');
     if (sel) {
@@ -967,21 +927,62 @@ function showReport() {
         sel.innerHTML = '<option value="">כל המסופים</option>' +
             allTerminals.map(t => `<option value="${escHtml(t)}" ${t === current ? 'selected' : ''}>${escHtml(t)}</option>`).join('');
     }
+    const terminalFilter = sel?.value || '';
 
+    const members  = getMembers();
     const payments = getPayments().filter(p => new Date(p.date) >= startDate);
-    const total = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const entriesSold = payments.reduce((sum, p) => sum + (p.quantity || 0), 0);
+    let checkins   = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
+    if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
+
+    const revenue     = payments.reduce((s, p) => s + (p.amount || 0), 0);
+    const entriesUsed = checkins.reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const zeroBalance = members.filter(m => (m.balance || 0) <= 0).length;
+
+    document.getElementById('stat-members').textContent      = members.length;
+    document.getElementById('stat-revenue').textContent      = '&#8362;' + revenue;
+    document.getElementById('stat-checkins').textContent     = checkins.length;
+    document.getElementById('stat-active-subs').textContent  = zeroBalance;
+    document.getElementById('stat-tickets-sold').textContent = payments.length;
+    document.getElementById('stat-entries-used').textContent = entriesUsed;
+}
+
+function exportExcel() {
+    if (typeof XLSX === 'undefined') { showToast('טוען ספריית Excel...'); return; }
+    const startDate = _getReportRange();
+    const terminalFilter = document.getElementById('report-terminal')?.value || '';
+    const members = getMembers();
 
     let checkins = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
     if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
-    const entriesUsed = checkins.reduce((sum, c) => sum + (c.entryType === 'couple' ? 2 : 1), 0);
+    const payments = getPayments().filter(p => new Date(p.date) >= startDate);
 
-    document.getElementById('report-details').innerHTML = `
-        <div class="report-row"><span>סה"כ הכנסות כספיות</span><strong>₪${total}</strong></div>
-        <div class="report-row"><span>כניסות שנמכרו</span><span>${entriesSold}</span></div>
-        <div class="report-row"><span>כניסות שנוצלו ${terminalFilter ? '('+terminalFilter+')' : ''}</span><span>${entriesUsed}</span></div>
-        <div class="report-row"><span>מספר רכישות</span><span>${payments.length}</span></div>
-    `;
+    const wb = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checkins.map(c => ({
+        'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
+        'שם משתתף':  members.find(m => m.id === c.memberId)?.name || 'לא ידוע',
+        'סוג כניסה': c.entryType === 'couple' ? 'זוגית' : 'בודדת',
+        'מסוף':      c.terminal || 'ראשי'
+    }))), 'כניסות');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payments.map(p => ({
+        'תאריך':        formatDate(new Date(p.date)),
+        'שם משתתף':    members.find(m => m.id === p.memberId)?.name || 'לא ידוע',
+        'כמות כניסות': p.quantity,
+        'סכום':        p.amount,
+        'הערה':        p.note || ''
+    }))), 'רכישות');
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(members.map(m => ({
+        'שם':              m.name,
+        'טלפון':           m.phone,
+        'אימייל':          m.email || '',
+        'יתרת כניסות':    m.balance || 0,
+        'תאריך הצטרפות': formatDate(new Date(m.createdAt))
+    }))), 'משתתפים');
+
+    XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
+    showToast('קובץ Excel הורד ✓');
 }
 
 // ===== SETTINGS =====
