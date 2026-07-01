@@ -1008,7 +1008,7 @@ function renderGuestList() {
     const todayCheckins = getGuestCheckins().filter(gc => gc.date === today);
     const now = new Date();
 
-    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0);
+    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now);
 
     const vipHtml = vipMembers.length === 0
