@@ -74,10 +74,72 @@
             padding: 60px 20px;
             color: var(--text-light);
         }
+        .photo-edit-btn {
+            display: block;
+            margin: 6px auto 0;
+            background: rgba(255,255,255,0.25);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+        .user-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3436;
+            color: white;
+            padding: 10px 22px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .user-toast.show { opacity: 1; }
+        #u-camera-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        #u-camera-overlay.visible { display: flex; }
+        #u-camera-box {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            width: 92vw;
+            max-width: 400px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div id="content"></div>
+<div id="u-toast" class="user-toast"></div>
+
+<!-- Camera overlay for photo update -->
+<div id="u-camera-overlay">
+    <div id="u-camera-box">
+        <video id="u-camera-video" autoplay playsinline style="width:100%;border-radius:12px;background:#000"></video>
+        <canvas id="u-camera-canvas" hidden></canvas>
+        <p id="u-camera-error" style="color:#e17055;margin-top:8px;font-size:0.85rem"></p>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:center;flex-wrap:wrap">
+            <button onclick="uCapturePhoto()" style="background:var(--success);color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">📸 צלם</button>
+            <button onclick="uSwitchCamera()" style="background:#636e72;color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">🔄 החלף</button>
+            <button onclick="uCloseCamera()" style="background:#d63031;color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">ביטול</button>
+        </div>
+    </div>
+</div>
+<input type="file" id="u-photo-file" accept="image/*" hidden>
+
     <script>
         (function() {
             const _cfg = {
@@ -114,6 +176,85 @@
             let _member = null;
             let _checkins = [];
 
+            function uToast(msg) {
+                const t = document.getElementById('u-toast');
+                t.textContent = msg;
+                t.classList.add('show');
+                setTimeout(() => t.classList.remove('show'), 2500);
+            }
+
+            let uCameraStream = null;
+            let uFacing = 'user';
+
+            function uOpenCamera() {
+                uFacing = 'user';
+                document.getElementById('u-camera-overlay').classList.add('visible');
+                document.getElementById('u-camera-error').textContent = '';
+                uStartStream();
+            }
+
+            function uStartStream() {
+                if (uCameraStream) uCameraStream.getTracks().forEach(t => t.stop());
+                const video = document.getElementById('u-camera-video');
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: uFacing } })
+                    .then(s => { uCameraStream = s; video.srcObject = s; })
+                    .catch(() => { document.getElementById('u-camera-error').textContent = 'לא ניתן לגשת למצלמה'; });
+            }
+
+            function uSwitchCamera() {
+                uFacing = uFacing === 'user' ? 'environment' : 'user';
+                uStartStream();
+            }
+
+            function uCloseCamera() {
+                if (uCameraStream) { uCameraStream.getTracks().forEach(t => t.stop()); uCameraStream = null; }
+                document.getElementById('u-camera-overlay').classList.remove('visible');
+            }
+
+            function uCapturePhoto() {
+                const video = document.getElementById('u-camera-video');
+                const canvas = document.getElementById('u-camera-canvas');
+                if (!video.videoWidth) return;
+                const max = 300;
+                let w = video.videoWidth, h = video.videoHeight;
+                if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+                else if (h > max) { w = Math.round(w * max / h); h = max; }
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                uCloseCamera();
+                uSavePhoto(dataUrl);
+            }
+
+            function uSavePhoto(dataUrl) {
+                db.collection('members').doc(id).update({ photo: dataUrl })
+                    .then(() => uToast('תמונה עודכנה ✓'))
+                    .catch(() => uToast('שגיאה בשמירה'));
+            }
+
+            // Gallery picker
+            document.getElementById('u-photo-file').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const max = 300;
+                        let w = img.width, h = img.height;
+                        if (w > h && w > max) { h = Math.round(h * max / w); w = max; }
+                        else if (h > max) { w = Math.round(w * max / h); h = max; }
+                        const c = document.createElement('canvas');
+                        c.width = w; c.height = h;
+                        c.getContext('2d').drawImage(img, 0, 0, w, h);
+                        uSavePhoto(c.toDataURL('image/jpeg', 0.75));
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+            });
+
             function render() {
                 if (!_member) {
                     content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
@@ -138,6 +279,10 @@
                             ${_member.photo ? `<img src="${_member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
                             <h1>👋 שלום, ${esc(_member.name)}</h1>
                             <p>הכרטיסיה האישית שלך</p>
+                            <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+                                <button class="photo-edit-btn" onclick="uOpenCamera()">📷 עדכן תמונה</button>
+                                <button class="photo-edit-btn" onclick="document.getElementById('u-photo-file').click()">🖼️ מהגלריה</button>
+                            </div>
                         </div>
                         <div class="balance-card ${balanceClass}">
                             <div class="balance-number">${balance}</div>
