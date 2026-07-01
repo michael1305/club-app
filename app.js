@@ -1016,7 +1016,7 @@ function renderGuestList() {
         : vipMembers.map(m => {
             const checkin = todayCheckins.find(gc => gc.refId === m.id);
             return `<div class="recent-item" style="align-items:center;gap:8px">
-                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer" onclick="showMemberDetails('${m.id}')">
                     ${avatarHtml(m, 36)}
                     <div>
                         <div style="font-weight:600">${escHtml(m.name)}</div>
