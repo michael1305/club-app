@@ -792,10 +792,12 @@ function _setNfcUi(active) {
     const topBtn = document.getElementById('top-nfc-btn');
     const btn = document.getElementById('nfc-btn');
     const statusEl = document.getElementById('nfc-status');
-    if (topBtn) topBtn.textContent = active ? '📡' : '📵';
+    if (topBtn) {
+        topBtn.textContent = active ? '📡' : '📵';
+        topBtn.classList.toggle('nfc-active', active);
+    }
     if (btn) btn.textContent = active ? 'עצור NFC' : 'הפעל NFC';
-    if (statusEl) statusEl.textContent = active ? 'NFC פעיל - קרב כרטיס' : '';
-    if (statusEl) statusEl.style.color = 'var(--success)';
+    if (statusEl) { statusEl.textContent = active ? 'NFC פעיל - קרב כרטיס' : ''; statusEl.style.color = 'var(--success)'; }
 }
 
 function startNfc() {

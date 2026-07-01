@@ -52,6 +52,13 @@ body {
     cursor: pointer;
     padding: 4px;
     color: inherit;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+#top-nfc-btn.nfc-active {
+    background: var(--success);
+    border-radius: 8px;
+    padding: 4px 8px;
 }
 
 .bottom-nav {
