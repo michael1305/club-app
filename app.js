@@ -711,12 +711,9 @@ function renderCheckinMembers() {
 function filterCheckinMembers() { renderCheckinMembers(); }
 
 let _checkinOverlayMemberId = null;
-let _lastCheckinTs = 0;
 
 function doCheckin(memberId) {
-    const now = Date.now();
-    if (now - _lastCheckinTs < 1500) return;
-    _lastCheckinTs = now;
+    if (_checkinOverlayMemberId) return;
     const member = getMembers().find(m => m.id === memberId);
     if (!member) { showCheckinResult('משתתף לא נמצא', false); return; }
 
