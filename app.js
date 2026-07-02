@@ -1253,29 +1253,30 @@ function exportExcel(share = false) {
     const payments = getPayments().filter(p => new Date(p.date) >= startDate);
 
     const wb = XLSX.utils.book_new();
+    const rtl = ws => { ws['!cols'] = ws['!cols'] || []; ws['!sheetView'] = { rightToLeft: true }; return ws; };
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(checkins.map(c => ({
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(checkins.map(c => ({
         'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
         'שם משתתף':  members.find(m => m.id === c.memberId)?.name || 'לא ידוע',
         'סוג כניסה': c.entryType === 'couple' ? 'זוגית' : 'בודדת',
         'מסוף':      c.terminal || 'ראשי'
-    }))), 'כניסות');
+    })))), 'כניסות');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payments.map(p => ({
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(payments.map(p => ({
         'תאריך':        formatDate(new Date(p.date)),
         'שם משתתף':    members.find(m => m.id === p.memberId)?.name || 'לא ידוע',
         'כמות כניסות': p.quantity,
         'סכום':        p.amount,
         'הערה':        p.note || ''
-    }))), 'רכישות');
+    })))), 'רכישות');
 
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(members.map(m => ({
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(members.map(m => ({
         'שם':              m.name,
         'טלפון':           m.phone,
         'אימייל':          m.email || '',
         'יתרת כניסות':    m.balance || 0,
         'תאריך הצטרפות': formatDate(new Date(m.createdAt))
-    }))), 'משתתפים');
+    })))), 'משתתפים');
 
     if (share && navigator.share) {
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
