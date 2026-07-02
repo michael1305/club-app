@@ -1128,8 +1128,12 @@ function renderGuestList() {
             </div>`;
         }).join('');
 
-    document.getElementById('guestlist-vip').innerHTML = vipHtml;
-    document.getElementById('guestlist-temp').innerHTML = tempHtml;
+    const vipEl = document.getElementById('guestlist-vip');
+    const tempEl = document.getElementById('guestlist-temp');
+    vipEl.innerHTML = vipHtml;
+    tempEl.innerHTML = tempHtml;
+    vipEl.style.maxHeight = 'none';
+    tempEl.style.maxHeight = 'none';
 }
 
 function markVipArrival(memberId, count) {
