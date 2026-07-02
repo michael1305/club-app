@@ -1287,13 +1287,18 @@ function exportExcel(share = false) {
     // Summary per terminal (regular + guests combined)
     const allRows = [...regularRows, ...guestRows];
     const terminals = [...new Set(allRows.map(r => r['מסוף']))];
+    const totalGuests = guestRows.reduce((s, r) => s + (r['כמות'] || 0), 0);
+    const totalRegular = regularRows.reduce((s, r) => s + (r['כמות'] || 0), 0);
     const summaryRows = [
         { 'תאריך ושעה': '--- סיכום ---', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' },
         ...terminals.map(t => {
             const tRows = allRows.filter(r => r['מסוף'] === t);
             return { 'תאריך ושעה': `סה"כ — ${t}`, 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': t, 'כמות': tRows.reduce((s, r) => s + (r['כמות'] || 0), 0) };
         }),
-        { 'תאריך ושעה': 'סה"כ כולל', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': allRows.reduce((s, r) => s + (r['כמות'] || 0), 0) }
+        sep,
+        { 'תאריך ושעה': 'סה"כ כניסות', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': totalRegular },
+        { 'תאריך ושעה': 'סה"כ אורחים', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': totalGuests },
+        { 'תאריך ושעה': 'סה"כ כולל', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': totalRegular + totalGuests }
     ];
 
     const guestHeader = guestRows.length > 0
