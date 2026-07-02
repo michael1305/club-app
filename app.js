@@ -1202,7 +1202,7 @@ function showReport() {
 
     document.getElementById('stat-members').textContent      = members.length;
     const membersDetail = document.getElementById('stat-members-detail');
-    if (membersDetail) membersDetail.textContent = `⭐ ${vipCount} | 👤 ${regularCount}`;
+    if (membersDetail) membersDetail.textContent = `⭐ ${vipCount} | 👥 ${regularCount}`;
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
     const detail = document.getElementById('stat-revenue-detail');
     if (detail) detail.textContent = revenue > 0 ? `\u{1F4B5} ₪${cashRevenue} | \u{1F4B3} ₪${creditRevenue}` : '';
