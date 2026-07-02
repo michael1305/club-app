@@ -1165,58 +1165,6 @@ function _getReportRange() {
 
 function renderReports() {
     showReport();
-
-    const members = getMembers();
-    const checkins = getCheckins();
-
-
-    const startDate = _getReportRange();
-
-    // Build unified activity list
-    const allActivity = [];
-
-    // Regular check-ins (filtered by period)
-    getCheckins()
-        .filter(c => new Date(c.timestamp) >= startDate)
-        .forEach(c => {
-            const member = members.find(m => m.id === c.memberId);
-            const name = member ? member.name : 'לא ידוע';
-            let type;
-            if (c.entryType === 'vip-single') type = '⭐ כניסה חופשית (1)';
-            else if (c.entryType === 'vip-couple') type = '⭐ כניסה חופשית (2)';
-            else if (c.entryType === 'couple') type = '🚪 כניסה זוגית';
-            else type = '🚪 כניסה בודדת';
-            allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
-        });
-
-    // Guest check-ins (filtered by period)
-    getGuestCheckins()
-        .filter(gc => new Date(gc.timestamp) >= startDate)
-        .forEach(gc => {
-            allActivity.push({ ts: gc.timestamp, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
-        });
-
-    // Payments (filtered by period)
-    getPayments()
-        .filter(p => new Date(p.date) >= startDate)
-        .forEach(p => {
-            const member = members.find(m => m.id === p.memberId);
-            const name = member ? member.name : 'לא ידוע';
-            const method = p.paymentMethod === 'credit' ? '💳' : '💵';
-            allActivity.push({ ts: p.date, name, label: `${method} רכישה ${p.quantity} כניסות · ₪${p.amount}`, color: 'var(--success)' });
-        });
-
-    allActivity.sort((a, b) => new Date(b.ts) - new Date(a.ts));
-
-    document.getElementById('recent-checkins').innerHTML = allActivity.length
-        ? allActivity.map(a => `<div class="recent-item">
-            <span style="font-weight:600">${escHtml(a.name)}</span>
-            <div style="text-align:left;font-size:0.82rem">
-                <div style="color:${a.color};font-weight:600">${a.label}</div>
-                <div style="color:var(--text-light)">${formatDateTime(new Date(a.ts))}</div>
-            </div>
-        </div>`).join('')
-        : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות בתקופה זו</p>';
 }
 
 function showReport() {
@@ -1253,6 +1201,45 @@ function showReport() {
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
+
+    // Unified activity list
+    const allActivity = [];
+    getCheckins()
+        .filter(c => new Date(c.timestamp) >= startDate)
+        .forEach(c => {
+            const member = members.find(m => m.id === c.memberId);
+            const name = member ? member.name : 'לא ידוע';
+            let type;
+            if (c.entryType === 'vip-single') type = '⭐ כניסה חופשית (1)';
+            else if (c.entryType === 'vip-couple') type = '⭐ כניסה חופשית (2)';
+            else if (c.entryType === 'couple') type = '🚪 כניסה זוגית';
+            else type = '🚪 כניסה בודדת';
+            allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
+        });
+    getGuestCheckins()
+        .filter(gc => new Date(gc.timestamp) >= startDate)
+        .forEach(gc => {
+            allActivity.push({ ts: gc.timestamp, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
+        });
+    getPayments()
+        .filter(p => new Date(p.date) >= startDate)
+        .forEach(p => {
+            const member = members.find(m => m.id === p.memberId);
+            const name = member ? member.name : 'לא ידוע';
+            const method = p.paymentMethod === 'credit' ? '💳' : '💵';
+            allActivity.push({ ts: p.date, name, label: `${method} רכישה ${p.quantity} כניסות · ₪${p.amount}`, color: 'var(--success)' });
+        });
+    allActivity.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    const el = document.getElementById('recent-checkins');
+    if (el) el.innerHTML = allActivity.length
+        ? allActivity.map(a => `<div class="recent-item">
+            <span style="font-weight:600">${escHtml(a.name)}</span>
+            <div style="text-align:left;font-size:0.82rem">
+                <div style="color:${a.color};font-weight:600">${a.label}</div>
+                <div style="color:var(--text-light)">${formatDateTime(new Date(a.ts))}</div>
+            </div>
+        </div>`).join('')
+        : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות בתקופה זו</p>';
 }
 
 function exportExcel(share = false) {
@@ -1290,13 +1277,15 @@ function exportExcel(share = false) {
         'תאריך הצטרפות': formatDate(new Date(m.createdAt))
     }))), 'משתתפים');
 
-    if (share && navigator.canShare) {
+    if (share && navigator.share) {
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const file = new File([buf], `club-report-${formatDateFile(new Date())}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        if (navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: 'דוח מועדון' }).catch(() => {});
-            return;
-        }
+        navigator.share({ files: [file], title: 'דוח מועדון' })
+            .catch(() => {
+                XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
+                showToast('קובץ Excel הורד ✓');
+            });
+        return;
     }
     XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
     showToast('קובץ Excel הורד ✓');
