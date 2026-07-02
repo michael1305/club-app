@@ -1557,5 +1557,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // PWA Service Worker
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
+        .then(reg => reg.update())
+        .catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
 }
