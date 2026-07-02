@@ -153,18 +153,18 @@
 
         <!-- Guest List Page -->
         <main id="page-guestlist" class="page">
-            <div class="reports-container">
-                <div class="report-card">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                        <h3 style="margin:0">🕐 אורחים זמניים (48 שעות)</h3>
-                        <button class="btn btn-primary" style="font-size:0.85rem;padding:6px 12px" onclick="showAddTempGuest()">+ הוסף</button>
+            <div class="checkin-container">
+                <div class="checkin-tabs">
+                    <button class="tab-btn active" id="guest-tab-temp" onclick="switchGuestTab('temp')">🕐 זמניים</button>
+                    <button class="tab-btn" id="guest-tab-vip" onclick="switchGuestTab('vip')">⭐ קבועים</button>
+                </div>
+                <div id="guest-panel-temp" class="checkin-tab-content active" style="padding:0 4px">
+                    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+                        <button class="btn btn-primary" style="font-size:0.85rem;padding:6px 14px" onclick="showAddTempGuest()">+ הוסף אורח</button>
                     </div>
                     <div id="guestlist-temp" class="recent-list"></div>
                 </div>
-                <div class="report-card">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-                        <h3 style="margin:0">⭐ כניסות חופשיות קבועות</h3>
-                    </div>
+                <div id="guest-panel-vip" class="checkin-tab-content" style="padding:0 4px">
                     <div id="guestlist-vip" class="recent-list"></div>
                 </div>
             </div>
@@ -266,6 +266,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=83"></script>
+    <script src="app.js?v=84"></script>
 </body>
 </html>

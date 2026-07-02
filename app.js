@@ -1074,6 +1074,13 @@ function performVipCheckin(memberId, count) {
 }
 
 // ===== GUEST LIST =====
+function switchGuestTab(tab) {
+    ['temp', 'vip'].forEach(t => {
+        document.getElementById('guest-tab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('guest-panel-' + t).classList.toggle('active', t === tab);
+    });
+}
+
 function renderGuestList() {
     const today = new Date().toISOString().split('T')[0];
     const todayCheckins = getGuestCheckins().filter(gc => gc.date === today);
