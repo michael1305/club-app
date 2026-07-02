@@ -1255,7 +1255,7 @@ function showReport() {
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
 }
 
-function exportExcel() {
+function exportExcel(share = false) {
     if (typeof XLSX === 'undefined') { showToast('טוען ספריית Excel...'); return; }
     const startDate = _getReportRange();
     const terminalFilter = document.getElementById('report-terminal')?.value || '';
@@ -1290,8 +1290,20 @@ function exportExcel() {
         'תאריך הצטרפות': formatDate(new Date(m.createdAt))
     }))), 'משתתפים');
 
+    if (share && navigator.canShare) {
+        const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const file = new File([buf], `club-report-${formatDateFile(new Date())}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        if (navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: 'דוח מועדון' }).catch(() => {});
+            return;
+        }
+    }
     XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
     showToast('קובץ Excel הורד ✓');
+}
+
+function shareReport() {
+    exportExcel(true);
 }
 
 // ===== SETTINGS =====
