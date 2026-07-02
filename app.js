@@ -711,9 +711,15 @@ function renderCheckinMembers() {
 function filterCheckinMembers() { renderCheckinMembers(); }
 
 let _checkinOverlayMemberId = null;
+let _lastCheckinMemberId = null;
+let _lastCheckinMemberTs = 0;
 
 function doCheckin(memberId) {
     if (_checkinOverlayMemberId) return;
+    const now = Date.now();
+    if (memberId === _lastCheckinMemberId && now - _lastCheckinMemberTs < 5000) return;
+    _lastCheckinMemberId = memberId;
+    _lastCheckinMemberTs = now;
     const member = getMembers().find(m => m.id === memberId);
     if (!member) { showCheckinResult('משתתף לא נמצא', false); return; }
 
