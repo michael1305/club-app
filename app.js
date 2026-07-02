@@ -1169,21 +1169,54 @@ function renderReports() {
     const members = getMembers();
     const checkins = getCheckins();
 
-    document.getElementById('low-balance-list').innerHTML = members
-        .filter(m => (m.balance || 0) <= 2)
-        .sort((a, b) => (a.balance || 0) - (b.balance || 0))
-        .map(m => `<div class="recent-item">
-            <span>${escHtml(m.name)}</span>
-            <span style="color:${(m.balance||0)<=0?'var(--danger)':'var(--warning)'};font-weight:700">${m.balance||0} כניסות</span>
-        </div>`).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">כולם עם יתרה תקינה</p>';
 
-    document.getElementById('recent-checkins').innerHTML = checkins.slice(-10).reverse().map(c => {
-        const member = members.find(m => m.id === c.memberId);
-        return `<div class="recent-item">
-            <span>${member ? escHtml(member.name) : 'לא ידוע'}</span>
-            <span>${c.entryType === 'couple' ? 'זוגית' : 'בודדת'} · ${formatDateTime(new Date(c.timestamp))}</span>
-        </div>`;
-    }).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות</p>';
+    const startDate = _getReportRange();
+
+    // Build unified activity list
+    const allActivity = [];
+
+    // Regular check-ins (filtered by period)
+    getCheckins()
+        .filter(c => new Date(c.timestamp) >= startDate)
+        .forEach(c => {
+            const member = members.find(m => m.id === c.memberId);
+            const name = member ? member.name : 'לא ידוע';
+            let type;
+            if (c.entryType === 'vip-single') type = '⭐ כניסה חופשית (1)';
+            else if (c.entryType === 'vip-couple') type = '⭐ כניסה חופשית (2)';
+            else if (c.entryType === 'couple') type = '🚪 כניסה זוגית';
+            else type = '🚪 כניסה בודדת';
+            allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
+        });
+
+    // Guest check-ins (filtered by period)
+    getGuestCheckins()
+        .filter(gc => new Date(gc.timestamp) >= startDate)
+        .forEach(gc => {
+            allActivity.push({ ts: gc.timestamp, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
+        });
+
+    // Payments (filtered by period)
+    getPayments()
+        .filter(p => new Date(p.date) >= startDate)
+        .forEach(p => {
+            const member = members.find(m => m.id === p.memberId);
+            const name = member ? member.name : 'לא ידוע';
+            const method = p.paymentMethod === 'credit' ? '💳' : '💵';
+            allActivity.push({ ts: p.date, name, label: `${method} רכישה ${p.quantity} כניסות · ₪${p.amount}`, color: 'var(--success)' });
+        });
+
+    allActivity.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+    document.getElementById('recent-checkins').innerHTML = allActivity.length
+        ? allActivity.map(a => `<div class="recent-item">
+            <span style="font-weight:600">${escHtml(a.name)}</span>
+            <div style="text-align:left;font-size:0.82rem">
+                <div style="color:${a.color};font-weight:600">${a.label}</div>
+                <div style="color:var(--text-light)">${formatDateTime(new Date(a.ts))}</div>
+            </div>
+        </div>`).join('')
+        : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות בתקופה זו</p>';
 }
 
 function showReport() {
