@@ -359,7 +359,7 @@ function addMember() {
     _saveMember(member);
     pendingPhotoData = null;
     closeModal();
-    showToast('משתתף נוסף בהצלחה ✓');
+    showMemberDetails(member.id);
 }
 
 function showMemberDetails(id) {
