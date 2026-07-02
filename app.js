@@ -1336,15 +1336,15 @@ function exportExcel(share = false) {
 
     if (share && navigator.share) {
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const file = new File([buf], `club-report-${formatDateFile(new Date())}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const file = new File([buf], `club-report-v51-${formatDateFile(new Date())}.xlsx`, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         navigator.share({ files: [file], title: 'דוח מועדון' })
             .catch(() => {
-                XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
+                XLSX.writeFile(wb, `club-report-v51-${formatDateFile(new Date())}.xlsx`);
                 showToast('קובץ Excel הורד ✓');
             });
         return;
     }
-    XLSX.writeFile(wb, `club-report-${formatDateFile(new Date())}.xlsx`);
+    XLSX.writeFile(wb, `club-report-v51-${formatDateFile(new Date())}.xlsx`);
     showToast('קובץ Excel הורד ✓');
 }
 
