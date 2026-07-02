@@ -1597,6 +1597,8 @@ document.addEventListener('DOMContentLoaded', () => {
         '<div style="text-align:center;padding:40px;color:#b2bec3;">מתחבר לענן...</div>';
 
     _initFirebase();
+
+    if ('NDEFReader' in window) setTimeout(startNfc, 800);
 });
 
 // PWA Service Worker
