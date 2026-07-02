@@ -1256,38 +1256,51 @@ function exportExcel(share = false) {
     const wb = XLSX.utils.book_new();
     const rtl = ws => { ws['!views'] = [{ rightToLeft: true }]; return ws; };
 
-    // Checkins sheet: regular + VIP + guests, then totals per terminal
+    // Checkins sheet: regular/VIP rows, then guests section, then summary
     const guestCheckins = getGuestCheckins().filter(gc => {
         const ts = gc.timestamp ? new Date(gc.timestamp) : new Date(gc.date + 'T23:59:59');
         return ts >= startDate;
     });
-    const checkinRows = [
-        ...checkins.map(c => ({
+
+    const sep = { 'תאריך ושעה': '', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' };
+
+    const regularRows = checkins
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
             'שם משתתף':  members.find(m => m.id === c.memberId)?.name || 'לא ידוע',
             'סוג כניסה': c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
             'מסוף':      c.terminal || 'ראשי',
             'כמות':      c.entryType === 'couple' || c.entryType === 'vip-couple' ? 2 : 1
-        })),
-        ...guestCheckins.map(gc => ({
-            'תאריך ושעה': formatDateTime(new Date(gc.timestamp)),
+        }));
+
+    const guestRows = guestCheckins
+        .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
+        .map(gc => ({
+            'תאריך ושעה': formatDateTime(new Date(gc.timestamp || gc.date)),
             'שם משתתף':  gc.name,
             'סוג כניסה': `אורח (${gc.count})`,
             'מסוף':      gc.terminal || 'ראשי',
             'כמות':      gc.count || 1
-        }))
-    ].sort((a, b) => new Date(b['תאריך ושעה']) - new Date(a['תאריך ושעה']));
+        }));
 
-    // Summary rows per terminal
-    const terminals = [...new Set(checkinRows.map(r => r['מסוף']))];
-    const summaryRows = terminals.map(t => {
-        const rows = checkinRows.filter(r => r['מסוף'] === t);
-        return { 'תאריך ושעה': `סה"כ — ${t}`, 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': t, 'כמות': rows.reduce((s, r) => s + r['כמות'], 0) };
-    });
-    summaryRows.push({ 'תאריך ושעה': 'סה"כ כולל', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': checkinRows.reduce((s, r) => s + r['כמות'], 0) });
+    // Summary per terminal (regular + guests combined)
+    const allRows = [...regularRows, ...guestRows];
+    const terminals = [...new Set(allRows.map(r => r['מסוף']))];
+    const summaryRows = [
+        { 'תאריך ושעה': '--- סיכום ---', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' },
+        ...terminals.map(t => {
+            const tRows = allRows.filter(r => r['מסוף'] === t);
+            return { 'תאריך ושעה': `סה"כ — ${t}`, 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': t, 'כמות': tRows.reduce((s, r) => s + (r['כמות'] || 0), 0) };
+        }),
+        { 'תאריך ושעה': 'סה"כ כולל', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': allRows.reduce((s, r) => s + (r['כמות'] || 0), 0) }
+    ];
 
-    const sepCheckin = { 'תאריך ושעה': '', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' };
-    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet([...checkinRows, sepCheckin, ...summaryRows])), 'כניסות');
+    const guestHeader = guestRows.length > 0
+        ? [sep, { 'תאריך ושעה': '--- אורחים ---', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' }, ...guestRows]
+        : [];
+
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet([...regularRows, ...guestHeader, sep, ...summaryRows])), 'כניסות');
 
     const paymentRows = payments.map(p => ({
         'תאריך ושעה':   formatDateTime(new Date(p.date)),
