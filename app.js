@@ -357,6 +357,7 @@ function addMember() {
         createdAt: new Date().toISOString()
     };
     _saveMember(member);
+    if (!_members.find(m => m.id === member.id)) _members.unshift(member);
     pendingPhotoData = null;
     closeModal();
     showMemberDetails(member.id);
