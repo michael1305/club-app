@@ -785,7 +785,7 @@ function performCheckin(memberId, entryType) {
     }
 
     // Restart NFC automatically for the next person
-    if ('NDEFReader' in window) setTimeout(startNfc, 1500);
+    if ('NDEFReader' in window) setTimeout(startNfc, 300);
 }
 
 function showCheckinResult(msg, success) {
@@ -918,7 +918,7 @@ function startNfc() {
             } else {
                 showCheckinResult('כרטיס NFC לא מזוהה. יש לשייך אותו למשתתף תחילה.', false);
                 // Restart after unrecognized card
-                setTimeout(startNfc, 1500);
+                setTimeout(startNfc, 300);
             }
         };
 
@@ -1034,7 +1034,7 @@ function performVipCheckin(memberId, count) {
     });
     closeModal();
     showCheckinResult(`✓ ${member.name} — כניסה חופשית (${count} ${count>1?'אנשים':'אדם'})`, true);
-    if ('NDEFReader' in window) setTimeout(startNfc, 1500);
+    if ('NDEFReader' in window) setTimeout(startNfc, 300);
 }
 
 // ===== GUEST LIST =====
