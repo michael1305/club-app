@@ -723,7 +723,7 @@ function doCheckin(memberId) {
 
     const balance = member.balance || 0;
     if (balance <= 0) {
-        showCheckinResult(`✕ ל${member.name} אין יתרת כניסות`, false);
+        showMemberDetails(member.id);
         return;
     }
 
