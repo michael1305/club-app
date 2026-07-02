@@ -883,6 +883,8 @@ function stopQrScanner() {
 
 // ===== NFC =====
 let nfcAbortController = null;
+let _lastNfcSerial = null;
+let _lastNfcSerialTs = 0;
 
 function parseNfcMessage(message) {
     for (const record of message.records) {
@@ -934,8 +936,14 @@ function startNfc() {
         _setNfcUi(true);
 
         ndef.onreading = event => {
+            const serial = event.serialNumber;
+            const now = Date.now();
+            if (serial && serial === _lastNfcSerial && now - _lastNfcSerialTs < 5000) return;
+            _lastNfcSerial = serial;
+            _lastNfcSerialTs = now;
+
             const memberId = parseNfcMessage(event.message) ||
-                getMembers().find(m => m.nfcTag === event.serialNumber)?.id;
+                getMembers().find(m => m.nfcTag === serial)?.id;
             if (memberId) {
                 doCheckin(memberId);
             } else {
