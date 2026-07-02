@@ -1254,10 +1254,13 @@ function exportExcel(share = false) {
     const payments = getPayments().filter(p => new Date(p.date) >= startDate);
 
     const wb = XLSX.utils.book_new();
-    const rtl = ws => { ws['!cols'] = ws['!cols'] || []; ws['!sheetView'] = { rightToLeft: true }; return ws; };
+    const rtl = ws => { ws['!views'] = [{ rightToLeft: true }]; return ws; };
 
     // Checkins sheet: regular + VIP + guests, then totals per terminal
-    const guestCheckins = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
+    const guestCheckins = getGuestCheckins().filter(gc => {
+        const ts = gc.timestamp ? new Date(gc.timestamp) : new Date(gc.date + 'T23:59:59');
+        return ts >= startDate;
+    });
     const checkinRows = [
         ...checkins.map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
@@ -1287,7 +1290,7 @@ function exportExcel(share = false) {
     XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet([...checkinRows, sepCheckin, ...summaryRows])), 'כניסות');
 
     const paymentRows = payments.map(p => ({
-        'תאריך':        formatDate(new Date(p.date)),
+        'תאריך ושעה':   formatDateTime(new Date(p.date)),
         'שם משתתף':    members.find(m => m.id === p.memberId)?.name || 'לא ידוע',
         'כמות כניסות': p.quantity,
         'סכום':        p.amount,
@@ -1297,9 +1300,9 @@ function exportExcel(share = false) {
     }));
     const totalAmount = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const totalQty = payments.reduce((s, p) => s + (p.quantity || 0), 0);
-    const sepPayment = { 'תאריך': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' };
+    const sepPayment = { 'תאריך ושעה': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' };
     paymentRows.push(sepPayment);
-    paymentRows.push({ 'תאריך': 'סה"כ', 'שם משתתף': '', 'כמות כניסות': totalQty, 'סכום': totalAmount, 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' });
+    paymentRows.push({ 'תאריך ושעה': 'סה"כ', 'שם משתתף': '', 'כמות כניסות': totalQty, 'סכום': totalAmount, 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' });
     XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(paymentRows)), 'רכישות');
 
     const vipCount = members.filter(m => m.vipSlots > 0).length;
