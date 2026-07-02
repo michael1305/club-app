@@ -1311,7 +1311,16 @@ function shareReport() {
 ⚠️ ללא יתרה: ${zero}`;
 
     if (navigator.share) {
-        navigator.share({ title: `דוח ${eventName}`, text }).catch(() => {});
+        navigator.share({ title: `דוח ${eventName}`, text })
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    if (navigator.clipboard) {
+                        navigator.clipboard.writeText(text).then(() => showToast('הדוח הועתק ✓'));
+                    } else {
+                        showToast('שיתוף נכשל');
+                    }
+                }
+            });
     } else if (navigator.clipboard) {
         navigator.clipboard.writeText(text).then(() => showToast('הדוח הועתק ✓'));
     } else {
