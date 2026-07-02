@@ -759,7 +759,7 @@ function hideCheckinOverlay() {
 
 function closeCheckinOverlay() {
     hideCheckinOverlay();
-    setTimeout(startNfc, 500);
+    setTimeout(startNfc, 3000);
 }
 
 function performCheckinFromOverlay(entryType) {
