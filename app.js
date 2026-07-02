@@ -1181,9 +1181,12 @@ function showReport() {
     const terminalFilter = sel?.value || '';
 
     const members  = getMembers();
-    const payments = getPayments().filter(p => new Date(p.date) >= startDate);
+    let payments = getPayments().filter(p => new Date(p.date) >= startDate);
     let checkins   = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
-    if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
+    if (terminalFilter) {
+        checkins = checkins.filter(c => c.terminal === terminalFilter);
+        payments = payments.filter(p => (p.terminal || 'ראשי') === terminalFilter);
+    }
 
     const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
@@ -1194,7 +1197,12 @@ function showReport() {
     const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
     const todayGuestsCount = periodGuests.reduce((s, gc) => s + (gc.count || 1), 0);
 
+    const vipCount     = members.filter(m => m.vipSlots > 0).length;
+    const regularCount = members.length - vipCount;
+
     document.getElementById('stat-members').textContent      = members.length;
+    const membersDetail = document.getElementById('stat-members-detail');
+    if (membersDetail) membersDetail.textContent = `⭐ ${vipCount} VIP | ${regularCount} רגילים`;
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
     const detail = document.getElementById('stat-revenue-detail');
     if (detail) detail.textContent = revenue > 0 ? `\u{1F4B5} ₪${cashRevenue} | \u{1F4B3} ₪${creditRevenue}` : '';
