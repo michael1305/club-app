@@ -722,8 +722,15 @@ function doCheckin(memberId) {
     }
 
     const balance = member.balance || 0;
-
     stopNfc();
+
+    const overlay = document.getElementById('checkin-overlay');
+    if (!overlay) {
+        // fallback for cached old index.html
+        showCheckinResult(balance <= 0 ? `✕ אין יתרה — יש להוסיף כניסות` : `✓ ${member.name}`, balance > 0);
+        return;
+    }
+
     _checkinOverlayMemberId = memberId;
     document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
     document.getElementById('co-name').textContent = member.name;
@@ -740,7 +747,7 @@ function doCheckin(memberId) {
         <button class="btn btn-success btn-block" style="padding:14px;font-size:1rem" onclick="closeCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
     `;
 
-    document.getElementById('checkin-overlay').style.display = 'block';
+    overlay.style.display = 'block';
 }
 
 function closeCheckinOverlay() {
