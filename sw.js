@@ -1,5 +1,6 @@
-const CACHE_NAME = 'club-v53';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './user.html', './register.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
+const CACHE_NAME = 'club-v54';
+const NEVER_CACHE = ['app.js', 'index.html'];
+const ASSETS = ['./style.css', './user.html', './register.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS)));
@@ -15,6 +16,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+    const url = new URL(e.request.url);
+    const noCache = NEVER_CACHE.some(f => url.pathname.endsWith(f));
+    if (noCache) {
+        e.respondWith(fetch(e.request));
+        return;
+    }
     e.respondWith(
         fetch(e.request)
             .then(response => {
