@@ -661,14 +661,16 @@ function renderCheckinMembers() {
     const list = document.getElementById('checkin-members-list');
 
     list.innerHTML = filtered.map(m => `
-        <div class="card" onclick="doCheckin('${m.id}')">
-            ${avatarHtml(m)}
-            <div class="card-info">
-                <h4>${escHtml(m.name)}</h4>
-                <p>${escHtml(m.phone)}</p>
+        <div class="card">
+            <div style="display:flex;align-items:center;gap:12px;flex:1;cursor:pointer" onclick="showMemberDetails('${m.id}')">
+                ${avatarHtml(m)}
+                <div class="card-info">
+                    <h4>${escHtml(m.name)}</h4>
+                    <p>${escHtml(m.phone)}</p>
+                </div>
             </div>
             <div class="card-actions">
-                <button class="btn btn-success" onclick="event.stopPropagation();doCheckin('${m.id}')">✓ כניסה</button>
+                <button class="btn btn-success" onclick="doCheckin('${m.id}')">✓ כניסה</button>
             </div>
         </div>
     `).join('');
