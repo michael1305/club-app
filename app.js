@@ -1598,7 +1598,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     _initFirebase();
 
-    if ('NDEFReader' in window) setTimeout(startNfc, 800);
+    if ('NDEFReader' in window) {
+        const autoStart = () => {
+            document.removeEventListener('click', autoStart);
+            document.removeEventListener('touchstart', autoStart);
+            if (!nfcAbortController) startNfc();
+        };
+        document.addEventListener('click', autoStart);
+        document.addEventListener('touchstart', autoStart);
+    }
 });
 
 // PWA Service Worker
