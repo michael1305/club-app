@@ -728,18 +728,17 @@ function doCheckin(memberId) {
     document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
     document.getElementById('co-name').textContent = member.name;
 
-    if (balance <= 0) {
-        document.getElementById('co-balance').innerHTML = `<span style="color:var(--danger);font-weight:700">אין יתרת כניסות</span>`;
-        document.getElementById('co-actions').innerHTML = `
-            <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="closeCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
-        `;
-    } else {
-        document.getElementById('co-balance').innerHTML = `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
-        document.getElementById('co-actions').innerHTML = `
-            <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
-            <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
-        `;
-    }
+    document.getElementById('co-balance').innerHTML = balance <= 0
+        ? `<span style="color:var(--danger);font-weight:700">אין יתרת כניסות</span>`
+        : `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
+
+    document.getElementById('co-actions').innerHTML = `
+        ${balance > 0 ? `
+        <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
+        <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
+        ` : ''}
+        <button class="btn btn-success btn-block" style="padding:14px;font-size:1rem" onclick="closeCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
+    `;
 
     document.getElementById('checkin-overlay').style.display = 'block';
 }
