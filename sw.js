@@ -1,4 +1,4 @@
-const CACHE_NAME = 'club-v83';
+const CACHE_NAME = 'club-v84';
 const NEVER_CACHE = ['app.js', 'index.html'];
 const ASSETS = ['./style.css', './user.html', './register.html', './guest.html', './jsQR.js', './qrcode.min.js', './manifest.json'];
 

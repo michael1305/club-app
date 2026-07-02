@@ -758,8 +758,9 @@ function doCheckin(memberId) {
 
 function hideCheckinOverlay() {
     document.getElementById('checkin-overlay').style.display = 'none';
+    _lastCheckinMemberTs = Date.now();
+    _lastNfcSerialTs = Date.now();
     _checkinOverlayMemberId = null;
-    // NFC לא מופעל מחדש — מיועד לפעולות (כניסה, הוספה)
 }
 
 function closeCheckinOverlay() {
@@ -942,7 +943,7 @@ function startNfc() {
         ndef.onreading = event => {
             const serial = event.serialNumber;
             const now = Date.now();
-            if (serial && serial === _lastNfcSerial && now - _lastNfcSerialTs < 5000) return;
+            if (serial != null && serial === _lastNfcSerial && now - _lastNfcSerialTs < 8000) return;
             _lastNfcSerial = serial;
             _lastNfcSerialTs = now;
 
