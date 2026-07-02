@@ -100,20 +100,41 @@
         }
         .submit-btn:active { background: var(--primary-dark); }
         .submit-btn:disabled { background: var(--border); cursor: default; }
-        .success-screen {
-            display: none;
-            text-align: center;
-            padding: 20px 0;
-        }
-        .success-icon { font-size: 4rem; margin-bottom: 16px; }
-        .success-screen h2 { color: var(--success); margin-bottom: 8px; }
-        .success-screen p { color: var(--text-light); margin-bottom: 24px; }
         .error-msg {
             color: var(--danger);
             font-size: 0.85rem;
             margin-top: 8px;
             text-align: center;
             display: none;
+        }
+        .success-toast {
+            display: none;
+            background: var(--success);
+            color: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 20px 0;
+        }
+        .guest-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        .guest-list-item:last-child { border-bottom: none; }
+        .guest-expiry {
+            font-size: 0.78rem;
+            color: var(--text-light);
         }
     </style>
 </head>
@@ -124,33 +145,30 @@
         </div>
 
         <div class="guest-card">
-            <div id="form-screen">
-                <h2>🎫 הוספת אורח</h2>
-                <p class="subtitle">מלא את הפרטים להצטרפות לרשימת האורחים<br><strong>בתוקף 48 שעות</strong></p>
+            <div id="success-toast" class="success-toast"></div>
 
-                <div class="form-group">
-                    <label>שם האורח *</label>
-                    <input type="text" id="guest-name" placeholder="שם מלא" autocomplete="name">
-                </div>
+            <h2>🎫 הוספת אורח</h2>
+            <p class="subtitle">מלא את הפרטים להצטרפות לרשימת האורחים<br><strong>בתוקף 48 שעות</strong></p>
 
-                <div class="form-group">
-                    <label>כמות אנשים</label>
-                    <div class="slots-group">
-                        <button class="slot-option selected" onclick="selectSlots(1)">👤 אדם אחד</button>
-                        <button class="slot-option" onclick="selectSlots(2)">👥 שניים</button>
-                    </div>
-                </div>
-
-                <div id="error-msg" class="error-msg"></div>
-                <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
+            <div class="form-group">
+                <label>שם האורח *</label>
+                <input type="text" id="guest-name" placeholder="שם מלא" autocomplete="name">
             </div>
 
-            <div class="success-screen" id="success-screen">
-                <div class="success-icon">✅</div>
-                <h2>נוסף בהצלחה!</h2>
-                <p id="success-text"></p>
-                <button class="submit-btn" onclick="resetForm()">+ הוסף אורח נוסף</button>
+            <div class="form-group">
+                <label>כמות אנשים</label>
+                <div class="slots-group">
+                    <button class="slot-option selected" onclick="selectSlots(1)">👤 אדם אחד</button>
+                    <button class="slot-option" onclick="selectSlots(2)">👥 שניים</button>
+                </div>
             </div>
+
+            <div id="error-msg" class="error-msg"></div>
+            <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
+
+            <hr class="divider">
+            <h3 style="font-size:0.95rem;color:var(--text-light);margin-bottom:10px">📋 רשימה פעילה</h3>
+            <div id="active-guests-list"></div>
         </div>
     </div>
 
@@ -185,10 +203,16 @@
             el.style.display = 'block';
         }
 
+        function showToast(msg) {
+            const el = document.getElementById('success-toast');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 3000);
+        }
+
         async function submitGuest() {
             const name = document.getElementById('guest-name').value.trim();
-            const errEl = document.getElementById('error-msg');
-            errEl.style.display = 'none';
+            document.getElementById('error-msg').style.display = 'none';
 
             if (!name) { showError('נא להזין שם'); return; }
 
@@ -206,29 +230,59 @@
                     expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
                 });
 
-                document.getElementById('success-text').textContent =
-                    `${name} (${selectedSlots === 2 ? '2 אנשים' : 'אדם אחד'}) נוסף לרשימת האורחים ל-48 שעות`;
-                document.getElementById('form-screen').style.display = 'none';
-                document.getElementById('success-screen').style.display = 'block';
+                showToast(`✓ ${name} נוסף לרשימה`);
+                document.getElementById('guest-name').value = '';
+                selectedSlots = 1;
+                selectSlots(1);
             } catch (e) {
                 showError('שגיאה בשמירה — נסה שוב');
+            } finally {
                 btn.disabled = false;
                 btn.textContent = 'הוסף לרשימה ✓';
             }
         }
 
-        function resetForm() {
-            document.getElementById('guest-name').value = '';
-            selectedSlots = 1;
-            selectSlots(1);
-            document.getElementById('error-msg').style.display = 'none';
-            document.getElementById('submit-btn').disabled = false;
-            document.getElementById('submit-btn').textContent = 'הוסף לרשימה ✓';
-            document.getElementById('form-screen').style.display = 'block';
-            document.getElementById('success-screen').style.display = 'none';
+        function formatExpiry(isoStr) {
+            const d = new Date(isoStr);
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
         }
 
-        firebase.auth().signInAnonymously();
+        async function deleteGuest(docId) {
+            if (!confirm('למחוק אורח זה מהרשימה?')) return;
+            await db.collection('guests').doc(docId).delete();
+        }
+
+        function loadActiveGuests() {
+            const container = document.getElementById('active-guests-list');
+            db.collection('guests').orderBy('createdAt', 'desc').onSnapshot(snap => {
+                const now = new Date();
+                const active = snap.docs
+                    .map(d => ({ ...d.data(), _docId: d.id }))
+                    .filter(g => g.expiresAt && new Date(g.expiresAt) > now);
+
+                if (active.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;text-align:center;padding:10px 0">אין אורחים פעילים כרגע</p>';
+                    return;
+                }
+
+                container.innerHTML = active.map(g => {
+                    const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
+                    return `<div class="guest-list-item">
+                        <div>
+                            <div style="font-weight:600">${g.name}</div>
+                            <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
+                            <button onclick="deleteGuest('${g._docId}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            });
+        }
+
+        firebase.auth().signInAnonymously().then(loadActiveGuests);
     </script>
 </body>
 </html>
