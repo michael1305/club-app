@@ -105,6 +105,7 @@ function _saveCheckin(checkin)            { if (_db) _db.collection('checkins').
 function _saveGuest(g)                    { if (_db) _db.collection('guests').doc(g.id).set(g); }
 function _deleteGuest(id)                 { if (_db) _db.collection('guests').doc(id).delete(); }
 function _saveGuestCheckin(gc)            { if (_db) _db.collection('guestcheckins').doc(gc.id).set(gc); }
+function _deleteGuestCheckin(id)          { if (_db) _db.collection('guestcheckins').doc(id).delete(); }
 
 function getBaseUrl() {
     return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
@@ -1059,6 +1060,11 @@ function markVipArrival(memberId, count) {
     if (!member) return;
     const today = new Date().toISOString().split('T')[0];
     const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today);
+    if (existing && existing.count === count) {
+        _deleteGuestCheckin(existing.id);
+        showToast(`${member.name} — סימון בוטל`);
+        return;
+    }
     _saveGuestCheckin({
         id: existing?.id || generateId(),
         refId: memberId,
@@ -1077,6 +1083,11 @@ function markTempArrival(guestId, count) {
     if (!guest) return;
     const today = new Date().toISOString().split('T')[0];
     const existing = getGuestCheckins().find(gc => gc.refId === guestId && gc.date === today);
+    if (existing && existing.count === count) {
+        _deleteGuestCheckin(existing.id);
+        showToast(`${guest.name} — סימון בוטל`);
+        return;
+    }
     _saveGuestCheckin({
         id: existing?.id || generateId(),
         refId: guestId,
