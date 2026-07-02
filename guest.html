@@ -251,35 +251,43 @@
         async function deleteGuest(docId) {
             if (!confirm('למחוק אורח זה מהרשימה?')) return;
             await db.collection('guests').doc(docId).delete();
+            await renderActiveGuests();
+        }
+
+        function renderGuests(docs) {
+            const container = document.getElementById('active-guests-list');
+            const now = new Date();
+            const active = docs
+                .map(d => ({ ...d.data(), _docId: d.id }))
+                .filter(g => g.expiresAt && new Date(g.expiresAt) > now);
+
+            if (active.length === 0) {
+                container.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;text-align:center;padding:10px 0">אין אורחים פעילים כרגע</p>';
+                return;
+            }
+
+            container.innerHTML = active.map(g => {
+                const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
+                return `<div class="guest-list-item">
+                    <div>
+                        <div style="font-weight:600">${g.name}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:10px">
+                        <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
+                        <button onclick="deleteGuest('${g._docId}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function renderActiveGuests() {
+            const snap = await db.collection('guests').orderBy('createdAt', 'desc').get();
+            renderGuests(snap.docs);
         }
 
         function loadActiveGuests() {
-            const container = document.getElementById('active-guests-list');
-            db.collection('guests').orderBy('createdAt', 'desc').onSnapshot(snap => {
-                const now = new Date();
-                const active = snap.docs
-                    .map(d => ({ ...d.data(), _docId: d.id }))
-                    .filter(g => g.expiresAt && new Date(g.expiresAt) > now);
-
-                if (active.length === 0) {
-                    container.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;text-align:center;padding:10px 0">אין אורחים פעילים כרגע</p>';
-                    return;
-                }
-
-                container.innerHTML = active.map(g => {
-                    const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
-                    return `<div class="guest-list-item">
-                        <div>
-                            <div style="font-weight:600">${g.name}</div>
-                            <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
-                        </div>
-                        <div style="display:flex;align-items:center;gap:10px">
-                            <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
-                            <button onclick="deleteGuest('${g._docId}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
-                        </div>
-                    </div>`;
-                }).join('');
-            });
+            db.collection('guests').orderBy('createdAt', 'desc').onSnapshot(snap => renderGuests(snap.docs));
         }
 
         firebase.auth().signInAnonymously().then(loadActiveGuests);
