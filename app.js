@@ -1282,15 +1282,24 @@ function exportExcel(share = false) {
     });
     summaryRows.push({ 'תאריך ושעה': 'סה"כ כולל', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': checkinRows.reduce((s, r) => s + r['כמות'], 0) });
 
-    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet([...checkinRows, {}, ...summaryRows])), 'כניסות');
+    const sepCheckin = { 'תאריך ושעה': '', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' };
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet([...checkinRows, sepCheckin, ...summaryRows])), 'כניסות');
 
-    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(payments.map(p => ({
+    const paymentRows = payments.map(p => ({
         'תאריך':        formatDate(new Date(p.date)),
         'שם משתתף':    members.find(m => m.id === p.memberId)?.name || 'לא ידוע',
         'כמות כניסות': p.quantity,
         'סכום':        p.amount,
+        'אמצעי תשלום': p.paymentMethod === 'credit' ? 'אשראי' : 'מזומן',
+        'מסוף':        p.terminal || 'ראשי',
         'הערה':        p.note || ''
-    })))), 'רכישות');
+    }));
+    const totalAmount = payments.reduce((s, p) => s + (p.amount || 0), 0);
+    const totalQty = payments.reduce((s, p) => s + (p.quantity || 0), 0);
+    const sepPayment = { 'תאריך': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' };
+    paymentRows.push(sepPayment);
+    paymentRows.push({ 'תאריך': 'סה"כ', 'שם משתתף': '', 'כמות כניסות': totalQty, 'סכום': totalAmount, 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' });
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(paymentRows)), 'רכישות');
 
     const vipCount = members.filter(m => m.vipSlots > 0).length;
     const regularCount = members.length - vipCount;
@@ -1303,8 +1312,8 @@ function exportExcel(share = false) {
             'סוג':             m.vipSlots > 0 ? `VIP (${m.vipSlots})` : 'רגיל',
             'תאריך הצטרפות': formatDate(new Date(m.createdAt))
         })),
-        {},
-        { 'שם': `סה"כ: ${members.length} משתתפים`, 'טלפון': `VIP: ${vipCount}`, 'אימייל': `רגילים: ${regularCount}` }
+        { 'שם': '', 'טלפון': '', 'אימייל': '', 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' },
+        { 'שם': `סה"כ: ${members.length} משתתפים`, 'טלפון': `VIP: ${vipCount}`, 'אימייל': `רגילים: ${regularCount}`, 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' }
     ];
     XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(memberRows)), 'משתתפים');
 
