@@ -11,13 +11,24 @@ let _payments = [];
 let _checkins = [];
 let _guests = [];
 let _guestCheckins = [];
+let _cloudSettings = {};
 
-// Settings stay in localStorage (device-specific preferences)
+// Shared settings (eventName, singlePrice, couplePrice, activeDays) live in Firestore.
+// terminalName stays in localStorage — it's per-device.
+const CLOUD_SETTING_KEYS = ['eventName', 'singlePrice', 'couplePrice', 'activeDays'];
 const DB = {
     getSetting(key, fallback = '') {
+        if (CLOUD_SETTING_KEYS.includes(key)) return _cloudSettings[key] || fallback;
         return localStorage.getItem('club_setting_' + key) || fallback;
     },
-    setSetting(key, val) { localStorage.setItem('club_setting_' + key, val); }
+    setSetting(key, val) {
+        if (CLOUD_SETTING_KEYS.includes(key)) {
+            _cloudSettings[key] = val;
+            if (_db) _db.collection('settings').doc('main').set(_cloudSettings, { merge: true });
+        } else {
+            localStorage.setItem('club_setting_' + key, val);
+        }
+    }
 };
 
 function _initFirebase() {
@@ -27,6 +38,25 @@ function _initFirebase() {
     _db.enablePersistence().catch(() => {});
 
     firebase.auth().signInAnonymously().then(() => {
+        _db.collection('settings').doc('main').onSnapshot(snap => {
+            if (snap.exists) {
+                _cloudSettings = snap.data();
+                loadSettings();
+            } else {
+                // First time — migrate from localStorage
+                const migrated = {};
+                CLOUD_SETTING_KEYS.forEach(k => {
+                    const v = localStorage.getItem('club_setting_' + k);
+                    if (v) migrated[k] = v;
+                });
+                if (Object.keys(migrated).length) {
+                    _cloudSettings = migrated;
+                    _db.collection('settings').doc('main').set(migrated);
+                }
+                loadSettings();
+            }
+        }, () => {});
+
         _db.collection('members').onSnapshot(snap => {
             _members = snap.docs.map(d => d.data());
             _onDataChange();
