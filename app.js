@@ -626,6 +626,7 @@ function addPayment() {
         amount,
         paymentMethod,
         note,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
         date: new Date().toISOString()
     };
     _savePayment(payment);
@@ -1190,7 +1191,7 @@ function showReport() {
     const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
 
-    const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp) >= startDate);
+    const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
     const todayGuestsCount = periodGuests.reduce((s, gc) => s + (gc.count || 1), 0);
 
     document.getElementById('stat-members').textContent      = members.length;
@@ -1217,9 +1218,9 @@ function showReport() {
             allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
         });
     getGuestCheckins()
-        .filter(gc => new Date(gc.timestamp) >= startDate)
+        .filter(gc => new Date(gc.timestamp || gc.date) >= startDate)
         .forEach(gc => {
-            allActivity.push({ ts: gc.timestamp, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
+            allActivity.push({ ts: gc.timestamp || gc.date, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
         });
     getPayments()
         .filter(p => new Date(p.date) >= startDate)
@@ -1256,7 +1257,7 @@ function exportExcel(share = false) {
     const rtl = ws => { ws['!cols'] = ws['!cols'] || []; ws['!sheetView'] = { rightToLeft: true }; return ws; };
 
     // Checkins sheet: regular + VIP + guests, then totals per terminal
-    const guestCheckins = getGuestCheckins().filter(gc => new Date(gc.timestamp) >= startDate);
+    const guestCheckins = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
     const checkinRows = [
         ...checkins.map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
