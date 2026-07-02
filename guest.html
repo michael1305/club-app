@@ -128,7 +128,6 @@
             font-size: 0.78rem;
             color: var(--text-light);
         }
-        .guest-expiry.soon { color: var(--warning); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -276,7 +275,7 @@
                             <div style="font-weight:600">${g.name}</div>
                             <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
                         </div>
-                        <div class="guest-expiry${soon ? ' soon' : ''}">⏱ עד ${formatExpiry(g.expiresAt)}</div>
+                        <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
                     </div>`;
                 }).join('');
             });
