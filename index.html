@@ -252,10 +252,7 @@
                 <div id="co-name" style="font-size:1.6rem;font-weight:700"></div>
                 <div id="co-balance" style="font-size:1rem;margin-top:6px"></div>
             </div>
-            <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
-                <button id="co-single" class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
-                <button id="co-couple" class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')">כניסה זוגית (−2)</button>
-            </div>
+            <div id="co-actions" style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px"></div>
             <button class="btn btn-danger btn-block" style="margin-top:8px" onclick="closeCheckinOverlay()">ביטול</button>
         </div>
     </div>
@@ -269,6 +266,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=70"></script>
+    <script src="app.js?v=71"></script>
 </body>
 </html>

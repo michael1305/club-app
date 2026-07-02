@@ -722,22 +722,32 @@ function doCheckin(memberId) {
     }
 
     const balance = member.balance || 0;
-    if (balance <= 0) {
-        showMemberDetails(member.id);
-        return;
-    }
 
+    stopNfc();
     _checkinOverlayMemberId = memberId;
     document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
     document.getElementById('co-name').textContent = member.name;
-    document.getElementById('co-balance').innerHTML = `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
-    document.getElementById('co-couple').disabled = balance < 2;
+
+    if (balance <= 0) {
+        document.getElementById('co-balance').innerHTML = `<span style="color:var(--danger);font-weight:700">אין יתרת כניסות</span>`;
+        document.getElementById('co-actions').innerHTML = `
+            <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="closeCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
+        `;
+    } else {
+        document.getElementById('co-balance').innerHTML = `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
+        document.getElementById('co-actions').innerHTML = `
+            <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
+            <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
+        `;
+    }
+
     document.getElementById('checkin-overlay').style.display = 'block';
 }
 
 function closeCheckinOverlay() {
     document.getElementById('checkin-overlay').style.display = 'none';
     _checkinOverlayMemberId = null;
+    setTimeout(startNfc, 300);
 }
 
 function performCheckinFromOverlay(entryType) {
