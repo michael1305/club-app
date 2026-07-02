@@ -244,6 +244,22 @@
         </div>
     </div>
 
+    <!-- Check-in Full Screen Overlay -->
+    <div id="checkin-overlay" style="display:none;position:fixed;inset:0;background:white;z-index:500;overflow-y:auto;padding:32px 20px;box-sizing:border-box">
+        <div style="max-width:420px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:16px">
+            <div id="co-avatar" style="margin-bottom:4px"></div>
+            <div style="text-align:center">
+                <div id="co-name" style="font-size:1.6rem;font-weight:700"></div>
+                <div id="co-balance" style="font-size:1rem;margin-top:6px"></div>
+            </div>
+            <div style="width:100%;display:flex;flex-direction:column;gap:12px;margin-top:8px">
+                <button id="co-single" class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
+                <button id="co-couple" class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')">כניסה זוגית (−2)</button>
+            </div>
+            <button class="btn btn-danger btn-block" style="margin-top:8px" onclick="closeCheckinOverlay()">ביטול</button>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div id="toast" class="toast" hidden></div>
 
@@ -253,6 +269,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=65"></script>
+    <script src="app.js?v=66"></script>
 </body>
 </html>

@@ -710,12 +710,11 @@ function renderCheckinMembers() {
 
 function filterCheckinMembers() { renderCheckinMembers(); }
 
+let _checkinOverlayMemberId = null;
+
 function doCheckin(memberId) {
     const member = getMembers().find(m => m.id === memberId);
-    if (!member) {
-        showCheckinResult('משתתף לא נמצא', false);
-        return;
-    }
+    if (!member) { showCheckinResult('משתתף לא נמצא', false); return; }
 
     if ((member.vipSlots || 0) > 0) {
         doVipCheckin(member);
@@ -724,22 +723,26 @@ function doCheckin(memberId) {
 
     const balance = member.balance || 0;
     if (balance <= 0) {
-        showCheckinResult(`✕ ל${member.name} אין יתרת כניסות. יש להוסיף כניסות לפני הכניסה.`, false);
+        showCheckinResult(`✕ ל${member.name} אין יתרת כניסות`, false);
         return;
     }
 
-    openModal('בחירת סוג כניסה', `
-        <div style="text-align:center;margin-bottom:16px">
-            ${avatarHtml(member, 140)}
-            <p style="margin-top:10px;font-size:1.2rem;font-weight:700">${escHtml(member.name)}</p>
-            <p style="color:var(--text-light)">יתרה נוכחית: ${balance} כניסות</p>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-primary btn-block" onclick="performCheckin('${memberId}','single')">כניסה בודדת (-1)</button>
-            <button class="btn btn-secondary btn-block" onclick="performCheckin('${memberId}','couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (-2)</button>
-        </div>
-        ${balance < 2 ? '<p style="margin-top:10px;color:var(--text-light);font-size:0.85rem">אין מספיק יתרה לכניסה זוגית</p>' : ''}
-    `);
+    _checkinOverlayMemberId = memberId;
+    document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
+    document.getElementById('co-name').textContent = member.name;
+    document.getElementById('co-balance').innerHTML = `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
+    document.getElementById('co-couple').disabled = balance < 2;
+    document.getElementById('checkin-overlay').style.display = 'block';
+}
+
+function closeCheckinOverlay() {
+    document.getElementById('checkin-overlay').style.display = 'none';
+    _checkinOverlayMemberId = null;
+}
+
+function performCheckinFromOverlay(entryType) {
+    closeCheckinOverlay();
+    performCheckin(_checkinOverlayMemberId, entryType);
 }
 
 function performCheckin(memberId, entryType) {
@@ -754,7 +757,6 @@ function performCheckin(memberId, entryType) {
     const balance = member.balance || 0;
 
     if (balance < cost) {
-        closeModal();
         showCheckinResult(`✕ אין מספיק יתרה (נדרש ${cost}, יש ${balance})`, false);
         return;
     }
@@ -770,8 +772,6 @@ function performCheckin(memberId, entryType) {
         timestamp: new Date().toISOString()
     };
     _saveCheckin(checkin);
-
-    closeModal();
 
     let msg = `✓ ${member.name} נכנס/ה בהצלחה! (${entryType === 'couple' ? 'זוגית' : 'בודדת'})\nנותרו ${newBalance} כניסות`;
     if (newBalance <= 0) msg += '\n⚠ זו הכניסה האחרונה - יש להוסיף כניסות';
