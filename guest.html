@@ -115,6 +115,20 @@
             text-align: center;
             display: none;
         }
+        .guest-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        .guest-list-item:last-child { border-bottom: none; }
+        .guest-expiry {
+            font-size: 0.78rem;
+            color: var(--text-light);
+        }
+        .guest-expiry.soon { color: var(--warning); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -126,7 +140,7 @@
         <div class="guest-card">
             <div id="form-screen">
                 <h2>🎫 הוספת אורח</h2>
-                <p class="subtitle">מלא את הפרטים להצטרפות לרשימת האורחים</p>
+                <p class="subtitle">מלא את הפרטים להצטרפות לרשימת האורחים<br><strong>בתוקף 48 שעות</strong></p>
 
                 <div class="form-group">
                     <label>שם האורח *</label>
@@ -143,6 +157,11 @@
 
                 <div id="error-msg" class="error-msg"></div>
                 <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
+            </div>
+
+            <div id="active-list-section" style="margin-top:24px">
+                <h3 style="font-size:0.95rem;color:var(--text-light);margin-bottom:10px">📋 רשימה פעילה</h3>
+                <div id="active-guests-list"></div>
             </div>
 
             <div class="success-screen" id="success-screen">
@@ -165,7 +184,6 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        firebase.auth().signInAnonymously();
 
         let selectedSlots = 1;
 
@@ -228,6 +246,43 @@
             document.getElementById('form-screen').style.display = 'block';
             document.getElementById('success-screen').style.display = 'none';
         }
+
+        function formatExpiry(isoStr) {
+            const d = new Date(isoStr);
+            const pad = n => String(n).padStart(2, '0');
+            return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function loadActiveGuests() {
+            const container = document.getElementById('active-guests-list');
+            db.collection('guests').orderBy('createdAt', 'desc').onSnapshot(snap => {
+                const now = new Date();
+                const active = snap.docs
+                    .map(d => d.data())
+                    .filter(g => g.expiresAt && new Date(g.expiresAt) > now);
+
+                if (active.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;text-align:center;padding:10px 0">אין אורחים פעילים כרגע</p>';
+                    return;
+                }
+
+                container.innerHTML = active.map(g => {
+                    const expiry = new Date(g.expiresAt);
+                    const hoursLeft = (expiry - now) / 3600000;
+                    const soon = hoursLeft < 6;
+                    const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
+                    return `<div class="guest-list-item">
+                        <div>
+                            <div style="font-weight:600">${g.name}</div>
+                            <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
+                        </div>
+                        <div class="guest-expiry${soon ? ' soon' : ''}">⏱ עד ${formatExpiry(g.expiresAt)}</div>
+                    </div>`;
+                }).join('');
+            });
+        }
+
+        firebase.auth().signInAnonymously().then(loadActiveGuests);
     </script>
 </body>
 </html>
