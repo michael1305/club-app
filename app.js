@@ -1292,7 +1292,30 @@ function exportExcel(share = false) {
 }
 
 function shareReport() {
-    exportExcel(true);
+    const period = document.querySelector('.period-selector .filter-btn.active')?.textContent || 'שבוע';
+    const members  = document.getElementById('stat-members')?.textContent || '0';
+    const revenue  = document.getElementById('stat-revenue')?.textContent || '₪0';
+    const entries  = document.getElementById('stat-entries-used')?.textContent || '0';
+    const tickets  = document.getElementById('stat-tickets-sold')?.textContent || '0';
+    const guests   = document.getElementById('stat-guests-today')?.textContent || '0';
+    const zero     = document.getElementById('stat-active-subs')?.textContent || '0';
+    const eventName = DB.getSetting('eventName', 'מועדון');
+
+    const text = `📊 דוח ${eventName} — ${period}
+👥 משתתפים: ${members}
+💰 הכנסות: ${revenue}
+🎫 כרטיסיות שנמכרו: ${tickets}
+🚪 ניקובים: ${entries}
+👤 אורחים: ${guests}
+⚠️ ללא יתרה: ${zero}`;
+
+    if (navigator.share) {
+        navigator.share({ title: `דוח ${eventName}`, text }).catch(() => {});
+    } else if (navigator.clipboard) {
+        navigator.clipboard.writeText(text).then(() => showToast('הדוח הועתק ✓'));
+    } else {
+        showToast('שיתוף אינו נתמך במכשיר זה');
+    }
 }
 
 // ===== SETTINGS =====
