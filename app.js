@@ -729,7 +729,6 @@ function doCheckin(memberId) {
     }
 
     const balance = member.balance || 0;
-    stopNfc();
 
     const overlay = document.getElementById('checkin-overlay');
     if (!overlay) {
@@ -765,7 +764,6 @@ function hideCheckinOverlay() {
 
 function closeCheckinOverlay() {
     hideCheckinOverlay();
-    setTimeout(startNfc, 3000);
 }
 
 function performCheckinFromOverlay(entryType) {
