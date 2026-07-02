@@ -745,21 +745,27 @@ function doCheckin(memberId) {
         <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
         <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
         ` : ''}
-        <button class="btn btn-success btn-block" style="padding:14px;font-size:1rem" onclick="closeCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
+        <button class="btn btn-success btn-block" style="padding:14px;font-size:1rem" onclick="hideCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
     `;
 
     overlay.style.display = 'block';
 }
 
-function closeCheckinOverlay() {
+function hideCheckinOverlay() {
     document.getElementById('checkin-overlay').style.display = 'none';
     _checkinOverlayMemberId = null;
-    setTimeout(startNfc, 300);
+    // NFC לא מופעל מחדש — מיועד לפעולות (כניסה, הוספה)
+}
+
+function closeCheckinOverlay() {
+    hideCheckinOverlay();
+    setTimeout(startNfc, 500);
 }
 
 function performCheckinFromOverlay(entryType) {
-    closeCheckinOverlay();
-    performCheckin(_checkinOverlayMemberId, entryType);
+    const mid = _checkinOverlayMemberId;
+    hideCheckinOverlay();
+    performCheckin(mid, entryType);
 }
 
 function performCheckin(memberId, entryType) {
