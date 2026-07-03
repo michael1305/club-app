@@ -1257,7 +1257,9 @@ function renderReports() {
 function showReport() {
     const startDate = _getReportRange();
 
-    const allTerminals = [...new Set(getCheckins().map(c => c.terminal).filter(Boolean))];
+    const knownTerminals = _cloudSettings.knownTerminals || [];
+    const dataTerminals = getCheckins().map(c => c.terminal).filter(Boolean);
+    const allTerminals = [...new Set([...knownTerminals, ...dataTerminals])];
     const sel = document.getElementById('report-terminal');
     if (sel) {
         const current = sel.value;
@@ -1497,16 +1499,44 @@ function loadSettings() {
             cb.checked = dayArr.includes(cb.value);
         });
     }
+
+    const el = document.getElementById('terminals-list');
+    if (!el) return;
+    const known = _cloudSettings.knownTerminals || [];
+    if (known.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem">אין מסופים רשומים</p>';
+    } else {
+        el.innerHTML = known.map(t => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+                <span style="font-weight:600">${escHtml(t)}</span>
+                <button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem" onclick="deleteTerminal('${escHtml(t)}')">🗑 מחק</button>
+            </div>`).join('');
+    }
 }
 
 function saveAllSettings() {
     DB.setSetting('eventName',    document.getElementById('setting-event-name').value.trim());
-    DB.setSetting('terminalName', document.getElementById('setting-terminal').value.trim());
     DB.setSetting('singlePrice',  document.getElementById('setting-price').value);
     DB.setSetting('couplePrice',  document.getElementById('setting-sub-price').value);
+    const termName = document.getElementById('setting-terminal').value.trim();
+    DB.setSetting('terminalName', termName);
+    if (termName && _db) {
+        _db.collection('settings').doc('main').set(
+            { knownTerminals: firebase.firestore.FieldValue.arrayUnion(termName) },
+            { merge: true }
+        );
+    }
     const eventName = DB.getSetting('eventName');
     if (eventName) document.querySelector('.top-bar h1').textContent = '🎫 ' + eventName;
     showToast('הגדרות נשמרו ✓');
+}
+
+function deleteTerminal(name) {
+    if (!confirm(`למחוק את המסוף "${name}"?`)) return;
+    if (!_db) return;
+    _db.collection('settings').doc('main').update({
+        knownTerminals: firebase.firestore.FieldValue.arrayRemove(name)
+    }).then(() => showToast(`מסוף "${name}" נמחק ✓`));
 }
 
 function saveSetting(key, value) {

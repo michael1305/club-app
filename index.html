@@ -186,6 +186,10 @@
                     <input type="text" id="setting-terminal" placeholder="לדוגמה: כניסה ראשית">
                 </div>
                 <div class="setting-group">
+                    <label>מסופים רשומים</label>
+                    <div id="terminals-list"></div>
+                </div>
+                <div class="setting-group">
                     <label>מחיר כרטיסיה (₪)</label>
                     <input type="number" id="setting-price" placeholder="0" onchange="saveSetting('singlePrice', this.value)">
                 </div>
@@ -269,6 +273,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=89"></script>
+    <script src="app.js?v=90"></script>
 </body>
 </html>
