@@ -1656,11 +1656,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('NDEFReader' in window) {
         const autoStart = () => {
             document.removeEventListener('click', autoStart);
-            document.removeEventListener('touchstart', autoStart);
+            // touchstart removed — it fires before the button's onclick (toggleNfc),
+            // causing NFC to start then immediately stop when toggleNfc sees it running.
             if (!nfcAbortController) startNfc();
         };
         document.addEventListener('click', autoStart);
-        document.addEventListener('touchstart', autoStart);
     }
 });
 
