@@ -962,9 +962,17 @@ function startNfc() {
             showCheckinResult('שגיאה בקריאת הכרטיס. נסה שוב.', false);
         };
     }).catch(err => {
-        showToast('שגיאת NFC: ' + (err.message || 'נסה שוב'));
+        const wasIntentional = nfcAbortController === null; // stopNfc() already nulled it
         nfcAbortController = null;
-        _setNfcUi(false);
+        if (err.name === 'AbortError' && !wasIntentional) {
+            // Browser killed NFC externally (screen off, background) — restart automatically
+            setTimeout(startNfc, 1500);
+        } else {
+            _setNfcUi(false);
+            if (err.name !== 'AbortError') {
+                showToast('שגיאת NFC: ' + (err.message || 'נסה שוב'));
+            }
+        }
     });
 }
 
