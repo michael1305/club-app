@@ -216,6 +216,11 @@
                     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 ייבוא נתונים</button>
                     <input type="file" id="import-file" accept=".json" hidden onchange="importData(event)">
                 </div>
+                <div class="setting-group">
+                    <h3>איפוס נתונים</h3>
+                    <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:10px">מוחק כניסות, רכישות ומאפס יתרות. משתתפים ואורחים נשמרים.</p>
+                    <button class="btn btn-danger" onclick="resetAllData()">🗑 מחק כניסות ורכישות</button>
+                </div>
             </div>
         </main>
     </div>
@@ -273,6 +278,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=90"></script>
+    <script src="app.js?v=91"></script>
 </body>
 </html>

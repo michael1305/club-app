@@ -1554,6 +1554,38 @@ function saveDays() {
     showToast('נשמר ✓');
 }
 
+async function resetAllData() {
+    if (!confirm('מחיקת כל הכניסות, הרכישות ואיפוס יתרות המשתתפים?\nהפעולה בלתי הפיכה!')) return;
+    if (!confirm('אישור סופי — להמשיך?')) return;
+
+    const batchDelete = async col => {
+        const snap = await _db.collection(col).get();
+        for (let i = 0; i < snap.docs.length; i += 400) {
+            const b = _db.batch();
+            snap.docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+            await b.commit();
+        }
+    };
+
+    showToast('מוחק נתונים...');
+    await batchDelete('payments');
+    await batchDelete('checkins');
+    await batchDelete('guestcheckins');
+
+    const memSnap = await _db.collection('members').get();
+    for (let i = 0; i < memSnap.docs.length; i += 400) {
+        const b = _db.batch();
+        memSnap.docs.slice(i, i + 400).forEach(d => b.update(d.ref, { balance: 0 }));
+        await b.commit();
+    }
+
+    _payments = [];
+    _checkins = [];
+    _members = _members.map(m => ({ ...m, balance: 0 }));
+    renderCurrentPage();
+    showToast('הנתונים נמחקו ✓');
+}
+
 function exportData() {
     const data = {
         members: getMembers(),
