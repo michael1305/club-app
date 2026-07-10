@@ -447,7 +447,7 @@ function showMemberDetails(id) {
         </div>
         <div id="md-panel-history" class="checkin-tab-content">
             <div style="display:flex;gap:8px;margin-bottom:16px">
-                <button class="tab-btn active" id="mh-tab-list" onclick="switchMemberHistoryTab('list')">כניסות ורכישות</button>
+                <button class="tab-btn active" id="mh-tab-list" onclick="switchMemberHistoryTab('list')">מפורט</button>
                 <button class="tab-btn" id="mh-tab-all" onclick="switchMemberHistoryTab('all')">כל הפעולות</button>
             </div>
             <div id="mh-panel-list" class="checkin-tab-content active">
