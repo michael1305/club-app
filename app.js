@@ -11,7 +11,7 @@ let _payments = [];
 let _checkins = [];
 let _guests = [];
 let _guestCheckins = [];
-let _balanceEdits = [];
+let _memberLog = [];
 let _cloudSettings = {};
 
 // Shared settings (eventName, singlePrice, couplePrice, activeDays) live in Firestore.
@@ -83,8 +83,8 @@ function _initFirebase() {
             _onDataChange();
         }, () => {});
 
-        _db.collection('balanceEdits').onSnapshot(snap => {
-            _balanceEdits = snap.docs.map(d => d.data());
+        _db.collection('memberLog').onSnapshot(snap => {
+            _memberLog = snap.docs.map(d => d.data());
             _onDataChange();
         }, () => {});
 
@@ -131,7 +131,7 @@ function getPayments()      { return _payments; }
 function getCheckins()      { return _checkins; }
 function getGuests()        { return _guests; }
 function getGuestCheckins() { return _guestCheckins; }
-function getBalanceEdits()  { return _balanceEdits; }
+function getMemberLog()     { return _memberLog; }
 
 // Targeted async writes to Firestore
 function _saveMember(member)              { if (_db) _db.collection('members').doc(member.id).set(member); }
@@ -143,7 +143,17 @@ function _saveGuest(g)                    { if (_db) _db.collection('guests').do
 function _deleteGuest(id)                 { if (_db) _db.collection('guests').doc(id).delete(); }
 function _saveGuestCheckin(gc)            { if (_db) _db.collection('guestcheckins').doc(gc.id).set(gc); }
 function _deleteGuestCheckin(id)          { if (_db) _db.collection('guestcheckins').doc(id).delete(); }
-function _saveBalanceEdit(e)              { if (_db) _db.collection('balanceEdits').doc(e.id).set(e); }
+function _logMemberAction(memberId, label) {
+    if (!_db) return;
+    const id = generateId();
+    _db.collection('memberLog').doc(id).set({
+        id,
+        memberId,
+        label,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+}
 
 function getBaseUrl() {
     return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
@@ -414,12 +424,12 @@ function showMemberDetails(id) {
     ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const balance = member.balance || 0;
-    const balanceEdits = getBalanceEdits().filter(e => e.memberId === id);
+    const memberLog = getMemberLog().filter(e => e.memberId === id);
 
     const allActivity = [
         ...payments.map(p => ({ ts: p.date, label: `💳 רכישה — ${p.quantity ? p.quantity + ' כניסות' : ''} ₪${p.amount}` })),
         ...allCheckins.map(c => ({ ts: c.ts, label: `🚪 כניסה — ${c.label}` })),
-        ...balanceEdits.map(e => ({ ts: e.timestamp, label: `✏️ עריכת יתרה במשרד: ${e.oldBalance} ← ${e.newBalance}` }))
+        ...memberLog.map(e => ({ ts: e.timestamp, label: e.label }))
     ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
     let balanceBadge;
@@ -542,6 +552,7 @@ function updateMember(id) {
         photo: pendingPhotoData
     };
     _saveMember(updated);
+    _logMemberAction(id, '✏️ עריכת פרטים אישיים');
     pendingPhotoData = null;
     closeModal();
     showToast('עודכן בהצלחה ✓');
@@ -575,14 +586,7 @@ function saveEditedBalance(id) {
     const oldVal = member?.balance || 0;
     _updateMember(id, { balance: val });
     if (val !== oldVal) {
-        _saveBalanceEdit({
-            id: generateId(),
-            memberId: id,
-            oldBalance: oldVal,
-            newBalance: val,
-            terminal: DB.getSetting('terminalName', 'ראשי'),
-            timestamp: new Date().toISOString()
-        });
+        _logMemberAction(id, `✏️ עריכת יתרה במשרד: ${oldVal} ← ${val}`);
     }
     closeModal();
     showToast('יתרה עודכנה ✓');
@@ -1082,6 +1086,7 @@ function assignNfc(memberId) {
 
     ndef.write({ records: [{ recordType: 'url', data: url }] }).then(() => {
         _updateMember(memberId, { nfcTag: url });
+        _logMemberAction(memberId, '📱 שיוך כרטיס NFC');
         showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
     }).catch(err => {
         showToast('שגיאה בכתיבה לכרטיס: ' + (err.message || 'ודא שהכרטיס ניתן לכתיבה'));
@@ -1091,6 +1096,7 @@ function assignNfc(memberId) {
 function removeNfc(memberId) {
     if (!confirm('לבטל את שיוך כרטיס ה-NFC למשתתף זה?')) return;
     _updateMember(memberId, { nfcTag: null });
+    _logMemberAction(memberId, '🚫 ביטול שיוך כרטיס NFC');
     closeModal();
     showToast('שיוך הכרטיס בוטל');
 }
@@ -1112,6 +1118,7 @@ function showVipSettings(id) {
 
 function setMemberVip(id, slots) {
     _updateMember(id, { vipSlots: slots });
+    _logMemberAction(id, slots > 0 ? `⭐ הגדרת כניסה חופשית: ${slots} ${slots>1?'אנשים':'אדם'}` : '⭐ ביטול כניסה חופשית');
     closeModal();
     showToast(slots > 0 ? `כניסה חופשית הוגדרה ל-${slots} ${slots>1?'אנשים':'אדם'} ✓` : 'כניסה חופשית בוטלה');
 }
@@ -1651,7 +1658,6 @@ async function resetAllData() {
     await batchDelete('payments');
     await batchDelete('checkins');
     await batchDelete('guestcheckins');
-    await batchDelete('balanceEdits');
 
     const memSnap = await _db.collection('members').get();
     for (let i = 0; i < memSnap.docs.length; i += 400) {
@@ -1662,7 +1668,6 @@ async function resetAllData() {
 
     _payments = [];
     _checkins = [];
-    _balanceEdits = [];
     _members = _members.map(m => ({ ...m, balance: 0 }));
     renderCurrentPage();
     showToast('הנתונים נמחקו ✓');
