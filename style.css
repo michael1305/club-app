@@ -549,7 +549,7 @@ body {
     right: 0;
     bottom: 0;
     background: rgba(0,0,0,0.5);
-    align-items: flex-end;
+    align-items: stretch;
     justify-content: center;
     z-index: 200;
     display: none;
@@ -567,10 +567,10 @@ body {
 
 .modal {
     background: white;
-    border-radius: 20px 20px 0 0;
+    border-radius: 0;
     width: 100%;
     max-width: 500px;
-    max-height: 85vh;
+    height: 100%;
     overflow-y: auto;
     animation: slideUp 0.3s ease;
 }
