@@ -418,60 +418,75 @@ function showMemberDetails(id) {
     else balanceBadge = `<span class="badge badge-success">${balance} כניסות נותרו</span>`;
 
     openModal(member.name, `
-        <div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 90)}</div>
-        <div style="margin-bottom:16px">
-            <p>📞 ${escHtml(member.phone)}</p>
-            ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
-            <p>📅 הצטרף: ${formatDate(new Date(member.createdAt))}</p>
-            <p>יתרת כניסות: ${balanceBadge}</p>
-            <p>💰 שילם סה"כ: ₪${totalPaid}</p>
-            <p>🚪 כניסות בפועל: ${allCheckins.length}</p>
-            <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
-            <p>⭐ כניסה חופשית: ${(member.vipSlots||0) > 0 ? `<span class="badge badge-warning">${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="tab-btn active" id="md-tab-info" onclick="switchMemberDetailsTab('info')">פרטים ופעולות</button>
+            <button class="tab-btn" id="md-tab-history" onclick="switchMemberDetailsTab('history')">היסטוריה</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
-            <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
-            <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
-            <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
-            <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
-            ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
-            <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
-            <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
+        <div id="md-panel-info" class="checkin-tab-content active">
+            <div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 90)}</div>
+            <div style="margin-bottom:16px">
+                <p>📞 ${escHtml(member.phone)}</p>
+                ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
+                <p>📅 הצטרף: ${formatDate(new Date(member.createdAt))}</p>
+                <p>יתרת כניסות: ${balanceBadge}</p>
+                <p>💰 שילם סה"כ: ₪${totalPaid}</p>
+                <p>🚪 כניסות בפועל: ${allCheckins.length}</p>
+                <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
+                <p>⭐ כניסה חופשית: ${(member.vipSlots||0) > 0 ? `<span class="badge badge-warning">${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
+                <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
+                <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
+                <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
+                <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
+                ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
+                <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
+                <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
+            </div>
         </div>
-        <div style="display:flex;gap:8px;margin-top:20px">
-            <button class="tab-btn active" id="mh-tab-list" onclick="switchMemberHistoryTab('list')">כניסות ורכישות</button>
-            <button class="tab-btn" id="mh-tab-all" onclick="switchMemberHistoryTab('all')">כל הפעולות</button>
-        </div>
-        <div id="mh-panel-list" class="checkin-tab-content active">
-            ${payments.length > 0 ? `
-            <h4 style="margin-top:16px;margin-bottom:10px">היסטוריית רכישות</h4>
-            ${payments.slice(-5).reverse().map(p => `
-                <div class="recent-item">
-                    <span>${formatDate(new Date(p.date))}</span>
-                    <span>${p.quantity ? p.quantity + ' כניסות' : ''}</span>
-                    <span>₪${p.amount}</span>
-                </div>
-            `).join('')}` : ''}
-            ${allCheckins.length > 0 ? `
-            <h4 style="margin-top:16px;margin-bottom:10px">כניסות אחרונות</h4>
-            ${allCheckins.slice(-5).reverse().map(c => `
-                <div class="recent-item">
-                    <span>${formatDateTime(new Date(c.ts))}</span>
-                    <span>${c.label}</span>
-                </div>
-            `).join('')}` : ''}
-            ${payments.length === 0 && allCheckins.length === 0 ? '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>' : ''}
-        </div>
-        <div id="mh-panel-all" class="checkin-tab-content">
-            ${allActivity.length > 0 ? allActivity.slice(0, 20).map(a => `
-                <div class="recent-item">
-                    <span>${formatDateTime(new Date(a.ts))}</span>
-                    <span>${a.label}</span>
-                </div>
-            `).join('') : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>'}
+        <div id="md-panel-history" class="checkin-tab-content">
+            <div style="display:flex;gap:8px;margin-bottom:16px">
+                <button class="tab-btn active" id="mh-tab-list" onclick="switchMemberHistoryTab('list')">כניסות ורכישות</button>
+                <button class="tab-btn" id="mh-tab-all" onclick="switchMemberHistoryTab('all')">כל הפעולות</button>
+            </div>
+            <div id="mh-panel-list" class="checkin-tab-content active">
+                ${payments.length > 0 ? `
+                <h4 style="margin-top:16px;margin-bottom:10px">היסטוריית רכישות</h4>
+                ${payments.slice(-5).reverse().map(p => `
+                    <div class="recent-item">
+                        <span>${formatDate(new Date(p.date))}</span>
+                        <span>${p.quantity ? p.quantity + ' כניסות' : ''}</span>
+                        <span>₪${p.amount}</span>
+                    </div>
+                `).join('')}` : ''}
+                ${allCheckins.length > 0 ? `
+                <h4 style="margin-top:16px;margin-bottom:10px">כניסות אחרונות</h4>
+                ${allCheckins.slice(-5).reverse().map(c => `
+                    <div class="recent-item">
+                        <span>${formatDateTime(new Date(c.ts))}</span>
+                        <span>${c.label}</span>
+                    </div>
+                `).join('')}` : ''}
+                ${payments.length === 0 && allCheckins.length === 0 ? '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>' : ''}
+            </div>
+            <div id="mh-panel-all" class="checkin-tab-content">
+                ${allActivity.length > 0 ? allActivity.slice(0, 20).map(a => `
+                    <div class="recent-item">
+                        <span>${formatDateTime(new Date(a.ts))}</span>
+                        <span>${a.label}</span>
+                    </div>
+                `).join('') : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>'}
+            </div>
         </div>
     `);
+}
+
+function switchMemberDetailsTab(tab) {
+    ['info', 'history'].forEach(t => {
+        document.getElementById('md-tab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('md-panel-' + t).classList.toggle('active', t === tab);
+    });
 }
 
 function switchMemberHistoryTab(tab) {
