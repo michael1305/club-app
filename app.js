@@ -399,6 +399,11 @@ function showMemberDetails(id) {
 
     const payments = getPayments().filter(p => p.memberId === id);
     const checkins = getCheckins().filter(c => c.memberId === id);
+    const vipCheckins = getGuestCheckins().filter(gc => gc.type === 'vip' && gc.refId === id);
+    const allCheckins = [
+        ...checkins.map(c => ({ ts: c.timestamp, label: c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)' })),
+        ...vipCheckins.map(c => ({ ts: c.timestamp, label: `⭐ כניסה חופשית (${c.count})` }))
+    ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const balance = member.balance || 0;
 
@@ -415,7 +420,7 @@ function showMemberDetails(id) {
             <p>📅 הצטרף: ${formatDate(new Date(member.createdAt))}</p>
             <p>יתרת כניסות: ${balanceBadge}</p>
             <p>💰 שילם סה"כ: ₪${totalPaid}</p>
-            <p>🚪 כניסות בפועל: ${checkins.length}</p>
+            <p>🚪 כניסות בפועל: ${allCheckins.length}</p>
             <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
             <p>⭐ כניסה חופשית: ${(member.vipSlots||0) > 0 ? `<span class="badge badge-warning">${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
         </div>
@@ -438,12 +443,12 @@ function showMemberDetails(id) {
                 <span>₪${p.amount}</span>
             </div>
         `).join('')}` : ''}
-        ${checkins.length > 0 ? `
+        ${allCheckins.length > 0 ? `
         <h4 style="margin-top:20px;margin-bottom:10px">כניסות אחרונות</h4>
-        ${checkins.slice(-5).reverse().map(c => `
+        ${allCheckins.slice(-5).reverse().map(c => `
             <div class="recent-item">
-                <span>${formatDateTime(new Date(c.timestamp))}</span>
-                <span>${c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)'}</span>
+                <span>${formatDateTime(new Date(c.ts))}</span>
+                <span>${c.label}</span>
             </div>
         `).join('')}` : ''}
     `);
