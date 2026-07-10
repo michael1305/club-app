@@ -407,6 +407,11 @@ function showMemberDetails(id) {
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const balance = member.balance || 0;
 
+    const allActivity = [
+        ...payments.map(p => ({ ts: p.date, label: `💳 רכישה — ${p.quantity ? p.quantity + ' כניסות' : ''} ₪${p.amount}` })),
+        ...allCheckins.map(c => ({ ts: c.ts, label: `🚪 כניסה — ${c.label}` }))
+    ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
     let balanceBadge;
     if (balance <= 0) balanceBadge = `<span class="badge badge-danger">אין יתרה - יש להוסיף כניסות</span>`;
     else if (balance <= 2) balanceBadge = `<span class="badge badge-warning">${balance} כניסות נותרו</span>`;
@@ -434,24 +439,46 @@ function showMemberDetails(id) {
             <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
             <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
         </div>
-        ${payments.length > 0 ? `
-        <h4 style="margin-top:20px;margin-bottom:10px">היסטוריית רכישות</h4>
-        ${payments.slice(-5).reverse().map(p => `
-            <div class="recent-item">
-                <span>${formatDate(new Date(p.date))}</span>
-                <span>${p.quantity ? p.quantity + ' כניסות' : ''}</span>
-                <span>₪${p.amount}</span>
-            </div>
-        `).join('')}` : ''}
-        ${allCheckins.length > 0 ? `
-        <h4 style="margin-top:20px;margin-bottom:10px">כניסות אחרונות</h4>
-        ${allCheckins.slice(-5).reverse().map(c => `
-            <div class="recent-item">
-                <span>${formatDateTime(new Date(c.ts))}</span>
-                <span>${c.label}</span>
-            </div>
-        `).join('')}` : ''}
+        <div style="display:flex;gap:8px;margin-top:20px">
+            <button class="tab-btn active" id="mh-tab-list" onclick="switchMemberHistoryTab('list')">כניסות ורכישות</button>
+            <button class="tab-btn" id="mh-tab-all" onclick="switchMemberHistoryTab('all')">כל הפעולות</button>
+        </div>
+        <div id="mh-panel-list" class="checkin-tab-content active">
+            ${payments.length > 0 ? `
+            <h4 style="margin-top:16px;margin-bottom:10px">היסטוריית רכישות</h4>
+            ${payments.slice(-5).reverse().map(p => `
+                <div class="recent-item">
+                    <span>${formatDate(new Date(p.date))}</span>
+                    <span>${p.quantity ? p.quantity + ' כניסות' : ''}</span>
+                    <span>₪${p.amount}</span>
+                </div>
+            `).join('')}` : ''}
+            ${allCheckins.length > 0 ? `
+            <h4 style="margin-top:16px;margin-bottom:10px">כניסות אחרונות</h4>
+            ${allCheckins.slice(-5).reverse().map(c => `
+                <div class="recent-item">
+                    <span>${formatDateTime(new Date(c.ts))}</span>
+                    <span>${c.label}</span>
+                </div>
+            `).join('')}` : ''}
+            ${payments.length === 0 && allCheckins.length === 0 ? '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>' : ''}
+        </div>
+        <div id="mh-panel-all" class="checkin-tab-content">
+            ${allActivity.length > 0 ? allActivity.slice(0, 20).map(a => `
+                <div class="recent-item">
+                    <span>${formatDateTime(new Date(a.ts))}</span>
+                    <span>${a.label}</span>
+                </div>
+            `).join('') : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות עדיין</p>'}
+        </div>
     `);
+}
+
+function switchMemberHistoryTab(tab) {
+    ['list', 'all'].forEach(t => {
+        document.getElementById('mh-tab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('mh-panel-' + t).classList.toggle('active', t === tab);
+    });
 }
 
 function showEditMember(id) {
