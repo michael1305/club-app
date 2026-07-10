@@ -749,11 +749,11 @@ let _lastCheckinMemberTs = 0;
 function doCheckin(memberId) {
     if (_checkinOverlayMemberId) return;
     const now = Date.now();
-    if (memberId === _lastCheckinMemberId && now - _lastCheckinMemberTs < 5000) return;
+    if (memberId === _lastCheckinMemberId && now - _lastCheckinMemberTs < 5000) { restartQrScannerIfActive(); return; }
     _lastCheckinMemberId = memberId;
     _lastCheckinMemberTs = now;
     const member = getMembers().find(m => m.id === memberId);
-    if (!member) { showCheckinResult('משתתף לא נמצא', false); return; }
+    if (!member) { showCheckinResult('משתתף לא נמצא', false); restartQrScannerIfActive(); return; }
 
     if ((member.vipSlots || 0) > 0) {
         doVipCheckin(member);
@@ -810,6 +810,7 @@ function performCheckin(memberId, entryType) {
     if (!member) {
         closeModal();
         showCheckinResult('משתתף לא נמצא', false);
+        restartQrScannerIfActive();
         return;
     }
 
@@ -818,6 +819,7 @@ function performCheckin(memberId, entryType) {
 
     if (balance < cost) {
         showCheckinResult(`✕ אין מספיק יתרה (נדרש ${cost}, יש ${balance})`, false);
+        restartQrScannerIfActive();
         return;
     }
 
@@ -846,6 +848,7 @@ function performCheckin(memberId, entryType) {
 
     // Restart NFC automatically for the next person
     if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    restartQrScannerIfActive();
 }
 
 function showCheckinResult(msg, success) {
@@ -916,6 +919,13 @@ function stopQrScanner() {
     const video = document.getElementById('qr-video');
     video.style.display = 'none';
     document.getElementById('qr-reader').style.display = 'block';
+}
+
+// Resume scanning for the next person after a QR-triggered check-in finishes
+function restartQrScannerIfActive() {
+    if (!qrStream && document.getElementById('checkin-qr')?.classList.contains('active')) {
+        setTimeout(startQrScanner, 300);
+    }
 }
 
 // ===== NFC =====
@@ -1111,6 +1121,7 @@ function performVipCheckin(memberId, count) {
     closeModal();
     showCheckinResult(`✓ ${member.name} — כניסה חופשית (${count} ${count>1?'אנשים':'אדם'})`, true);
     if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    restartQrScannerIfActive();
 }
 
 // ===== GUEST LIST =====
