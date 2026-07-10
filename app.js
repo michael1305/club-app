@@ -11,6 +11,7 @@ let _payments = [];
 let _checkins = [];
 let _guests = [];
 let _guestCheckins = [];
+let _balanceEdits = [];
 let _cloudSettings = {};
 
 // Shared settings (eventName, singlePrice, couplePrice, activeDays) live in Firestore.
@@ -82,6 +83,11 @@ function _initFirebase() {
             _onDataChange();
         }, () => {});
 
+        _db.collection('balanceEdits').onSnapshot(snap => {
+            _balanceEdits = snap.docs.map(d => d.data());
+            _onDataChange();
+        }, () => {});
+
         _migrateFromLocalStorage();
     }).catch(() => {
         showToast('שגיאת חיבור — נסה שוב');
@@ -125,6 +131,7 @@ function getPayments()      { return _payments; }
 function getCheckins()      { return _checkins; }
 function getGuests()        { return _guests; }
 function getGuestCheckins() { return _guestCheckins; }
+function getBalanceEdits()  { return _balanceEdits; }
 
 // Targeted async writes to Firestore
 function _saveMember(member)              { if (_db) _db.collection('members').doc(member.id).set(member); }
@@ -136,6 +143,7 @@ function _saveGuest(g)                    { if (_db) _db.collection('guests').do
 function _deleteGuest(id)                 { if (_db) _db.collection('guests').doc(id).delete(); }
 function _saveGuestCheckin(gc)            { if (_db) _db.collection('guestcheckins').doc(gc.id).set(gc); }
 function _deleteGuestCheckin(id)          { if (_db) _db.collection('guestcheckins').doc(id).delete(); }
+function _saveBalanceEdit(e)              { if (_db) _db.collection('balanceEdits').doc(e.id).set(e); }
 
 function getBaseUrl() {
     return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
@@ -406,10 +414,12 @@ function showMemberDetails(id) {
     ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
     const balance = member.balance || 0;
+    const balanceEdits = getBalanceEdits().filter(e => e.memberId === id);
 
     const allActivity = [
         ...payments.map(p => ({ ts: p.date, label: `💳 רכישה — ${p.quantity ? p.quantity + ' כניסות' : ''} ₪${p.amount}` })),
-        ...allCheckins.map(c => ({ ts: c.ts, label: `🚪 כניסה — ${c.label}` }))
+        ...allCheckins.map(c => ({ ts: c.ts, label: `🚪 כניסה — ${c.label}` })),
+        ...balanceEdits.map(e => ({ ts: e.timestamp, label: `✏️ עריכת יתרה במשרד: ${e.oldBalance} ← ${e.newBalance}` }))
     ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
 
     let balanceBadge;
@@ -561,7 +571,19 @@ function showEditBalance(id) {
 function saveEditedBalance(id) {
     const val = parseInt(document.getElementById('edit-balance-val').value, 10);
     if (isNaN(val) || val < 0) { showToast('יתרה לא תקינה'); return; }
+    const member = getMembers().find(m => m.id === id);
+    const oldVal = member?.balance || 0;
     _updateMember(id, { balance: val });
+    if (val !== oldVal) {
+        _saveBalanceEdit({
+            id: generateId(),
+            memberId: id,
+            oldBalance: oldVal,
+            newBalance: val,
+            terminal: DB.getSetting('terminalName', 'ראשי'),
+            timestamp: new Date().toISOString()
+        });
+    }
     closeModal();
     showToast('יתרה עודכנה ✓');
 }
@@ -1629,6 +1651,7 @@ async function resetAllData() {
     await batchDelete('payments');
     await batchDelete('checkins');
     await batchDelete('guestcheckins');
+    await batchDelete('balanceEdits');
 
     const memSnap = await _db.collection('members').get();
     for (let i = 0; i < memSnap.docs.length; i += 400) {
@@ -1639,6 +1662,7 @@ async function resetAllData() {
 
     _payments = [];
     _checkins = [];
+    _balanceEdits = [];
     _members = _members.map(m => ({ ...m, balance: 0 }));
     renderCurrentPage();
     showToast('הנתונים נמחקו ✓');
