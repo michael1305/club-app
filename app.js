@@ -420,7 +420,7 @@ function showMemberDetails(id) {
     openModal(member.name, `
         <div style="display:flex;gap:8px;margin-bottom:16px">
             <button class="tab-btn active" id="md-tab-info" onclick="switchMemberDetailsTab('info')">פרטים ופעולות</button>
-            <button class="tab-btn" id="md-tab-history" onclick="switchMemberDetailsTab('history')">היסטוריה</button>
+            <button class="tab-btn" id="md-tab-history" onclick="switchMemberDetailsTab('history')">כניסות ורכישות</button>
         </div>
         <div id="md-panel-info" class="checkin-tab-content active">
             <div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 90)}</div>
