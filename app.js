@@ -380,6 +380,10 @@ function showAddMember() {
             <label>אימייל (אופציונלי)</label>
             <input type="email" id="member-email" placeholder="email@example.com">
         </div>
+        <div class="form-group">
+            <label>תאריך לידה (אופציונלי)</label>
+            <input type="date" id="member-birthdate">
+        </div>
         ${photoFieldHtml(null)}
         <button class="btn btn-primary btn-block" onclick="addMember()">הוסף משתתף</button>
     `);
@@ -390,6 +394,7 @@ function addMember() {
     const name = document.getElementById('member-name').value.trim();
     const phone = document.getElementById('member-phone').value.trim();
     const email = document.getElementById('member-email').value.trim();
+    const birthDate = document.getElementById('member-birthdate').value;
 
     if (!name) { showToast('נא להזין שם'); return; }
     if (!phone) { showToast('נא להזין טלפון'); return; }
@@ -399,6 +404,7 @@ function addMember() {
         name,
         phone,
         email,
+        birthDate: birthDate || null,
         photo: pendingPhotoData,
         nfcTag: null,
         balance: 0,
@@ -447,6 +453,7 @@ function showMemberDetails(id) {
             <div style="margin-bottom:16px">
                 <p>📞 ${escHtml(member.phone)}</p>
                 ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
+                ${member.birthDate ? `<p>🎂 תאריך לידה: ${formatDate(new Date(member.birthDate + 'T00:00:00'))}</p>` : ''}
                 <p>📅 הצטרף: ${formatDate(new Date(member.createdAt))}</p>
                 <p>יתרת כניסות: ${balanceBadge}</p>
                 <p>💰 שילם סה"כ: ₪${totalPaid}</p>
@@ -534,6 +541,10 @@ function showEditMember(id) {
             <label>אימייל</label>
             <input type="email" id="edit-email" value="${escHtml(member.email || '')}">
         </div>
+        <div class="form-group">
+            <label>תאריך לידה</label>
+            <input type="date" id="edit-birthdate" value="${member.birthDate || ''}">
+        </div>
         ${photoFieldHtml(member.photo)}
         ${member.photo ? `<button class="btn btn-secondary" onclick="document.getElementById('photo-preview').innerHTML='<div class=&quot;avatar avatar-placeholder&quot; style=&quot;width:90px;height:90px;font-size:36px&quot;>?</div>';pendingPhotoData=null">הסר תמונה</button>` : ''}
         <button class="btn btn-primary btn-block" onclick="updateMember('${id}')" style="margin-top:12px">שמור שינויים</button>
@@ -549,6 +560,7 @@ function updateMember(id) {
         name: document.getElementById('edit-name').value.trim(),
         phone: document.getElementById('edit-phone').value.trim(),
         email: document.getElementById('edit-email').value.trim(),
+        birthDate: document.getElementById('edit-birthdate').value || null,
         photo: pendingPhotoData
     };
     _saveMember(updated);
