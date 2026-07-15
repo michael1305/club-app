@@ -895,10 +895,11 @@ function doCheckin(memberId) {
 
     const birthdayEl = document.getElementById('co-birthday');
     if (birthdayWeekStart) {
+        const [, bm, bd] = member.birthDate.split('-').map(Number);
         birthdayEl.style.display = 'block';
         birthdayEl.textContent = birthdayAvailable
-            ? '🎂 השבוע יום ההולדת שלו/שלה — מגיעה כניסה חופשית!'
-            : '🎂 השבוע יום ההולדת שלו/שלה (כניסת יום ההולדת כבר נוצלה השנה)';
+            ? `🎂 יום ההולדת שלו/שלה ב-${bd}.${bm} — מגיעה כניסה חופשית!`
+            : `🎂 יום ההולדת שלו/שלה ב-${bd}.${bm} (כניסת יום ההולדת כבר נוצלה השנה)`;
     } else {
         birthdayEl.style.display = 'none';
     }
