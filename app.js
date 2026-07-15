@@ -381,7 +381,7 @@ function showAddMember() {
             <input type="email" id="member-email" placeholder="email@example.com">
         </div>
         <div class="form-group">
-            <label>תאריך לידה (אופציונלי)</label>
+            <label>תאריך לידה</label>
             <input type="date" id="member-birthdate">
         </div>
         ${photoFieldHtml(null)}
@@ -398,13 +398,14 @@ function addMember() {
 
     if (!name) { showToast('נא להזין שם'); return; }
     if (!phone) { showToast('נא להזין טלפון'); return; }
+    if (!birthDate) { showToast('נא להזין תאריך לידה'); return; }
 
     const member = {
         id: generateId(),
         name,
         phone,
         email,
-        birthDate: birthDate || null,
+        birthDate,
         photo: pendingPhotoData,
         nfcTag: null,
         balance: 0,
@@ -555,12 +556,20 @@ function updateMember(id) {
     const member = getMembers().find(m => m.id === id);
     if (!member) return;
 
+    const name = document.getElementById('edit-name').value.trim();
+    const phone = document.getElementById('edit-phone').value.trim();
+    const birthDate = document.getElementById('edit-birthdate').value;
+
+    if (!name) { showToast('נא להזין שם'); return; }
+    if (!phone) { showToast('נא להזין טלפון'); return; }
+    if (!birthDate) { showToast('נא להזין תאריך לידה'); return; }
+
     const updated = {
         ...member,
-        name: document.getElementById('edit-name').value.trim(),
-        phone: document.getElementById('edit-phone').value.trim(),
+        name,
+        phone,
         email: document.getElementById('edit-email').value.trim(),
-        birthDate: document.getElementById('edit-birthdate').value || null,
+        birthDate,
         photo: pendingPhotoData
     };
     _saveMember(updated);
