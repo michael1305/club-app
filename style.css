@@ -171,6 +171,11 @@ body {
     color: white;
 }
 
+.btn-warning {
+    background: var(--warning);
+    color: #4a3b00;
+}
+
 .btn-block {
     width: 100%;
     display: block;

@@ -426,7 +426,7 @@ function showMemberDetails(id) {
     const checkins = getCheckins().filter(c => c.memberId === id);
     const vipCheckins = getGuestCheckins().filter(gc => gc.type === 'vip' && gc.refId === id);
     const allCheckins = [
-        ...checkins.map(c => ({ ts: c.timestamp, label: c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)' })),
+        ...checkins.map(c => ({ ts: c.timestamp, label: c.entryType === 'birthday' ? '🎂 כניסת יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)' })),
         ...vipCheckins.map(c => ({ ts: c.timestamp, label: `⭐ כניסה חופשית (${c.count})` }))
     ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
     const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
@@ -808,6 +808,67 @@ let _checkinOverlayMemberId = null;
 let _lastCheckinMemberId = null;
 let _lastCheckinMemberTs = 0;
 
+function getBirthdayWeekStart(member) {
+    if (!member.birthDate) return null;
+    const [, bm, bd] = member.birthDate.split('-').map(Number);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Check the birthday occurrence in the previous/current/next calendar year,
+    // since a birthday week can straddle Dec 31 / Jan 1.
+    for (const yearOffset of [-1, 0, 1]) {
+        const bday = new Date(today.getFullYear() + yearOffset, bm - 1, bd);
+        const weekStart = new Date(bday);
+        weekStart.setDate(bday.getDate() - bday.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        if (today >= weekStart && today <= weekEnd) return formatDateFile(weekStart);
+    }
+    return null;
+}
+
+function isBirthdayEntryAvailable(member) {
+    const weekStart = getBirthdayWeekStart(member);
+    if (!weekStart) return false;
+    return member.lastBirthdayCheckinWeek !== weekStart;
+}
+
+function performBirthdayCheckin(memberId) {
+    hideCheckinOverlay();
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) { showCheckinResult('משתתף לא נמצא', false); restartQrScannerIfActive(); return; }
+
+    const weekStart = getBirthdayWeekStart(member);
+    if (!weekStart || member.lastBirthdayCheckinWeek === weekStart) {
+        showCheckinResult('כניסת יום ההולדת כבר נוצלה השנה', false);
+        restartQrScannerIfActive();
+        return;
+    }
+
+    _updateMember(memberId, { lastBirthdayCheckinWeek: weekStart });
+
+    const checkin = {
+        id: generateId(),
+        memberId,
+        entryType: 'birthday',
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    };
+    _saveCheckin(checkin);
+    _logMemberAction(memberId, '🎂 כניסת יום הולדת חינם');
+
+    showCheckinResult(`🎂 מזל טוב ${member.name}! כניסת יום הולדת חינם`, true);
+    showToast('כניסת יום הולדת בוצעה ✓');
+
+    if (document.getElementById('page-checkin').classList.contains('active')) {
+        renderCheckinMembers();
+    }
+
+    if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    restartQrScannerIfActive();
+}
+
 function doCheckin(memberId) {
     if (_checkinOverlayMemberId) return;
     const now = Date.now();
@@ -823,10 +884,12 @@ function doCheckin(memberId) {
     }
 
     const balance = member.balance || 0;
+    const birthdayAvailable = isBirthdayEntryAvailable(member);
 
     const overlay = document.getElementById('checkin-overlay');
     if (!overlay) {
         // fallback for cached old index.html
+        if (balance <= 0 && birthdayAvailable) { performBirthdayCheckin(memberId); return; }
         showCheckinResult(balance <= 0 ? `✕ אין יתרה — יש להוסיף כניסות` : `✓ ${member.name}`, balance > 0);
         return;
     }
@@ -840,6 +903,7 @@ function doCheckin(memberId) {
         : `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
 
     document.getElementById('co-actions').innerHTML = `
+        ${birthdayAvailable ? `<button class="btn btn-warning btn-block" style="padding:18px;font-size:1.2rem" onclick="performBirthdayCheckin('${memberId}')">🎂 כניסת יום הולדת (חינם)</button>` : ''}
         ${balance > 0 ? `
         <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
         <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
@@ -1387,7 +1451,7 @@ function showReport() {
     const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
-    const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
 
     const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
@@ -1417,6 +1481,7 @@ function showReport() {
             let type;
             if (c.entryType === 'vip-single') type = '⭐ כניסה חופשית (1)';
             else if (c.entryType === 'vip-couple') type = '⭐ כניסה חופשית (2)';
+            else if (c.entryType === 'birthday') type = '🎂 כניסת יום הולדת';
             else if (c.entryType === 'couple') type = '🚪 כניסה זוגית';
             else type = '🚪 כניסה בודדת';
             allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
@@ -1473,7 +1538,7 @@ function exportExcel(share = false) {
         .map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
             'שם משתתף':  members.find(m => m.id === c.memberId)?.name || 'לא ידוע',
-            'סוג כניסה': c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
+            'סוג כניסה': c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'birthday' ? 'יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
             'מסוף':      c.terminal || 'ראשי',
             'כמות':      c.entryType === 'couple' || c.entryType === 'vip-couple' ? 2 : 1
         }));
