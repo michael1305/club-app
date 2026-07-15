@@ -828,12 +828,6 @@ function getBirthdayWeekStart(member) {
     return null;
 }
 
-function isBirthdayEntryAvailable(member) {
-    const weekStart = getBirthdayWeekStart(member);
-    if (!weekStart) return false;
-    return member.lastBirthdayCheckinWeek !== weekStart;
-}
-
 function performBirthdayCheckin(memberId) {
     hideCheckinOverlay();
     const member = getMembers().find(m => m.id === memberId);
@@ -884,7 +878,8 @@ function doCheckin(memberId) {
     }
 
     const balance = member.balance || 0;
-    const birthdayAvailable = isBirthdayEntryAvailable(member);
+    const birthdayWeekStart = getBirthdayWeekStart(member);
+    const birthdayAvailable = !!birthdayWeekStart && member.lastBirthdayCheckinWeek !== birthdayWeekStart;
 
     const overlay = document.getElementById('checkin-overlay');
     if (!overlay) {
@@ -897,6 +892,16 @@ function doCheckin(memberId) {
     _checkinOverlayMemberId = memberId;
     document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
     document.getElementById('co-name').textContent = member.name;
+
+    const birthdayEl = document.getElementById('co-birthday');
+    if (birthdayWeekStart) {
+        birthdayEl.style.display = 'block';
+        birthdayEl.textContent = birthdayAvailable
+            ? '🎂 השבוע יום ההולדת שלו/שלה — מגיעה כניסה חופשית!'
+            : '🎂 השבוע יום ההולדת שלו/שלה (כניסת יום ההולדת כבר נוצלה השנה)';
+    } else {
+        birthdayEl.style.display = 'none';
+    }
 
     document.getElementById('co-balance').innerHTML = balance <= 0
         ? `<span style="color:var(--danger);font-weight:700">אין יתרת כניסות</span>`
