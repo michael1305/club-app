@@ -468,6 +468,7 @@ function showMemberDetails(id) {
                 <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
                 <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
                 <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
+                <button class="btn btn-secondary" onclick="sendMemberLink('${id}')">💬 שלח קישור בוואטסאפ</button>
                 <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
                 ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
                 <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
@@ -612,6 +613,17 @@ function saveEditedBalance(id) {
     }
     closeModal();
     showToast('יתרה עודכנה ✓');
+}
+
+function sendMemberLink(id) {
+    const member = getMembers().find(m => m.id === id);
+    if (!member) return;
+    const url = getUserUrl(id);
+    const digits = (member.phone || '').replace(/\D/g, '');
+    const intlPhone = digits.replace(/^0/, '972');
+    if (!intlPhone) { showToast('לא קיים מספר טלפון למשתתף זה'); return; }
+    const text = encodeURIComponent(`שלום ${member.name}, הנה הקישור לכרטיסייה האישית שלך במועדון:\n${url}\n\nאפשר להוסיף אותו למסך הבית בטלפון לגישה מהירה.`);
+    window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
 }
 
 function showMemberQR(id) {
