@@ -212,7 +212,7 @@ function renderMembers() {
     document.getElementById('stat-members-vip').textContent = vipCount;
 
     if (filtered.length === 0) {
-        list.innerHTML = '<div style="text-align:center;padding:40px;color:#b2bec3;">אין משתתפים עדיין. לחץ "+ הוספה" כדי להתחיל</div>';
+        list.innerHTML = '<div style="text-align:center;padding:40px;color:#b2bec3;">אין חברי מועדון עדיין. לחץ "+ הוספה" כדי להתחיל</div>';
         return;
     }
 
@@ -679,7 +679,7 @@ function filterPayments() { renderPayments(); }
 function showAddPayment() {
     const members = getMembers();
     if (members.length === 0) {
-        showToast('הוסף משתתפים קודם');
+        showToast('הוסף חברי מועדון קודם');
         return;
     }
 
@@ -1484,8 +1484,9 @@ function showReport() {
     document.getElementById('stat-active-subs').textContent  = zeroBalance;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
+    const entriesDetail = document.getElementById('stat-entries-detail');
+    if (entriesDetail) entriesDetail.textContent = birthdayCount > 0 ? `🎂 ${birthdayCount}` : '';
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
-    document.getElementById('stat-birthday-checkins').textContent = birthdayCount;
 
     // Unified activity list
     const allActivity = [];
@@ -1620,9 +1621,9 @@ function exportExcel(share = false) {
             'תאריך הצטרפות': formatDate(new Date(m.createdAt))
         })),
         { 'שם': '', 'טלפון': '', 'אימייל': '', 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' },
-        { 'שם': `סה"כ: ${members.length} משתתפים`, 'טלפון': `VIP: ${vipCount}`, 'אימייל': `רגילים: ${regularCount}`, 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' }
+        { 'שם': `סה"כ: ${members.length} חברי מועדון`, 'טלפון': `VIP: ${vipCount}`, 'אימייל': `רגילים: ${regularCount}`, 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' }
     ];
-    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(memberRows)), 'משתתפים');
+    XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(memberRows)), 'חברי מועדון');
 
     if (share && navigator.share) {
         const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -1649,7 +1650,7 @@ function shareReport() {
     const eventName = DB.getSetting('eventName', 'מועדון');
 
     const text = `📊 דוח ${eventName} — ${period}
-👥 משתתפים: ${members}
+👥 חברי מועדון: ${members}
 💰 הכנסות: ${revenue}
 🎫 כרטיסיות שנמכרו: ${tickets}
 🚪 ניקובים: ${entries}
@@ -1744,7 +1745,7 @@ function saveDays() {
 }
 
 async function resetAllData() {
-    if (!confirm('מחיקת כל הכניסות, הרכישות ואיפוס יתרות המשתתפים?\nהפעולה בלתי הפיכה!')) return;
+    if (!confirm('מחיקת כל הכניסות, הרכישות ואיפוס יתרות חברי המועדון?\nהפעולה בלתי הפיכה!')) return;
     if (!confirm('אישור סופי — להמשיך?')) return;
 
     const batchDelete = async col => {

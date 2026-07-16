@@ -28,7 +28,7 @@
         <nav class="bottom-nav">
             <button class="nav-btn active" data-page="members" onclick="showPage('members')">
                 <span class="nav-icon">👥</span>
-                <span>משתתפים</span>
+                <span>חברי מועדון</span>
             </button>
             <button class="nav-btn" data-page="checkin" onclick="showPage('checkin')">
                 <span class="nav-icon">📷</span>
@@ -137,7 +137,7 @@
                     <div class="stats-grid">
                         <div class="stat">
                             <span class="stat-value" id="stat-members">0</span>
-                            <span class="stat-label">משתתפים</span>
+                            <span class="stat-label">חברי מועדון</span>
                             <span id="stat-members-detail" style="font-size:0.7rem;color:var(--text-light);margin-top:2px;display:block;direction:ltr;unicode-bidi:bidi-override"></span>
                         </div>
                         <div class="stat">
@@ -156,14 +156,11 @@
                         <div class="stat">
                             <span class="stat-value" id="stat-entries-used">0</span>
                             <span class="stat-label">ניקובים</span>
+                            <span id="stat-entries-detail" style="font-size:0.7rem;color:var(--text-light);margin-top:2px;display:block"></span>
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-guests-today">0</span>
                             <span class="stat-label">אורחים</span>
-                        </div>
-                        <div class="stat">
-                            <span class="stat-value" id="stat-birthday-checkins">0</span>
-                            <span class="stat-label">🎂 יום הולדת</span>
                         </div>
                     </div>
                 </div>
@@ -238,7 +235,7 @@
                 </div>
                 <div class="setting-group">
                     <h3>איפוס נתונים</h3>
-                    <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:10px">מוחק כניסות, רכישות ומאפס יתרות. משתתפים ואורחים נשמרים.</p>
+                    <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:10px">מוחק כניסות, רכישות ומאפס יתרות. חברי מועדון ואורחים נשמרים.</p>
                     <button class="btn btn-danger" onclick="resetAllData()">🗑 מחק כניסות ורכישות</button>
                 </div>
             </div>
@@ -299,6 +296,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=108"></script>
+    <script src="app.js?v=109"></script>
 </body>
 </html>
