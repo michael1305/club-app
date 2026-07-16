@@ -204,6 +204,13 @@ function renderMembers() {
     );
     const list = document.getElementById('members-list');
 
+    const vipCount = members.filter(m => (m.vipSlots || 0) > 0).length;
+    const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
+    const noBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) <= 0).length;
+    document.getElementById('stat-members-with-balance').textContent = withBalanceCount;
+    document.getElementById('stat-members-no-balance').textContent = noBalanceCount;
+    document.getElementById('stat-members-vip').textContent = vipCount;
+
     if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:40px;color:#b2bec3;">אין משתתפים עדיין. לחץ "+ הוספה" כדי להתחיל</div>';
         return;
