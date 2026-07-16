@@ -55,20 +55,6 @@
                 <button class="btn btn-primary" onclick="showAddMember()">+ הוספה</button>
             </div>
             <div id="members-list" class="card-list"></div>
-            <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);margin-top:14px">
-                <div class="stat">
-                    <span class="stat-value" id="stat-members-with-balance">0</span>
-                    <span class="stat-label">בעלי כרטיסיות</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value" id="stat-members-no-balance">0</span>
-                    <span class="stat-label">ללא כרטיסיה</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-value" id="stat-members-vip">0</span>
-                    <span class="stat-label">⭐ VIP</span>
-                </div>
-            </div>
         </main>
 
         <!-- Check-in Page -->
@@ -147,7 +133,7 @@
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-active-subs">0</span>
-                            <span class="stat-label">ללא יתרה</span>
+                            <span class="stat-label">בעלי כרטיסיות</span>
                         </div>
                         <div class="stat">
                             <span class="stat-value" id="stat-tickets-sold">0</span>
@@ -296,6 +282,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="app.js?v=109"></script>
+    <script src="app.js?v=110"></script>
 </body>
 </html>

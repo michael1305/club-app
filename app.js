@@ -204,13 +204,6 @@ function renderMembers() {
     );
     const list = document.getElementById('members-list');
 
-    const vipCount = members.filter(m => (m.vipSlots || 0) > 0).length;
-    const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
-    const noBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) <= 0).length;
-    document.getElementById('stat-members-with-balance').textContent = withBalanceCount;
-    document.getElementById('stat-members-no-balance').textContent = noBalanceCount;
-    document.getElementById('stat-members-vip').textContent = vipCount;
-
     if (filtered.length === 0) {
         list.innerHTML = '<div style="text-align:center;padding:40px;color:#b2bec3;">אין חברי מועדון עדיין. לחץ "+ הוספה" כדי להתחיל</div>';
         return;
@@ -1467,7 +1460,7 @@ function showReport() {
     const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const birthdayCount = checkins.filter(c => c.entryType === 'birthday').length;
-    const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
+    const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
 
     const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
     const todayGuestsCount = periodGuests.reduce((s, gc) => s + (gc.count || 1), 0);
@@ -1481,7 +1474,7 @@ function showReport() {
     document.getElementById('stat-revenue').textContent      = '₪' + revenue;
     const detail = document.getElementById('stat-revenue-detail');
     if (detail) detail.textContent = revenue > 0 ? `\u{1F4B5} ₪${cashRevenue} | \u{1F4B3} ₪${creditRevenue}` : '';
-    document.getElementById('stat-active-subs').textContent  = zeroBalance;
+    document.getElementById('stat-active-subs').textContent  = withBalanceCount;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
     const entriesDetail = document.getElementById('stat-entries-detail');
@@ -1646,7 +1639,7 @@ function shareReport() {
     const entries  = document.getElementById('stat-entries-used')?.textContent || '0';
     const tickets  = document.getElementById('stat-tickets-sold')?.textContent || '0';
     const guests   = document.getElementById('stat-guests-today')?.textContent || '0';
-    const zero     = document.getElementById('stat-active-subs')?.textContent || '0';
+    const withCard = document.getElementById('stat-active-subs')?.textContent || '0';
     const eventName = DB.getSetting('eventName', 'מועדון');
 
     const text = `📊 דוח ${eventName} — ${period}
@@ -1655,7 +1648,7 @@ function shareReport() {
 🎫 כרטיסיות שנמכרו: ${tickets}
 🚪 ניקובים: ${entries}
 👤 אורחים: ${guests}
-⚠️ ללא יתרה: ${zero}`;
+🎟️ בעלי כרטיסיות: ${withCard}`;
 
     if (navigator.share) {
         navigator.share({ title: `דוח ${eventName}`, text })
