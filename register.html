@@ -185,6 +185,19 @@
             <img src="LOGO BIG.jpg" alt="לוגו המועדון">
         </div>
         <div class="reg-card">
+            <div id="reg-find-section">
+                <h2>כבר רשום/ה במועדון?</h2>
+                <p class="subtitle">הזן/י את מספר הטלפון שלך כדי לפתוח את הכרטיסייה האישית</p>
+                <div class="reg-field">
+                    <label for="find-phone">טלפון</label>
+                    <input type="tel" id="find-phone" placeholder="050-0000000" autocomplete="tel">
+                    <div class="reg-error" id="find-error">לא נמצאה כרטיסייה עם מספר טלפון זה</div>
+                </div>
+                <button class="reg-submit" id="find-btn" style="background:#00b894">🎫 פתיחת הכרטיסייה שלי</button>
+            </div>
+
+            <div style="text-align:center;margin:22px 0;color:var(--text-light);font-size:0.9rem">— או —</div>
+
             <div id="reg-form-section">
                 <h2>הרשמה למועדון</h2>
                 <p class="subtitle">מלא את הפרטים ואנו נוסיף אותך בהקדם</p>
@@ -267,6 +280,45 @@
             function validatePhone(p) {
                 return /^[\d\-\+\s]{7,15}$/.test(p.trim());
             }
+
+            // Find my card - lets an already-registered member reach their own
+            // user.html page without waiting for the admin to send a link.
+            document.getElementById('find-btn').addEventListener('click', () => {
+                const phoneInput = document.getElementById('find-phone');
+                const errEl = document.getElementById('find-error');
+                errEl.classList.remove('show');
+
+                const digits = phoneInput.value.replace(/\D/g, '');
+                if (digits.length < 7) {
+                    errEl.textContent = 'נא להזין מספר טלפון תקין';
+                    errEl.classList.add('show');
+                    return;
+                }
+
+                const btn = document.getElementById('find-btn');
+                btn.disabled = true;
+                btn.textContent = 'מחפש...';
+
+                firebase.auth().signInAnonymously()
+                    .then(() => db.collection('members').get())
+                    .then(snap => {
+                        const match = snap.docs.find(d => (d.data().phone || '').replace(/\D/g, '') === digits);
+                        btn.disabled = false;
+                        btn.textContent = '🎫 פתיחת הכרטיסייה שלי';
+                        if (match) {
+                            location.href = 'user.html?id=' + match.id;
+                        } else {
+                            errEl.textContent = 'לא נמצאה כרטיסייה עם מספר טלפון זה. ניתן להירשם למטה.';
+                            errEl.classList.add('show');
+                        }
+                    })
+                    .catch(() => {
+                        btn.disabled = false;
+                        btn.textContent = '🎫 פתיחת הכרטיסייה שלי';
+                        errEl.textContent = 'שגיאה בחיפוש, נסה/י שוב';
+                        errEl.classList.add('show');
+                    });
+            });
 
             function resizeImage(src, cb) {
                 const img = new Image();
