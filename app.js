@@ -1476,9 +1476,9 @@ function showReport() {
     if (detail) detail.textContent = revenue > 0 ? `\u{1F4B5} ₪${cashRevenue} | \u{1F4B3} ₪${creditRevenue}` : '';
     document.getElementById('stat-active-subs').textContent  = withBalanceCount;
     document.getElementById('stat-tickets-sold').textContent = payments.length;
-    document.getElementById('stat-entries-used').textContent = entriesUsed;
+    document.getElementById('stat-entries-used').textContent = entriesUsed + birthdayCount;
     const entriesDetail = document.getElementById('stat-entries-detail');
-    if (entriesDetail) entriesDetail.textContent = birthdayCount > 0 ? `🎂 ${birthdayCount}` : '';
+    if (entriesDetail) entriesDetail.textContent = (entriesUsed + birthdayCount) > 0 ? `🚪 ${entriesUsed} | 🎂 ${birthdayCount}` : '';
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
 
     // Unified activity list
