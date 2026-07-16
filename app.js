@@ -1458,6 +1458,7 @@ function showReport() {
     const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const birthdayCount = checkins.filter(c => c.entryType === 'birthday').length;
     const zeroBalance   = members.filter(m => (m.balance || 0) <= 0 && !(m.vipSlots > 0)).length;
 
     const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
@@ -1476,6 +1477,7 @@ function showReport() {
     document.getElementById('stat-tickets-sold').textContent = payments.length;
     document.getElementById('stat-entries-used').textContent = entriesUsed;
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
+    document.getElementById('stat-birthday-checkins').textContent = birthdayCount;
 
     // Unified activity list
     const allActivity = [];
