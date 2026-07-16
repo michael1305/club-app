@@ -266,6 +266,11 @@
             let _deferredInstallPrompt = null;
             const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
             const _isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+            // In-app browsers (WhatsApp, Instagram, Facebook...) block PWA install
+            // entirely - Android WebViews mark themselves with "wv" in the UA, and
+            // iOS embedded WKWebViews drop "Safari" from an otherwise Safari-shaped UA.
+            const _isEmbeddedBrowser = /\bwv\b/i.test(navigator.userAgent) ||
+                (_isIOS && !/safari/i.test(navigator.userAgent));
 
             window.addEventListener('beforeinstallprompt', e => {
                 e.preventDefault();
@@ -278,8 +283,15 @@
             });
 
             function uCanInstall() {
-                return !_isStandalone;
+                return !_isStandalone && !_isEmbeddedBrowser;
             }
+
+            function uCopyLink() {
+                navigator.clipboard.writeText(location.href)
+                    .then(() => uToast('הקישור הועתק, הדבק/י בדפדפן'))
+                    .catch(() => uToast('לא ניתן להעתיק אוטומטית'));
+            }
+            window.uCopyLink = uCopyLink;
 
             function uInstall() {
                 if (_deferredInstallPrompt) {
@@ -429,6 +441,14 @@
 
                 content.innerHTML = `
                     <div class="user-page">
+                        ${_isEmbeddedBrowser ? `
+                        <div style="background:#fff3cd;color:#856404;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-size:0.9rem;line-height:1.7;text-align:center">
+                            ⚠️ העמוד נפתח בתוך אפליקציה אחרת (למשל וואטסאפ), מה שחוסם הוספה למסך הבית.<br>
+                            לחצ/י על <strong>⋮</strong> למעלה ובחר/י <strong>"פתח בדפדפן"</strong>, או
+                            <button onclick="uCopyLink()" style="background:none;border:none;color:#856404;text-decoration:underline;font-weight:700;cursor:pointer;padding:0;font-size:inherit">העתק/י את הקישור</button>
+                            והדבק/י בכרום/ספארי.
+                        </div>
+                        ` : ''}
                         <div class="club-logo">
                             <img src="LOGO BIG.jpg" alt="לוגו המועדון">
                         </div>
