@@ -220,6 +220,12 @@
                 </div>
 
                 <div class="reg-field">
+                    <label for="reg-birthdate">תאריך לידה</label>
+                    <input type="date" id="reg-birthdate">
+                    <div class="reg-error" id="err-birthdate">נא להזין תאריך לידה</div>
+                </div>
+
+                <div class="reg-field">
                     <label>תמונה <span style="font-weight:400;color:var(--text-light)">(אופציונלי)</span></label>
                     <div class="photo-picker">
                         <div class="photo-placeholder" id="reg-photo-placeholder">👤</div>
@@ -396,6 +402,7 @@
                 const name = document.getElementById('reg-name').value.trim();
                 const phone = document.getElementById('reg-phone').value.trim();
                 const email = document.getElementById('reg-email').value.trim();
+                const birthDate = document.getElementById('reg-birthdate').value;
                 let valid = true;
 
                 document.getElementById('err-name').classList.toggle('show', !name);
@@ -406,6 +413,10 @@
                 document.getElementById('err-phone').classList.toggle('show', !phoneOk);
                 document.getElementById('reg-phone').classList.toggle('error', !phoneOk);
                 if (!phoneOk) valid = false;
+
+                document.getElementById('err-birthdate').classList.toggle('show', !birthDate);
+                document.getElementById('reg-birthdate').classList.toggle('error', !birthDate);
+                if (!birthDate) valid = false;
 
                 if (!valid) return;
 
@@ -420,6 +431,7 @@
                         id,
                         name,
                         phone,
+                        birthDate,
                         balance: 0,
                         createdAt: new Date().toISOString(),
                         registeredSelf: true
