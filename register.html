@@ -138,25 +138,6 @@
             transition: opacity 0.2s;
         }
         .reg-submit:disabled { opacity: 0.6; cursor: not-allowed; }
-        .reg-success {
-            display: none;
-            text-align: center;
-            padding: 20px 0 10px;
-        }
-        .reg-success .success-icon {
-            font-size: 3.5rem;
-            margin-bottom: 12px;
-        }
-        .reg-success h3 {
-            color: var(--success);
-            font-size: 1.3rem;
-            margin-bottom: 8px;
-        }
-        .reg-success p {
-            color: var(--text-light);
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
 
         /* Camera overlay */
         #reg-camera-overlay {
@@ -225,13 +206,6 @@
                 </div>
 
                 <button class="reg-submit" id="reg-btn">הרשמה</button>
-            </div>
-
-            <div class="reg-success" id="reg-success">
-                <div class="success-icon">✅</div>
-                <h3>ההרשמה התקבלה!</h3>
-                <p>פרטיך נשמרו בהצלחה.<br>המנהל יוסיף את כרטיסיית הכניסות שלך בקרוב.</p>
-                <a id="reg-goto-card" href="#" style="display:inline-block;margin-top:16px;background:var(--primary);color:white;text-decoration:none;border-radius:12px;padding:12px 24px;font-size:1rem;font-weight:700">🎫 לצפייה בכרטיסייה שלי</a>
             </div>
         </div>
     </div>
@@ -388,9 +362,7 @@
                     if (_photoDataUrl) data.photo = _photoDataUrl;
                     return db.collection('members').doc(id).set(data);
                 }).then(() => {
-                    document.getElementById('reg-form-section').style.display = 'none';
-                    document.getElementById('reg-success').style.display = 'block';
-                    document.getElementById('reg-goto-card').href = 'user.html?id=' + id;
+                    location.href = 'user.html?id=' + id;
                 }).catch(() => {
                     btn.disabled = false;
                     btn.textContent = 'הרשמה';
