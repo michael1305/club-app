@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c5ce7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="הכרטיסיה שלי">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>הכרטיסיה שלי</title>
     <link rel="stylesheet" href="style.css?v=14">
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -139,6 +143,24 @@
             max-width: 340px;
             text-align: center;
         }
+        #u-install-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            align-items: center;
+            justify-content: center;
+        }
+        #u-install-overlay.visible { display: flex; }
+        #u-install-box {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            width: 92vw;
+            max-width: 340px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -170,6 +192,19 @@
     </div>
 </div>
 
+<!-- Install instructions overlay (iOS - no native install prompt exists) -->
+<div id="u-install-overlay">
+    <div id="u-install-box">
+        <h2 style="margin-bottom:12px">📲 הוספה למסך הבית</h2>
+        <p style="text-align:right;line-height:1.9">
+            1. הקש/י על כפתור השיתוף <span style="font-weight:700">⬆️</span> בתחתית המסך<br>
+            2. גלול/י ובחר/י <span style="font-weight:700">"הוסף למסך הבית"</span><br>
+            3. הקש/י <span style="font-weight:700">"הוסף"</span>
+        </p>
+        <button onclick="uCloseInstall()" style="margin-top:12px;background:#d63031;color:white;border:none;border-radius:12px;padding:10px 18px;font-size:1rem;cursor:pointer">סגור</button>
+    </div>
+</div>
+
     <script>
         (function() {
             const _cfg = {
@@ -198,6 +233,70 @@
             }
 
             content.innerHTML = '<div style="text-align:center;padding:60px;color:#b2bec3;">טוען...</div>';
+
+            // PWA installability: register SW (user.html never loads app.js, which
+            // is where index.html normally does this) and inject a manifest scoped
+            // to this member's own URL so "Add to Home Screen" opens their card
+            // directly, not the admin app.
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+            }
+            (function injectManifest() {
+                const iconBase = new URL('.', location.href).href;
+                const manifest = {
+                    name: 'הכרטיסיה שלי',
+                    short_name: 'הכרטיסיה שלי',
+                    start_url: location.pathname + location.search,
+                    scope: location.pathname,
+                    display: 'standalone',
+                    background_color: '#f8f9fa',
+                    theme_color: '#6c5ce7',
+                    orientation: 'portrait',
+                    icons: [
+                        { src: iconBase + 'icon-192.png', sizes: '192x192', type: 'image/png' },
+                        { src: iconBase + 'icon-512.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                };
+                const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+                const link = document.createElement('link');
+                link.rel = 'manifest';
+                link.href = URL.createObjectURL(blob);
+                document.head.appendChild(link);
+            })();
+
+            let _deferredInstallPrompt = null;
+            const _isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+            const _isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+            window.addEventListener('beforeinstallprompt', e => {
+                e.preventDefault();
+                _deferredInstallPrompt = e;
+                render();
+            });
+            window.addEventListener('appinstalled', () => {
+                _deferredInstallPrompt = null;
+                render();
+            });
+
+            function uCanInstall() {
+                return !_isStandalone && (!!_deferredInstallPrompt || _isIOS);
+            }
+
+            function uInstall() {
+                if (_deferredInstallPrompt) {
+                    _deferredInstallPrompt.prompt();
+                    _deferredInstallPrompt.userChoice.finally(() => { _deferredInstallPrompt = null; render(); });
+                } else if (_isIOS) {
+                    document.getElementById('u-install-overlay').classList.add('visible');
+                }
+            }
+
+            function uCloseInstall() {
+                document.getElementById('u-install-overlay').classList.remove('visible');
+            }
+
+            window.uInstall = uInstall;
+            window.uCloseInstall = uCloseInstall;
 
             if (!firebase.apps.length) firebase.initializeApp(_cfg);
             const db = firebase.firestore();
@@ -335,6 +434,7 @@
                             </div>
                         </div>
                         <button id="btn-qr" style="display:block;width:100%;background:var(--primary);color:white;border:none;border-radius:16px;padding:14px;font-size:1.05rem;font-weight:700;cursor:pointer;margin-bottom:16px">📷 הצג קוד לכניסה</button>
+                        ${uCanInstall() ? `<button id="btn-install" style="display:block;width:100%;background:#00b894;color:white;border:none;border-radius:16px;padding:12px;font-size:0.95rem;font-weight:700;cursor:pointer;margin-bottom:16px">📲 הוסף למסך הבית</button>` : ''}
                         <div class="balance-card ${balanceClass}">
                             <div class="balance-number">${balance}</div>
                             <div class="balance-label">כניסות נותרו</div>
@@ -347,6 +447,7 @@
                 document.getElementById('btn-camera')?.addEventListener('click', uOpenCamera);
                 document.getElementById('btn-gallery')?.addEventListener('click', () => document.getElementById('u-photo-file').click());
                 document.getElementById('btn-qr')?.addEventListener('click', uShowQr);
+                document.getElementById('btn-install')?.addEventListener('click', uInstall);
             }
 
             window.uCapturePhoto = uCapturePhoto;
