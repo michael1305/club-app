@@ -831,7 +831,7 @@ function getBirthdayWeekStart(member) {
     for (const yearOffset of [-1, 0, 1]) {
         const bday = new Date(today.getFullYear() + yearOffset, bm - 1, bd);
         const weekStart = new Date(bday);
-        weekStart.setDate(bday.getDate() - bday.getDay());
+        weekStart.setDate(bday.getDate() - ((bday.getDay() + 1) % 7));
         weekStart.setHours(0, 0, 0, 0);
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
