@@ -41,6 +41,24 @@
             text-align: center;
         }
         .user-header h1 { font-size: 1.3rem; margin-bottom: 4px; }
+        .back-fab {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            z-index: 500;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.35);
+            color: white;
+            font-size: 1.3rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .balance-card {
             background: white;
             border-radius: 20px;
@@ -165,6 +183,7 @@
 </head>
 <body>
     <div id="content"></div>
+<button class="back-fab" onclick="uGoBack()" title="חזרה" aria-label="חזרה">→</button>
 <div id="u-toast" class="user-toast"></div>
 
 <!-- Camera overlay for photo update -->
@@ -480,6 +499,15 @@
             window.uSwitchCamera = uSwitchCamera;
             window.uCloseCamera = uCloseCamera;
             window.uCloseQr = uCloseQr;
+
+            function uGoBack() {
+                if (document.referrer && document.referrer.indexOf(location.origin) === 0 && history.length > 1) {
+                    history.back();
+                } else {
+                    location.href = 'index.html';
+                }
+            }
+            window.uGoBack = uGoBack;
 
             // Sign in anonymously, then start Firestore listeners
             firebase.auth().signInAnonymously().then(() => {
