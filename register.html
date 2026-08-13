@@ -248,6 +248,12 @@
                 return /^[\d\-\+\s]{7,15}$/.test(p.trim());
             }
 
+            function normalizePhone(p) {
+                let d = (p || '').replace(/\D/g, '');
+                if (d.startsWith('972')) d = '0' + d.slice(3);
+                return d;
+            }
+
             function resizeImage(src, cb) {
                 const img = new Image();
                 img.onload = () => {
@@ -327,6 +333,7 @@
                 const birthDate = document.getElementById('reg-birthdate').value;
                 let valid = true;
 
+                document.getElementById('err-phone').textContent = 'נא להזין מספר טלפון תקין';
                 document.getElementById('err-name').classList.toggle('show', !name);
                 document.getElementById('reg-name').classList.toggle('error', !name);
                 if (!name) valid = false;
@@ -347,7 +354,13 @@
                 btn.textContent = 'שולח...';
 
                 let id;
+                const normPhone = normalizePhone(phone);
                 firebase.auth().signInAnonymously().then(() => {
+                    return db.collection('members').get();
+                }).then(snap => {
+                    const dup = snap.docs.find(d => normalizePhone(d.data().phone) === normPhone);
+                    if (dup) return Promise.reject({ duplicatePhone: true });
+
                     id = genId();
                     const data = {
                         id,
@@ -363,10 +376,16 @@
                     return db.collection('members').doc(id).set(data);
                 }).then(() => {
                     location.href = 'user.html?id=' + id;
-                }).catch(() => {
+                }).catch(err => {
                     btn.disabled = false;
                     btn.textContent = 'הרשמה';
-                    alert('שגיאה בשליחה, נסה שוב');
+                    if (err && err.duplicatePhone) {
+                        document.getElementById('err-phone').textContent = 'מספר טלפון זה כבר רשום במערכת';
+                        document.getElementById('err-phone').classList.add('show');
+                        document.getElementById('reg-phone').classList.add('error');
+                    } else {
+                        alert('שגיאה בשליחה, נסה שוב');
+                    }
                 });
             });
         })();

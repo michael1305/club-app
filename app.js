@@ -400,6 +400,9 @@ function addMember() {
     if (!phone) { showToast('נא להזין טלפון'); return; }
     if (!birthDate) { showToast('נא להזין תאריך לידה'); return; }
 
+    const dupPhone = findMemberByPhone(phone, null);
+    if (dupPhone) { showToast(`מספר הטלפון כבר שייך ל${dupPhone.name}`); return; }
+
     const member = {
         id: generateId(),
         name,
@@ -565,6 +568,9 @@ function updateMember(id) {
     if (!name) { showToast('נא להזין שם'); return; }
     if (!phone) { showToast('נא להזין טלפון'); return; }
     if (!birthDate) { showToast('נא להזין תאריך לידה'); return; }
+
+    const dupPhone = findMemberByPhone(phone, id);
+    if (dupPhone) { showToast(`מספר הטלפון כבר שייך ל${dupPhone.name}`); return; }
 
     const updated = {
         ...member,
@@ -1855,6 +1861,18 @@ function generateQRCode(containerId, data) {
 // ===== UTILITIES =====
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
+
+function normalizePhone(p) {
+    let d = (p || '').replace(/\D/g, '');
+    if (d.startsWith('972')) d = '0' + d.slice(3);
+    return d;
+}
+
+function findMemberByPhone(phone, excludeId) {
+    const norm = normalizePhone(phone);
+    if (!norm) return null;
+    return getMembers().find(m => m.id !== excludeId && normalizePhone(m.phone) === norm);
 }
 
 function escHtml(str) {
