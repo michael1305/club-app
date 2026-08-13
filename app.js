@@ -1313,11 +1313,10 @@ function renderGuestList() {
         : activeGuests.map(g => {
             const checkin = todayCheckins.find(gc => gc.refId === g.id);
             const hoursLeft = Math.round((new Date(g.expiresAt) - now) / 3600000);
-            const expiryLabel = g.recurring ? '⭐ קבוע' : `פג תוקף בעוד ${hoursLeft}ש׳`;
             return `<div class="recent-item" style="align-items:center;gap:8px">
                 <div style="flex:1;min-width:0">
                     <div style="font-weight:600">${escHtml(g.name)}</div>
-                    <div style="font-size:0.78rem;color:var(--text-light)">${expiryLabel} · עד ${g.slots} ${g.slots>1?'אנשים':'אדם'}</div>
+                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${g.slots} ${g.slots>1?'אנשים':'אדם'}</div>
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
                     ${checkin ? `<span class="badge badge-success">הגיע (${checkin.count})</span>` : ''}

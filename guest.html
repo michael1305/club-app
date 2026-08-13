@@ -163,15 +163,6 @@
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>סוג אורח</label>
-                <div class="slots-group" id="type-slots-group">
-                    <button class="slot-option selected" id="type-temp" onclick="selectType('temp')">🕐 חד-פעמי</button>
-                    <button class="slot-option" id="type-recurring" onclick="selectType('recurring')">⭐ קבוע</button>
-                </div>
-                <div id="type-hint" style="font-size:0.78rem;color:var(--text-light);margin-top:6px">בתוקף 48 שעות</div>
-            </div>
-
             <div id="error-msg" class="error-msg"></div>
             <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
 
@@ -199,22 +190,12 @@
         const db = firebase.firestore();
 
         let selectedSlots = 1;
-        let selectedType = 'temp';
 
         function selectSlots(n) {
             selectedSlots = n;
             document.querySelectorAll('#count-slots-group .slot-option').forEach((btn, i) => {
                 btn.classList.toggle('selected', i + 1 === n);
             });
-        }
-
-        function selectType(t) {
-            selectedType = t;
-            document.getElementById('type-temp').classList.toggle('selected', t === 'temp');
-            document.getElementById('type-recurring').classList.toggle('selected', t === 'recurring');
-            document.getElementById('type-hint').textContent = t === 'recurring'
-                ? 'ללא תפוגה — יישאר ברשימה עד למחיקה ידנית'
-                : 'בתוקף 48 שעות';
         }
 
         function generateId() {
@@ -247,25 +228,18 @@
             try {
                 const now = new Date();
                 const id = generateId();
-                const isRecurring = selectedType === 'recurring';
-                const expiresAt = isRecurring
-                    ? new Date(now.getTime() + 20 * 365 * 24 * 3600000).toISOString()
-                    : new Date(now.getTime() + 48 * 3600000).toISOString();
                 await db.collection('guests').doc(id).set({
                     id,
                     name,
                     slots: selectedSlots,
-                    recurring: isRecurring,
                     createdAt: now.toISOString(),
-                    expiresAt
+                    expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
                 });
 
                 showToast(`✓ ${name} נוסף לרשימה`);
                 document.getElementById('guest-name').value = '';
                 selectedSlots = 1;
                 selectSlots(1);
-                selectedType = 'temp';
-                selectType('temp');
             } catch (e) {
                 showError('שגיאה בשמירה — נסה שוב');
             } finally {
@@ -306,7 +280,7 @@
                         <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px">
-                        <div class="guest-expiry">${g.recurring ? '⭐ קבוע' : `⏱ עד ${formatExpiry(g.expiresAt)}`}</div>
+                        <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
                         <button onclick="deleteGuest('${g._docId}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
                     </div>
                 </div>`;
