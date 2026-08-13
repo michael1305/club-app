@@ -163,11 +163,20 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label>סוג אורח</label>
+                <div class="slots-group" id="type-slots-group">
+                    <button class="slot-option selected" id="type-temp" onclick="selectType('temp')">🕐 חד-פעמי</button>
+                    <button class="slot-option" id="type-recurring" onclick="selectType('recurring')">⭐ קבוע</button>
+                </div>
+                <div id="type-hint" style="font-size:0.78rem;color:var(--text-light);margin-top:6px">בתוקף 48 שעות</div>
+            </div>
+
             <div id="error-msg" class="error-msg"></div>
             <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
 
             <p style="text-align:center;font-size:0.85rem;color:var(--text-light);margin-top:18px">
-                רוצה/ה להקים כרטיס מועדון קבוע (עם יתרת כניסות)?<br>
+                רוצה/ה להקים כרטיס מועדון מלא (עם יתרת כניסות בתשלום)?<br>
                 <a href="register.html" style="color:var(--primary);font-weight:700;text-decoration:none">🎫 לחצו כאן להרשמה כחבר/ה מועדון</a>
             </p>
 
@@ -193,12 +202,22 @@
         const db = firebase.firestore();
 
         let selectedSlots = 1;
+        let selectedType = 'temp';
 
         function selectSlots(n) {
             selectedSlots = n;
             document.querySelectorAll('#count-slots-group .slot-option').forEach((btn, i) => {
                 btn.classList.toggle('selected', i + 1 === n);
             });
+        }
+
+        function selectType(t) {
+            selectedType = t;
+            document.getElementById('type-temp').classList.toggle('selected', t === 'temp');
+            document.getElementById('type-recurring').classList.toggle('selected', t === 'recurring');
+            document.getElementById('type-hint').textContent = t === 'recurring'
+                ? 'ייווצר כחבר מועדון קבוע עם כניסה חופשית (⭐ קבועים)'
+                : 'בתוקף 48 שעות';
         }
 
         function generateId() {
@@ -231,18 +250,32 @@
             try {
                 const now = new Date();
                 const id = generateId();
-                await db.collection('guests').doc(id).set({
-                    id,
-                    name,
-                    slots: selectedSlots,
-                    createdAt: now.toISOString(),
-                    expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
-                });
 
-                showToast(`✓ ${name} נוסף לרשימה`);
+                if (selectedType === 'recurring') {
+                    await db.collection('members').doc(id).set({
+                        id,
+                        name,
+                        vipSlots: selectedSlots,
+                        balance: 0,
+                        createdAt: now.toISOString()
+                    });
+                    showToast(`✓ ${name} נוסף כאורח קבוע (⭐)`);
+                } else {
+                    await db.collection('guests').doc(id).set({
+                        id,
+                        name,
+                        slots: selectedSlots,
+                        createdAt: now.toISOString(),
+                        expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
+                    });
+                    showToast(`✓ ${name} נוסף לרשימה`);
+                }
+
                 document.getElementById('guest-name').value = '';
                 selectedSlots = 1;
                 selectSlots(1);
+                selectedType = 'temp';
+                selectType('temp');
             } catch (e) {
                 showError('שגיאה בשמירה — נסה שוב');
             } finally {
