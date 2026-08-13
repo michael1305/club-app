@@ -172,7 +172,10 @@
             </p>
 
             <hr class="divider">
-            <h3 style="font-size:0.95rem;color:var(--text-light);margin-bottom:10px">📋 רשימה פעילה</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+                <h3 style="font-size:0.95rem;color:var(--text-light);margin:0">📋 רשימה פעילה</h3>
+                <button onclick="deleteAllGuests()" style="background:none;border:none;color:var(--danger);font-size:0.8rem;font-weight:600;cursor:pointer;padding:4px">🗑️ מחק הכל</button>
+            </div>
             <div id="active-guests-list"></div>
         </div>
     </div>
@@ -258,6 +261,16 @@
             if (!confirm('למחוק אורח זה מהרשימה?')) return;
             await db.collection('guests').doc(docId).delete();
             await renderActiveGuests();
+        }
+
+        async function deleteAllGuests() {
+            if (!confirm('למחוק את כל האורחים מהרשימה? הפעולה לא ניתנת לביטול.')) return;
+            const snap = await db.collection('guests').get();
+            if (snap.empty) return;
+            const batch = db.batch();
+            snap.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+            showToast('✓ כל האורחים נמחקו');
         }
 
         function renderGuests(docs) {
