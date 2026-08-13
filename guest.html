@@ -264,7 +264,7 @@
         }
 
         async function deleteAllGuests() {
-            if (!confirm('למחוק את כל האורחים מהרשימה? הפעולה לא ניתנת לביטול.')) return;
+            if (!confirm('למחוק את כל האורחים הזמניים מהרשימה? הפעולה לא ניתנת לביטול.')) return;
             const snap = await db.collection('guests').get();
             if (snap.empty) return;
             const batch = db.batch();
