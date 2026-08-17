@@ -19,7 +19,7 @@ self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
     const noCache = NEVER_CACHE.some(f => url.pathname.endsWith(f));
     if (noCache) {
-        e.respondWith(fetch(e.request));
+        e.respondWith(fetch(e.request, { cache: 'no-store' }));
         return;
     }
     e.respondWith(
