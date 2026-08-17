@@ -1437,6 +1437,10 @@ function _getReportRange() {
         document.querySelectorAll('.period-selector .filter-btn').forEach(b => b.classList.remove('active'));
         event.target.classList.add('active');
     }
+    if (event?.target?.dataset?.day !== undefined) {
+        document.querySelectorAll('#report-day-filter .filter-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
     const period = document.querySelector('.period-selector .filter-btn.active')?.dataset.period || 'week';
     const now = new Date();
     let startDate;
@@ -1464,6 +1468,7 @@ function showReport() {
             allTerminals.map(t => `<option value="${escHtml(t)}" ${t === current ? 'selected' : ''}>${escHtml(t)}</option>`).join('');
     }
     const terminalFilter = sel?.value || '';
+    const dayFilter = document.querySelector('#report-day-filter .filter-btn.active')?.dataset.day ?? '';
 
     const members  = getMembers();
     let payments = getPayments().filter(p => new Date(p.date) >= startDate);
@@ -1471,6 +1476,10 @@ function showReport() {
     if (terminalFilter) {
         checkins = checkins.filter(c => c.terminal === terminalFilter);
         payments = payments.filter(p => (p.terminal || 'ראשי') === terminalFilter);
+    }
+    if (dayFilter !== '') {
+        checkins = checkins.filter(c => new Date(c.timestamp).getDay() === +dayFilter);
+        payments = payments.filter(p => new Date(p.date).getDay() === +dayFilter);
     }
 
     const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
@@ -1481,7 +1490,10 @@ function showReport() {
     const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
     const remainingEntries = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).reduce((s, m) => s + (m.balance || 0), 0);
 
-    const periodGuests = getGuestCheckins().filter(gc => new Date(gc.timestamp || gc.date) >= startDate);
+    const periodGuests = getGuestCheckins().filter(gc => {
+        const d = new Date(gc.timestamp || gc.date);
+        return d >= startDate && (dayFilter === '' || d.getDay() === +dayFilter);
+    });
     const todayGuestsCount = periodGuests.reduce((s, gc) => s + (gc.count || 1), 0);
 
     const vipCount     = members.filter(m => m.vipSlots > 0).length;
@@ -1505,7 +1517,7 @@ function showReport() {
     // Unified activity list
     const allActivity = [];
     getCheckins()
-        .filter(c => new Date(c.timestamp) >= startDate)
+        .filter(c => new Date(c.timestamp) >= startDate && (dayFilter === '' || new Date(c.timestamp).getDay() === +dayFilter))
         .forEach(c => {
             const member = members.find(m => m.id === c.memberId);
             const name = member ? member.name : 'לא ידוע';
@@ -1518,12 +1530,12 @@ function showReport() {
             allActivity.push({ ts: c.timestamp, name, label: type, color: 'var(--primary)' });
         });
     getGuestCheckins()
-        .filter(gc => new Date(gc.timestamp || gc.date) >= startDate)
+        .filter(gc => new Date(gc.timestamp || gc.date) >= startDate && (dayFilter === '' || new Date(gc.timestamp || gc.date).getDay() === +dayFilter))
         .forEach(gc => {
             allActivity.push({ ts: gc.timestamp || gc.date, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
         });
     getPayments()
-        .filter(p => new Date(p.date) >= startDate)
+        .filter(p => new Date(p.date) >= startDate && (dayFilter === '' || new Date(p.date).getDay() === +dayFilter))
         .forEach(p => {
             const member = members.find(m => m.id === p.memberId);
             const name = member ? member.name : 'לא ידוע';
@@ -1547,11 +1559,14 @@ function exportExcel(share = false) {
     if (typeof XLSX === 'undefined') { showToast('טוען ספריית Excel...'); return; }
     const startDate = _getReportRange();
     const terminalFilter = document.getElementById('report-terminal')?.value || '';
+    const dayFilter = document.querySelector('#report-day-filter .filter-btn.active')?.dataset.day ?? '';
     const members = getMembers();
 
     let checkins = getCheckins().filter(c => new Date(c.timestamp) >= startDate);
     if (terminalFilter) checkins = checkins.filter(c => c.terminal === terminalFilter);
-    const payments = getPayments().filter(p => new Date(p.date) >= startDate);
+    if (dayFilter !== '') checkins = checkins.filter(c => new Date(c.timestamp).getDay() === +dayFilter);
+    let payments = getPayments().filter(p => new Date(p.date) >= startDate);
+    if (dayFilter !== '') payments = payments.filter(p => new Date(p.date).getDay() === +dayFilter);
 
     const wb = XLSX.utils.book_new();
     const rtl = ws => { ws['!views'] = [{ rightToLeft: true }]; return ws; };
@@ -1559,7 +1574,7 @@ function exportExcel(share = false) {
     // Checkins sheet: regular/VIP rows, then guests section, then summary
     const guestCheckins = getGuestCheckins().filter(gc => {
         const ts = gc.timestamp ? new Date(gc.timestamp) : new Date(gc.date + 'T23:59:59');
-        return ts >= startDate;
+        return ts >= startDate && (dayFilter === '' || ts.getDay() === +dayFilter);
     });
 
     const sep = { 'תאריך ושעה': '', 'שם משתתף': '', 'סוג כניסה': '', 'מסוף': '', 'כמות': '' };
@@ -1654,7 +1669,9 @@ function exportExcel(share = false) {
 }
 
 function shareReport() {
-    const period = document.querySelector('.period-selector .filter-btn.active')?.textContent || 'שבוע';
+    let period = document.querySelector('.period-selector .filter-btn.active')?.textContent || 'שבוע';
+    const dayLabel = document.querySelector('#report-day-filter .filter-btn.active')?.textContent || 'הכל';
+    if (dayLabel !== 'הכל') period += ` · ימי ${dayLabel}`;
     const members  = document.getElementById('stat-members')?.textContent || '0';
     const revenue  = document.getElementById('stat-revenue')?.textContent || '₪0';
     const entries  = document.getElementById('stat-entries-used')?.textContent || '0';
