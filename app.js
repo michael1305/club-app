@@ -1286,13 +1286,16 @@ function switchGuestTab(tab) {
     });
 }
 
+function filterGuests() { renderGuestList(); }
+
 function renderGuestList() {
     const today = new Date().toISOString().split('T')[0];
     const todayCheckins = getGuestCheckins().filter(gc => gc.date === today);
     const now = new Date();
+    const search = document.getElementById('search-guests').value.toLowerCase();
 
-    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0).sort((a, b) => a.name.localeCompare(b.name, 'he'));
-    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now);
+    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && g.name.toLowerCase().includes(search));
 
     const vipHtml = vipMembers.length === 0
         ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין חברים עם כניסה חופשית קבועה</p>'
