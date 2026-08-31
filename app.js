@@ -1279,11 +1279,21 @@ function performVipCheckin(memberId, count) {
 }
 
 // ===== GUEST LIST =====
+let guestListTab = 'temp';
+
 function switchGuestTab(tab) {
+    guestListTab = tab;
+    updateGuestTabVisibility();
+}
+
+function updateGuestTabVisibility() {
+    const searching = document.getElementById('search-guests').value.trim().length > 0;
     ['temp', 'vip'].forEach(t => {
-        document.getElementById('guest-tab-' + t).classList.toggle('active', t === tab);
-        document.getElementById('guest-panel-' + t).classList.toggle('active', t === tab);
+        document.getElementById('guest-tab-' + t).classList.toggle('active', t === guestListTab);
+        document.getElementById('guest-panel-' + t).classList.toggle('active', searching || t === guestListTab);
     });
+    document.getElementById('guestlist-vip-label').style.display = searching ? 'block' : 'none';
+    document.getElementById('guestlist-temp-label').style.display = searching ? 'block' : 'none';
 }
 
 function filterGuests() { renderGuestList(); }
@@ -1293,6 +1303,8 @@ function renderGuestList() {
     const todayCheckins = getGuestCheckins().filter(gc => gc.date === today);
     const now = new Date();
     const search = document.getElementById('search-guests').value.toLowerCase();
+
+    updateGuestTabVisibility();
 
     const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && g.name.toLowerCase().includes(search));
