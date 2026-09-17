@@ -37,6 +37,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // The app always writes dates as plain JS strings (new Date().toISOString()),
+    // but Firestore itself can also hold a native Timestamp type for the same kind
+    // of value — accepting either avoids rejecting a legitimate write just because
+    // of which of the two equivalent representations it happens to use.
+    function isDateish(v) {
+      return v is timestamp || v is string;
+    }
+    function isDateishBounded(v, maxLen) {
+      return v is timestamp || (v is string && v.size() < maxLen);
+    }
+
     // ---------------- members ----------------
     function memberCreateOk(d, memberId) {
       return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
@@ -44,14 +55,14 @@ service cloud.firestore {
         && d.name is string && d.name.size() > 0 && d.name.size() < 120
         && (!('phone' in d) || (d.phone is string && d.phone.size() < 40))
         && (!('email' in d) || (d.email is string && d.email.size() < 200))
-        && (!('birthDate' in d) || (d.birthDate is string && d.birthDate.size() < 20))
+        && (!('birthDate' in d) || isDateishBounded(d.birthDate, 20))
         && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000 && d.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!('balance' in d) || (d.balance is number && d.balance >= 0 && d.balance < 100000))
         && (!('vipSlots' in d) || (d.vipSlots is number && d.vipSlots in [0,1,2]))
         && (!('nfcTag' in d) || d.nfcTag == null || (d.nfcTag is string && d.nfcTag.size() < 500))
-        && (!('createdAt' in d) || (d.createdAt is string && d.createdAt.size() < 40))
+        && (!('createdAt' in d) || isDateishBounded(d.createdAt, 40))
         && (!('registeredSelf' in d) || d.registeredSelf is bool)
-        && (!('lastBirthdayCheckinWeek' in d) || (d.lastBirthdayCheckinWeek is string && d.lastBirthdayCheckinWeek.size() < 20));
+        && (!('lastBirthdayCheckinWeek' in d) || isDateishBounded(d.lastBirthdayCheckinWeek, 20));
     }
 
     function memberUpdateOk(newData, oldData, memberId) {
@@ -60,13 +71,13 @@ service cloud.firestore {
         && (!changed.hasAny(['name']) || (newData.name is string && newData.name.size() > 0 && newData.name.size() < 120))
         && (!changed.hasAny(['phone']) || (newData.phone is string && newData.phone.size() < 40))
         && (!changed.hasAny(['email']) || (newData.email is string && newData.email.size() < 200))
-        && (!changed.hasAny(['birthDate']) || (newData.birthDate is string && newData.birthDate.size() < 20))
+        && (!changed.hasAny(['birthDate']) || isDateishBounded(newData.birthDate, 20))
         && (!changed.hasAny(['photo']) || newData.photo == null || (newData.photo is string && newData.photo.size() < 900000 && newData.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!changed.hasAny(['balance']) || (newData.balance is number && newData.balance >= 0 && newData.balance < 100000))
         && (!changed.hasAny(['vipSlots']) || (newData.vipSlots is number && newData.vipSlots in [0,1,2]))
         && (!changed.hasAny(['nfcTag']) || newData.nfcTag == null || (newData.nfcTag is string && newData.nfcTag.size() < 500))
         && (!changed.hasAny(['registeredSelf']) || newData.registeredSelf is bool)
-        && (!changed.hasAny(['lastBirthdayCheckinWeek']) || (newData.lastBirthdayCheckinWeek is string && newData.lastBirthdayCheckinWeek.size() < 20));
+        && (!changed.hasAny(['lastBirthdayCheckinWeek']) || isDateishBounded(newData.lastBirthdayCheckinWeek, 20));
     }
 
     match /members/{memberId} {
@@ -85,7 +96,7 @@ service cloud.firestore {
         && (!('paymentMethod' in d) || d.paymentMethod in ['cash','credit'])
         && (!('note' in d) || (d.note is string && d.note.size() < 500))
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
-        && d.date is string;
+        && isDateish(d.date);
     }
 
     function paymentUpdateOk(newData, oldData, paymentId) {
@@ -112,7 +123,7 @@ service cloud.firestore {
         && d.memberId is string
         && d.entryType in ['single','couple','birthday','vip-single','vip-couple']
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
-        && d.timestamp is string;
+        && isDateish(d.timestamp);
     }
 
     function checkinUpdateOk(newData, oldData, checkinId) {
@@ -135,8 +146,8 @@ service cloud.firestore {
         && d.id is string && d.id == guestId
         && d.name is string && d.name.size() > 0 && d.name.size() < 120
         && d.slots is number && d.slots in [1,2]
-        && d.createdAt is string
-        && d.expiresAt is string;
+        && isDateish(d.createdAt)
+        && isDateish(d.expiresAt);
     }
 
     function guestUpdateOk(newData, oldData, guestId) {
@@ -159,10 +170,10 @@ service cloud.firestore {
         && d.refId is string
         && d.name is string && d.name.size() < 120
         && d.type in ['vip','temp']
-        && d.date is string
+        && isDateish(d.date)
         && d.count is number && d.count in [1,2]
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
-        && d.timestamp is string;
+        && isDateish(d.timestamp);
     }
 
     function guestCheckinUpdateOk(newData, oldData, gcId) {
@@ -185,7 +196,7 @@ service cloud.firestore {
         && d.memberId is string
         && d.label is string && d.label.size() < 300
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
-        && d.timestamp is string;
+        && isDateish(d.timestamp);
     }
 
     function memberLogUpdateOk(newData, oldData, logId) {

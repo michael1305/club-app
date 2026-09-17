@@ -200,7 +200,7 @@ function renderMembers() {
     const members = getMembers();
     const search = document.getElementById('search-members').value.toLowerCase();
     const filtered = members.filter(m =>
-        m.name.toLowerCase().includes(search) || m.phone.includes(search)
+        m.name.toLowerCase().includes(search) || (m.phone || '').includes(search)
     );
     const list = document.getElementById('members-list');
 
@@ -801,7 +801,7 @@ function renderCheckinMembers() {
     const members = getMembers();
     const search = (document.getElementById('manual-checkin-search')?.value || '').toLowerCase();
     const filtered = members.filter(m =>
-        m.name.toLowerCase().includes(search) || m.phone.includes(search)
+        m.name.toLowerCase().includes(search) || (m.phone || '').includes(search)
     );
     const list = document.getElementById('checkin-members-list');
 
