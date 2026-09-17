@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c5ce7">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
     <title>הוספת אורח</title>
     <link rel="stylesheet" href="style.css?v=24">
     <style>
@@ -189,9 +190,9 @@
         </div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
@@ -221,7 +222,29 @@
         }
 
         function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).slice(2);
+            const bytes = new Uint8Array(9);
+            crypto.getRandomValues(bytes);
+            let rand = '';
+            bytes.forEach(b => rand += b.toString(36).padStart(2, '0'));
+            return Date.now().toString(36) + rand;
+        }
+
+        // HTML-escapes untrusted text before it's interpolated into innerHTML.
+        function escHtml(str) {
+            return String(str == null ? '' : str).replace(/[&<>"']/g, c => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+            ));
+        }
+
+        // For untrusted text embedded inside an inline onclick="fn('...')" JS-string
+        // argument — HTML-entity-escaping alone does not protect this context, since the
+        // browser HTML-decodes the attribute before the JS parser ever sees it.
+        function escJsAttr(str) {
+            return String(str == null ? '' : str)
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/[\r\n]/g, ' ')
+                .replace(/"/g, '&quot;');
         }
 
         function showError(msg) {
@@ -322,12 +345,12 @@
                 const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
                 return `<div class="guest-list-item">
                     <div>
-                        <div style="font-weight:600">${g.name}</div>
+                        <div style="font-weight:600">${escHtml(g.name)}</div>
                         <div style="font-size:0.78rem;color:var(--text-light)">${slotsLabel}</div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px">
                         <div class="guest-expiry">⏱ עד ${formatExpiry(g.expiresAt)}</div>
-                        <button onclick="deleteGuest('${g._docId}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
+                        <button onclick="deleteGuest('${escJsAttr(g._docId)}')" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:var(--danger);padding:4px;line-height:1">✕</button>
                     </div>
                 </div>`;
             }).join('');

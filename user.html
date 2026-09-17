@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#6c5ce7">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com https://securetoken.googleapis.com; worker-src 'self'; manifest-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="הכרטיסיה שלי">
     <link rel="apple-touch-icon" href="icon-192.png">
     <title>הכרטיסיה שלי</title>
     <link rel="stylesheet" href="style.css?v=14">
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="qrcode.min.js"></script>
     <style>
         .user-page {
@@ -232,9 +233,19 @@
             };
 
             function esc(str) {
-                const d = document.createElement('div');
-                d.textContent = str || '';
-                return d.innerHTML;
+                return String(str == null ? '' : str).replace(/[&<>"']/g, c => (
+                    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+                ));
+            }
+            // Only a real camera/gallery capture (canvas.toDataURL) should ever end up as
+            // a photo src= — rejects anything else a corrupted/attacker-written record
+            // might hold, which would otherwise allow attribute injection via src=.
+            function isSafeImageDataUrl(s) {
+                return typeof s === 'string' && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$/.test(s);
+            }
+            function num(x) {
+                const n = Number(x);
+                return Number.isFinite(n) ? n : 0;
             }
             function fmtDateTime(date) {
                 return date.toLocaleDateString('he-IL') + ' ' +
@@ -454,7 +465,7 @@
                     content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
                     return;
                 }
-                const balance = _member.balance || 0;
+                const balance = num(_member.balance);
                 const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
                 const sorted = _checkins.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 const historyHtml = sorted.slice(0, 15).map(c => `
@@ -470,7 +481,7 @@
                             <img src="LOGO BIG.jpg" alt="לוגו המועדון">
                         </div>
                         <div class="user-header">
-                            ${_member.photo ? `<img src="${_member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
+                            ${isSafeImageDataUrl(_member.photo) ? `<img src="${_member.photo}" class="avatar" style="width:70px;height:70px;margin-bottom:8px;border:3px solid white">` : ''}
                             <h1>👋 שלום, ${esc(_member.name)}</h1>
                             <p>הכרטיסיה האישית שלך</p>
                             <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">

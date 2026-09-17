@@ -210,8 +210,8 @@ function renderMembers() {
     }
 
     list.innerHTML = filtered.map(m => {
-        const balance = m.balance || 0;
-        const vip = m.vipSlots || 0;
+        const balance = num(m.balance);
+        const vip = num(m.vipSlots);
         let badge;
         if (vip > 0) badge = `<span class="badge badge-warning">⭐ חופשי${vip > 1 ? ' ×2' : ''}</span>`;
         else if (balance <= 0) badge = `<span class="badge badge-danger">אין יתרה</span>`;
@@ -233,7 +233,7 @@ function renderMembers() {
 }
 
 function avatarHtml(member, size = 44) {
-    if (member.photo) {
+    if (isSafeImageDataUrl(member.photo)) {
         return `<img src="${member.photo}" class="avatar" style="width:${size}px;height:${size}px">`;
     }
     const initial = (member.name || '?').trim().charAt(0);
@@ -283,7 +283,7 @@ function photoFieldHtml(existingPhoto) {
         <div class="form-group">
             <label>תמונה (אופציונלי)</label>
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-                <div id="photo-preview">${existingPhoto ? `<img src="${existingPhoto}" class="avatar" style="width:90px;height:90px">` : '<div class="avatar avatar-placeholder" style="width:90px;height:90px;font-size:36px">?</div>'}</div>
+                <div id="photo-preview">${isSafeImageDataUrl(existingPhoto) ? `<img src="${existingPhoto}" class="avatar" style="width:90px;height:90px">` : '<div class="avatar avatar-placeholder" style="width:90px;height:90px;font-size:36px">?</div>'}</div>
                 <div style="display:flex;flex-direction:column;gap:8px">
                     <button type="button" class="btn btn-primary" onclick="openCameraCapture('photo-preview')">📷 צלם תמונה</button>
                     <button type="button" class="btn btn-secondary" onclick="document.getElementById('photo-file-input').click()">🖼️ בחר מהגלריה</button>
@@ -430,14 +430,14 @@ function showMemberDetails(id) {
     const vipCheckins = getGuestCheckins().filter(gc => gc.type === 'vip' && gc.refId === id);
     const allCheckins = [
         ...checkins.map(c => ({ ts: c.timestamp, label: c.entryType === 'birthday' ? '🎂 כניסת יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)' })),
-        ...vipCheckins.map(c => ({ ts: c.timestamp, label: `⭐ כניסה חופשית (${c.count})` }))
+        ...vipCheckins.map(c => ({ ts: c.timestamp, label: `⭐ כניסה חופשית (${num(c.count)})` }))
     ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
-    const totalPaid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const balance = member.balance || 0;
+    const totalPaid = payments.reduce((sum, p) => sum + num(p.amount), 0);
+    const balance = num(member.balance);
     const memberLog = getMemberLog().filter(e => e.memberId === id);
 
     const allActivity = [
-        ...payments.map(p => ({ ts: p.date, label: `💳 רכישה — ${p.quantity ? p.quantity + ' כניסות' : ''} ₪${p.amount}` })),
+        ...payments.map(p => ({ ts: p.date, label: `💳 רכישה — ${p.quantity ? num(p.quantity) + ' כניסות' : ''} ₪${num(p.amount)}` })),
         ...allCheckins.map(c => ({ ts: c.ts, label: `🚪 כניסה — ${c.label}` })),
         ...memberLog.map(e => ({ ts: e.timestamp, label: e.label }))
     ].sort((a, b) => new Date(b.ts) - new Date(a.ts));
@@ -463,7 +463,7 @@ function showMemberDetails(id) {
                 <p>💰 שילם סה"כ: ₪${totalPaid}</p>
                 <p>🚪 כניסות בפועל: ${allCheckins.length}</p>
                 <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
-                <p>⭐ כניסה חופשית: ${(member.vipSlots||0) > 0 ? `<span class="badge badge-warning">${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
+                <p>⭐ כניסה חופשית: ${num(member.vipSlots) > 0 ? `<span class="badge badge-warning">${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
             </div>
             <button class="btn btn-success btn-block" style="margin-bottom:12px" onclick="closeModal();doCheckin('${id}')">✓ בצע כניסה (אין כרטיס ביד)</button>
             <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -489,8 +489,8 @@ function showMemberDetails(id) {
                 ${payments.slice(-5).reverse().map(p => `
                     <div class="recent-item">
                         <span>${formatDate(new Date(p.date))}</span>
-                        <span>${p.quantity ? p.quantity + ' כניסות' : ''}</span>
-                        <span>₪${p.amount}</span>
+                        <span>${p.quantity ? num(p.quantity) + ' כניסות' : ''}</span>
+                        <span>₪${num(p.amount)}</span>
                     </div>
                 `).join('')}` : ''}
                 ${allCheckins.length > 0 ? `
@@ -598,10 +598,10 @@ function showEditBalance(id) {
     const member = getMembers().find(m => m.id === id);
     if (!member) return;
     openModal('עריכת יתרת כניסות - ' + member.name, `
-        <p style="color:var(--text-light);margin-bottom:16px">יתרה נוכחית: <strong>${member.balance || 0} כניסות</strong></p>
+        <p style="color:var(--text-light);margin-bottom:16px">יתרה נוכחית: <strong>${num(member.balance)} כניסות</strong></p>
         <div class="form-group">
             <label>יתרה חדשה</label>
-            <input type="number" id="edit-balance-val" value="${member.balance || 0}" min="0">
+            <input type="number" id="edit-balance-val" value="${num(member.balance)}" min="0">
         </div>
         <button class="btn btn-primary btn-block" onclick="saveEditedBalance('${id}')">שמור</button>
     `);
@@ -676,10 +676,10 @@ function renderPayments() {
         <div class="card">
             <div class="card-info">
                 <h4>${escHtml(p.memberName)}</h4>
-                <p>${formatDate(new Date(p.date))} · ${p.quantity} כניסות</p>
+                <p>${formatDate(new Date(p.date))} · ${num(p.quantity)} כניסות</p>
             </div>
             <div class="card-actions">
-                <span style="font-weight:700;font-size:1.1rem;color:var(--success)">₪${p.amount}</span>
+                <span style="font-weight:700;font-size:1.1rem;color:var(--success)">₪${num(p.amount)}</span>
             </div>
         </div>
     `).join('');
@@ -700,7 +700,7 @@ function showAddPayment() {
             <label>משתתף</label>
             <select id="pay-member">
                 <option value="">בחר משתתף</option>
-                ${members.map(m => `<option value="${m.id}">${escHtml(m.name)} (${m.balance || 0} כניסות)</option>`).join('')}
+                ${members.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.name)} (${num(m.balance)} כניסות)</option>`).join('')}
             </select>
         </div>
         <div class="form-group">
@@ -1240,8 +1240,8 @@ function doVipCheckin(member) {
         <div style="text-align:center;margin-bottom:16px">
             ${avatarHtml(member, 80)}
             <p style="margin-top:8px;font-size:1.1rem;font-weight:700">${escHtml(member.name)}</p>
-            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${member.vipSlots} ${member.vipSlots>1?'אנשים':'אדם'})</p>
-            ${existing ? `<p style="color:var(--warning);font-size:0.9rem">כבר בוצעה כניסה היום (${existing.count} ${existing.count>1?'אנשים':'אדם'})</p>` : ''}
+            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'})</p>
+            ${existing ? `<p style="color:var(--warning);font-size:0.9rem">כבר בוצעה כניסה היום (${num(existing.count)} ${existing.count>1?'אנשים':'אדם'})</p>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
             <button class="btn btn-success btn-block" onclick="performVipCheckin('${member.id}',1)">✓ כניסה בודדת (1)</button>
@@ -1318,11 +1318,11 @@ function renderGuestList() {
                     ${avatarHtml(m, 36)}
                     <div>
                         <div style="font-weight:600">${escHtml(m.name)}</div>
-                        <div style="font-size:0.78rem;color:var(--text-light)">⭐ עד ${m.vipSlots} ${m.vipSlots>1?'אנשים':'אדם'}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light)">⭐ עד ${num(m.vipSlots)} ${m.vipSlots>1?'אנשים':'אדם'}</div>
                     </div>
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
-                    ${checkin ? `<span class="badge badge-success">הגיע (${checkin.count})</span>` : ''}
+                    ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
                     <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',1)">✓1</button>
                     ${m.vipSlots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',2)">✓2</button>` : ''}
                 </div>
@@ -1337,10 +1337,10 @@ function renderGuestList() {
             return `<div class="recent-item" style="align-items:center;gap:8px">
                 <div style="flex:1;min-width:0">
                     <div style="font-weight:600">${escHtml(g.name)}</div>
-                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${g.slots} ${g.slots>1?'אנשים':'אדם'}</div>
+                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${num(g.slots)} ${g.slots>1?'אנשים':'אדם'}</div>
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
-                    ${checkin ? `<span class="badge badge-success">הגיע (${checkin.count})</span>` : ''}
+                    ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
                     <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',1)">✓1</button>
                     ${g.slots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',2)">✓2</button>` : ''}
                     <button class="btn btn-danger" style="padding:5px 9px;font-size:0.82rem" onclick="deleteTempGuest('${g.id}')">✕</button>
@@ -1547,7 +1547,7 @@ function showReport() {
     getGuestCheckins()
         .filter(gc => new Date(gc.timestamp || gc.date) >= startDate && (dayFilter === '' || new Date(gc.timestamp || gc.date).getDay() === +dayFilter))
         .forEach(gc => {
-            allActivity.push({ ts: gc.timestamp || gc.date, name: gc.name, label: `👤 אורח (${gc.count})`, color: 'var(--warning)' });
+            allActivity.push({ ts: gc.timestamp || gc.date, name: gc.name, label: `👤 אורח (${num(gc.count)})`, color: 'var(--warning)' });
         });
     getPayments()
         .filter(p => new Date(p.date) >= startDate && (dayFilter === '' || new Date(p.date).getDay() === +dayFilter))
@@ -1555,7 +1555,7 @@ function showReport() {
             const member = members.find(m => m.id === p.memberId);
             const name = member ? member.name : 'לא ידוע';
             const method = p.paymentMethod === 'credit' ? '💳' : '💵';
-            allActivity.push({ ts: p.date, name, label: `${method} רכישה ${p.quantity} כניסות · ₪${p.amount}`, color: 'var(--success)' });
+            allActivity.push({ ts: p.date, name, label: `${method} רכישה ${num(p.quantity)} כניסות · ₪${num(p.amount)}`, color: 'var(--success)' });
         });
     allActivity.sort((a, b) => new Date(b.ts) - new Date(a.ts));
     const el = document.getElementById('recent-checkins');
@@ -1568,6 +1568,13 @@ function showReport() {
             </div>
         </div>`).join('')
         : '<p style="color:#b2bec3;text-align:center;padding:20px">אין פעילות בתקופה זו</p>';
+}
+
+// Defense-in-depth against formula injection: if a spreadsheet app ever treats a cell
+// starting with =, +, -, @ or a tab as a formula (a known risk class for CSV/XLSX
+// exports of user-supplied text), a leading apostrophe forces it to be read as plain text.
+function sheetSafe(v) {
+    return typeof v === 'string' && /^[=+\-@\t\r]/.test(v) ? "'" + v : v;
 }
 
 function exportExcel(share = false) {
@@ -1598,7 +1605,7 @@ function exportExcel(share = false) {
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         .map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
-            'שם משתתף':  members.find(m => m.id === c.memberId)?.name || 'לא ידוע',
+            'שם משתתף':  sheetSafe(members.find(m => m.id === c.memberId)?.name || 'לא ידוע'),
             'סוג כניסה': c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'birthday' ? 'יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
             'מסוף':      c.terminal || 'ראשי',
             'כמות':      c.entryType === 'couple' || c.entryType === 'vip-couple' ? 2 : 1
@@ -1608,7 +1615,7 @@ function exportExcel(share = false) {
         .sort((a, b) => new Date(b.timestamp || b.date) - new Date(a.timestamp || a.date))
         .map(gc => ({
             'תאריך ושעה': formatDateTime(new Date(gc.timestamp || gc.date)),
-            'שם משתתף':  gc.name,
+            'שם משתתף':  sheetSafe(gc.name),
             'סוג כניסה': `אורח (${gc.count})`,
             'מסוף':      gc.terminal || 'ראשי',
             'כמות':      gc.count || 1
@@ -1639,12 +1646,12 @@ function exportExcel(share = false) {
 
     const paymentRows = payments.map(p => ({
         'תאריך ושעה':   formatDateTime(new Date(p.date)),
-        'שם משתתף':    members.find(m => m.id === p.memberId)?.name || 'לא ידוע',
-        'כמות כניסות': p.quantity,
-        'סכום':        p.amount,
+        'שם משתתף':    sheetSafe(members.find(m => m.id === p.memberId)?.name || 'לא ידוע'),
+        'כמות כניסות': num(p.quantity),
+        'סכום':        num(p.amount),
         'אמצעי תשלום': p.paymentMethod === 'credit' ? 'אשראי' : 'מזומן',
-        'מסוף':        p.terminal || 'ראשי',
-        'הערה':        p.note || ''
+        'מסוף':        sheetSafe(p.terminal || 'ראשי'),
+        'הערה':        sheetSafe(p.note || '')
     }));
     const totalAmount = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const totalQty = payments.reduce((s, p) => s + (p.quantity || 0), 0);
@@ -1657,11 +1664,11 @@ function exportExcel(share = false) {
     const regularCount = members.length - vipCount;
     const memberRows = [
         ...members.map(m => ({
-            'שם':              m.name,
-            'טלפון':           m.phone,
-            'אימייל':          m.email || '',
-            'יתרת כניסות':    m.balance || 0,
-            'סוג':             m.vipSlots > 0 ? `VIP (${m.vipSlots})` : 'רגיל',
+            'שם':              sheetSafe(m.name),
+            'טלפון':           sheetSafe(m.phone),
+            'אימייל':          sheetSafe(m.email || ''),
+            'יתרת כניסות':    num(m.balance),
+            'סוג':             m.vipSlots > 0 ? `VIP (${num(m.vipSlots)})` : 'רגיל',
             'תאריך הצטרפות': formatDate(new Date(m.createdAt))
         })),
         { 'שם': '', 'טלפון': '', 'אימייל': '', 'יתרת כניסות': '', 'סוג': '', 'תאריך הצטרפות': '' },
@@ -1745,7 +1752,7 @@ function loadSettings() {
         el.innerHTML = known.map(t => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
                 <span style="font-weight:600">${escHtml(t)}</span>
-                <button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem" onclick="deleteTerminal('${escHtml(t)}')">🗑 מחק</button>
+                <button class="btn btn-danger" style="padding:4px 10px;font-size:0.8rem" onclick="deleteTerminal('${escJsAttr(t)}')">🗑 מחק</button>
             </div>`).join('');
     }
 }
@@ -1892,7 +1899,14 @@ function generateQRCode(containerId, data) {
 
 // ===== UTILITIES =====
 function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+    // crypto.getRandomValues gives an unguessable id (vs. the old Date.now()+Math.random()
+    // combo, whose ~25 bits of Math.random() entropy plus a knowable timestamp made ids
+    // brute-forceable) — matters because a member's id is also their user.html?id= URL key.
+    const bytes = new Uint8Array(9);
+    (window.crypto || window.msCrypto).getRandomValues(bytes);
+    let rand = '';
+    bytes.forEach(b => rand += b.toString(36).padStart(2, '0'));
+    return Date.now().toString(36) + rand;
 }
 
 function normalizePhone(p) {
@@ -1907,10 +1921,41 @@ function findMemberByPhone(phone, excludeId) {
     return getMembers().find(m => m.id !== excludeId && normalizePhone(m.phone) === norm);
 }
 
+// HTML-escapes a value for safe use in both text content and quoted attribute values
+// (the previous textContent/innerHTML trick left " and ' untouched, which is unsafe
+// inside value="..." / src="..." attributes built via string interpolation).
 function escHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return String(str == null ? '' : str).replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+// For untrusted text embedded inside an inline onclick="fn('...')" JS-string argument.
+// HTML-entity-escaping alone (escHtml) does NOT protect this context: the browser
+// HTML-decodes the attribute before handing it to the JS parser, so an entity-encoded
+// quote decodes right back into a real quote and still breaks out of the string.
+function escJsAttr(str) {
+    return String(str == null ? '' : str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/[\r\n]/g, ' ')
+        .replace(/"/g, '&quot;');
+}
+
+// Coerces a Firestore field to a safe display number, since Firestore has no schema —
+// a field that should be numeric (balance, quantity, count...) could hold an attacker-
+// or corruption-supplied string, and raw string interpolation of that into innerHTML
+// would otherwise be an injection point.
+function num(x) {
+    const n = Number(x);
+    return Number.isFinite(n) ? n : 0;
+}
+
+// Only real camera/gallery captures (canvas.toDataURL) should ever end up as a photo
+// src= — this rejects any other value a corrupted/attacker-written record might hold,
+// which would otherwise let arbitrary attribute injection into avatar <img> tags.
+function isSafeImageDataUrl(s) {
+    return typeof s === 'string' && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$/.test(s);
 }
 
 function formatDate(date) {
