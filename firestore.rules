@@ -1,0 +1,217 @@
+rules_version = '2';
+
+// Firestore security rules for the club-app-8f954 project.
+//
+// Context: every client (the admin app in index.html, and the public
+// guest.html/register.html/user.html pages) authenticates the same way —
+// an anonymous Firebase Auth session. Firestore rules have no way to tell
+// "the club owner using the admin app" apart from "anyone else who signs
+// in anonymously", so `read` (get + list) and `delete` stay open to any
+// signed-in (including anonymous) request, same as before — narrowing
+// that further would break the admin app itself. Closing that specific
+// gap needs either Firebase App Check or a real login for the admin app,
+// not rules alone (see the audit notes).
+//
+// What THIS file adds: every `create`/`update` is validated against the
+// exact field shapes the app actually writes, so a request that doesn't
+// come through the app's own UI (e.g. a raw API call) can no longer:
+//   - set a document's `id` field to anything other than its own doc key
+//     (this field is what several onclick handlers embed into inline JS —
+//     letting it diverge from the doc key was a second-order injection risk)
+//   - set balance/vipSlots/quantity/amount/count to a non-numeric or
+//     out-of-range value
+//   - set `photo` to anything other than a real base64 image data URL
+//   - inject arbitrary extra fields onto a brand-new document
+//
+// Updates are validated leniently (only the fields a given write actually
+// changes are checked, via diff().affectedKeys()) specifically so a
+// legitimate small edit (e.g. just updating `balance`) can never be
+// rejected because of some unrelated, pre-existing field already sitting
+// on that document — this trades a little strictness for not risking
+// breakage of real, already-stored records.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // ---------------- members ----------------
+    function memberCreateOk(d, memberId) {
+      return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
+        && d.id is string && d.id == memberId
+        && d.name is string && d.name.size() > 0 && d.name.size() < 120
+        && (!('phone' in d) || (d.phone is string && d.phone.size() < 40))
+        && (!('email' in d) || (d.email is string && d.email.size() < 200))
+        && (!('birthDate' in d) || (d.birthDate is string && d.birthDate.size() < 20))
+        && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000 && d.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
+        && (!('balance' in d) || (d.balance is number && d.balance >= 0 && d.balance < 100000))
+        && (!('vipSlots' in d) || (d.vipSlots is number && d.vipSlots in [0,1,2]))
+        && (!('nfcTag' in d) || d.nfcTag == null || (d.nfcTag is string && d.nfcTag.size() < 500))
+        && (!('createdAt' in d) || (d.createdAt is string && d.createdAt.size() < 40))
+        && (!('registeredSelf' in d) || d.registeredSelf is bool)
+        && (!('lastBirthdayCheckinWeek' in d) || (d.lastBirthdayCheckinWeek is string && d.lastBirthdayCheckinWeek.size() < 20));
+    }
+
+    function memberUpdateOk(newData, oldData, memberId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['id']) || (newData.id is string && newData.id == memberId))
+        && (!changed.hasAny(['name']) || (newData.name is string && newData.name.size() > 0 && newData.name.size() < 120))
+        && (!changed.hasAny(['phone']) || (newData.phone is string && newData.phone.size() < 40))
+        && (!changed.hasAny(['email']) || (newData.email is string && newData.email.size() < 200))
+        && (!changed.hasAny(['birthDate']) || (newData.birthDate is string && newData.birthDate.size() < 20))
+        && (!changed.hasAny(['photo']) || newData.photo == null || (newData.photo is string && newData.photo.size() < 900000 && newData.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
+        && (!changed.hasAny(['balance']) || (newData.balance is number && newData.balance >= 0 && newData.balance < 100000))
+        && (!changed.hasAny(['vipSlots']) || (newData.vipSlots is number && newData.vipSlots in [0,1,2]))
+        && (!changed.hasAny(['nfcTag']) || newData.nfcTag == null || (newData.nfcTag is string && newData.nfcTag.size() < 500))
+        && (!changed.hasAny(['registeredSelf']) || newData.registeredSelf is bool)
+        && (!changed.hasAny(['lastBirthdayCheckinWeek']) || (newData.lastBirthdayCheckinWeek is string && newData.lastBirthdayCheckinWeek.size() < 20));
+    }
+
+    match /members/{memberId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && memberCreateOk(request.resource.data, memberId);
+      allow update: if signedIn() && memberUpdateOk(request.resource.data, resource.data, memberId);
+    }
+
+    // ---------------- payments ----------------
+    function paymentCreateOk(d, paymentId) {
+      return d.keys().hasOnly(['id','memberId','quantity','amount','paymentMethod','note','terminal','date'])
+        && d.id is string && d.id == paymentId
+        && d.memberId is string
+        && d.quantity is number && d.quantity > 0 && d.quantity <= 1000
+        && d.amount is number && d.amount >= 0 && d.amount <= 100000
+        && (!('paymentMethod' in d) || d.paymentMethod in ['cash','credit'])
+        && (!('note' in d) || (d.note is string && d.note.size() < 500))
+        && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
+        && d.date is string;
+    }
+
+    function paymentUpdateOk(newData, oldData, paymentId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['id']) || (newData.id is string && newData.id == paymentId))
+        && (!changed.hasAny(['memberId']) || newData.memberId is string)
+        && (!changed.hasAny(['quantity']) || (newData.quantity is number && newData.quantity > 0 && newData.quantity <= 1000))
+        && (!changed.hasAny(['amount']) || (newData.amount is number && newData.amount >= 0 && newData.amount <= 100000))
+        && (!changed.hasAny(['paymentMethod']) || newData.paymentMethod in ['cash','credit'])
+        && (!changed.hasAny(['note']) || (newData.note is string && newData.note.size() < 500))
+        && (!changed.hasAny(['terminal']) || (newData.terminal is string && newData.terminal.size() < 100));
+    }
+
+    match /payments/{paymentId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && paymentCreateOk(request.resource.data, paymentId);
+      allow update: if signedIn() && paymentUpdateOk(request.resource.data, resource.data, paymentId);
+    }
+
+    // ---------------- checkins ----------------
+    function checkinCreateOk(d, checkinId) {
+      return d.keys().hasOnly(['id','memberId','entryType','terminal','timestamp'])
+        && d.id is string && d.id == checkinId
+        && d.memberId is string
+        && d.entryType in ['single','couple','birthday','vip-single','vip-couple']
+        && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
+        && d.timestamp is string;
+    }
+
+    function checkinUpdateOk(newData, oldData, checkinId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['id']) || (newData.id is string && newData.id == checkinId))
+        && (!changed.hasAny(['memberId']) || newData.memberId is string)
+        && (!changed.hasAny(['entryType']) || newData.entryType in ['single','couple','birthday','vip-single','vip-couple'])
+        && (!changed.hasAny(['terminal']) || (newData.terminal is string && newData.terminal.size() < 100));
+    }
+
+    match /checkins/{checkinId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && checkinCreateOk(request.resource.data, checkinId);
+      allow update: if signedIn() && checkinUpdateOk(request.resource.data, resource.data, checkinId);
+    }
+
+    // ---------------- guests (temporary, 48h) ----------------
+    function guestCreateOk(d, guestId) {
+      return d.keys().hasOnly(['id','name','slots','createdAt','expiresAt'])
+        && d.id is string && d.id == guestId
+        && d.name is string && d.name.size() > 0 && d.name.size() < 120
+        && d.slots is number && d.slots in [1,2]
+        && d.createdAt is string
+        && d.expiresAt is string;
+    }
+
+    function guestUpdateOk(newData, oldData, guestId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['id']) || (newData.id is string && newData.id == guestId))
+        && (!changed.hasAny(['name']) || (newData.name is string && newData.name.size() > 0 && newData.name.size() < 120))
+        && (!changed.hasAny(['slots']) || (newData.slots is number && newData.slots in [1,2]));
+    }
+
+    match /guests/{guestId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && guestCreateOk(request.resource.data, guestId);
+      allow update: if signedIn() && guestUpdateOk(request.resource.data, resource.data, guestId);
+    }
+
+    // ---------------- guestcheckins (VIP + temp-guest arrivals) ----------------
+    function guestCheckinCreateOk(d, gcId) {
+      return d.keys().hasOnly(['id','refId','name','type','date','count','terminal','timestamp'])
+        && d.id is string && d.id == gcId
+        && d.refId is string
+        && d.name is string && d.name.size() < 120
+        && d.type in ['vip','temp']
+        && d.date is string
+        && d.count is number && d.count in [1,2]
+        && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
+        && d.timestamp is string;
+    }
+
+    function guestCheckinUpdateOk(newData, oldData, gcId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return (!changed.hasAny(['id']) || (newData.id is string && newData.id == gcId))
+        && (!changed.hasAny(['count']) || (newData.count is number && newData.count in [1,2]))
+        && (!changed.hasAny(['type']) || newData.type in ['vip','temp']);
+    }
+
+    match /guestcheckins/{gcId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && guestCheckinCreateOk(request.resource.data, gcId);
+      allow update: if signedIn() && guestCheckinUpdateOk(request.resource.data, resource.data, gcId);
+    }
+
+    // ---------------- memberLog (admin action audit trail) ----------------
+    function memberLogCreateOk(d, logId) {
+      return d.keys().hasOnly(['id','memberId','label','terminal','timestamp'])
+        && d.id is string && d.id == logId
+        && d.memberId is string
+        && d.label is string && d.label.size() < 300
+        && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
+        && d.timestamp is string;
+    }
+
+    function memberLogUpdateOk(newData, oldData, logId) {
+      let changed = newData.diff(oldData).affectedKeys();
+      return !changed.hasAny(['id']) || (newData.id is string && newData.id == logId);
+    }
+
+    match /memberLog/{logId} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && memberLogCreateOk(request.resource.data, logId);
+      allow update: if signedIn() && memberLogUpdateOk(request.resource.data, resource.data, logId);
+    }
+
+    // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------
+    function settingsWriteOk(d) {
+      return d.keys().hasOnly(['eventName','singlePrice','couplePrice','activeDays','knownTerminals'])
+        && (!('eventName' in d) || (d.eventName is string && d.eventName.size() < 100))
+        && (!('singlePrice' in d) || d.singlePrice is string)
+        && (!('couplePrice' in d) || d.couplePrice is string)
+        && (!('activeDays' in d) || d.activeDays is string)
+        && (!('knownTerminals' in d) || d.knownTerminals is list);
+    }
+
+    match /settings/{docId} {
+      allow read: if signedIn();
+      allow write: if signedIn() && settingsWriteOk(request.resource.data);
+    }
+  }
+}
