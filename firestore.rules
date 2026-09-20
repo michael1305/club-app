@@ -34,12 +34,20 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // The club owner: signed in with email/password (not anonymous) as this address.
-    // Sign-up by strangers cannot claim it, because the account already exists.
+    // Club admins: signed in with email/password (not anonymous) as one of these
+    // addresses. Phone-number admins use <phone>@club-admin.local (see admin-auth.js).
+    // The list is deliberate: anyone can sign up a new email/password account, so
+    // access must be granted by exact address, never by domain or pattern.
+    // To add an admin: add their address here, republish, and create the user in
+    // Firebase console -> Authentication -> Users.
     function isAdmin() {
       return request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email == 'info@av.co.il';
+        && request.auth.token.email in [
+          'info@av.co.il',
+          '0523536536@club-admin.local',
+          '0524444500@club-admin.local'
+        ];
     }
 
     // The app always writes dates as plain JS strings (new Date().toISOString()),
