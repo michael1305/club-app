@@ -90,6 +90,7 @@ function _initFirebase() {
 
         _migrateFromLocalStorage();
         _backfillPublicIndexes();
+        if (typeof _startPromotions === 'function') _startPromotions();
     });
 }
 

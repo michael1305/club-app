@@ -236,6 +236,18 @@
                     </div>
                 </div>
                 <div class="setting-group">
+                    <h3>🎁 מבצעים (מוצגים בעמוד הראשי לחברים)</h3>
+                    <label>כותרת</label>
+                    <input type="text" id="promo-title" maxlength="120" placeholder="לדוגמה: 10 כניסות במחיר 8">
+                    <label>פרטים</label>
+                    <textarea id="promo-body" maxlength="2000" rows="3" placeholder="תיאור המבצע (לא חובה)" style="width:100%;padding:10px;border:1px solid #dfe6e9;border-radius:8px;font-family:inherit;font-size:1rem"></textarea>
+                    <label>בתוקף עד (לא חובה)</label>
+                    <input type="date" id="promo-expires" style="width:100%;padding:10px;border:1px solid #dfe6e9;border-radius:8px">
+                    <button class="btn btn-primary" id="promo-save-btn" onclick="savePromo()">➕ הוסף מבצע</button>
+                    <button class="btn btn-secondary" id="promo-cancel-btn" onclick="cancelPromoEdit()" style="display:none">ביטול עריכה</button>
+                    <div id="promos-admin-list" style="margin-top:12px"></div>
+                </div>
+                <div class="setting-group">
                     <h3>גיבוי ושחזור</h3>
                     <button class="btn btn-primary" onclick="exportData()">📥 ייצוא נתונים</button>
                     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">📤 ייבוא נתונים</button>
@@ -305,6 +317,7 @@
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
     <script src="admin-auth.js?v=1"></script>
-    <script src="app.js?v=125"></script>
+    <script src="app.js?v=126"></script>
+    <script src="admin-promos.js?v=1"></script>
 </body>
 </html>
