@@ -46,7 +46,8 @@ service cloud.firestore {
         && request.auth.token.email in [
           'info@av.co.il',
           '0523536536@club-admin.local',
-          '0524444500@club-admin.local'
+          '0524444500@club-admin.local',
+          '0547448240@club-admin.local'
         ];
     }
 
