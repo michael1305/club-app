@@ -1,6 +1,10 @@
 {
+    "id": "/",
     "name": "ניהול מועדון",
     "short_name": "מועדון",
+    "description": "ניהול מועדון: כרטיסיות, תשלומים וכניסה בסריקת QR/NFC",
+    "lang": "he",
+    "dir": "rtl",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",
@@ -18,5 +22,9 @@
             "sizes": "512x512",
             "type": "image/png"
         }
+    ],
+    "categories": [
+        "business",
+        "productivity"
     ]
 }
