@@ -212,7 +212,7 @@ function _logMemberAction(memberId, label) {
 }
 
 function getBaseUrl() {
-    return location.href.replace(/index\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
+    return location.href.replace(/(admin|index)\.html.*$/, '').replace(/\?.*$/, '').replace(/\/$/, '') + '/';
 }
 
 function getUserUrl(memberId) {

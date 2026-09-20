@@ -6,8 +6,8 @@ rules_version = '2';
 // email/password (isAdmin() below) and is the only one who can list, read or
 // delete data. Public pages (register.html, user.html) use an anonymous session
 // and can only: read ONE member by id, self-register, change their own photo,
-// look up/claim a phone number in the phones index, and read their own
-// members/{id}/checkins history.
+// look up/claim a phone number in the phones index, read their own
+// members/{id}/checkins history, and read the promotions list.
 //
 // What THIS file adds: every `create`/`update` is validated against the
 // exact field shapes the app actually writes, so a request that doesn't
@@ -240,6 +240,24 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow create: if isAdmin() && memberLogCreateOk(request.resource.data, logId);
       allow update: if isAdmin() && memberLogUpdateOk(request.resource.data, resource.data, logId);
+    }
+
+    // ---------------- promotions (shown on the public home page; edited by admin only) ----------------
+    function promotionOk(d, promoId) {
+      return d.keys().hasOnly(['id','title','body','order','active','expiresAt','createdAt'])
+        && d.id is string && d.id == promoId
+        && d.title is string && d.title.size() > 0 && d.title.size() < 120
+        && (!('body' in d) || (d.body is string && d.body.size() < 2000))
+        && (!('order' in d) || d.order is number)
+        && (!('active' in d) || d.active is bool)
+        && (!('expiresAt' in d) || d.expiresAt == null || isDateishBounded(d.expiresAt, 40))
+        && (!('createdAt' in d) || isDateishBounded(d.createdAt, 40));
+    }
+
+    match /promotions/{promoId} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin() && promotionOk(request.resource.data, promoId);
+      allow delete: if isAdmin();
     }
 
     // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------

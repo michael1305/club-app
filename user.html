@@ -524,6 +524,8 @@
             firebase.auth().signInAnonymously().then(() => {
                 db.collection('members').doc(id).onSnapshot(doc => {
                     _member = doc.exists ? doc.data() : null;
+                    // Remember this member on the device so the app home opens straight to their card.
+                    try { if (doc.exists) localStorage.setItem('club_member_id', id); else if (localStorage.getItem('club_member_id') === id) localStorage.removeItem('club_member_id'); } catch (e) {}
                     render();
                 }, () => {
                     content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
