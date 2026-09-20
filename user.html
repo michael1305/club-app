@@ -359,6 +359,7 @@
             db.enablePersistence().catch(() => {});
 
             let _member = null;
+            let _memberLoaded = false; // false until the member document has answered once
             let _checkins = [];
             let _authReady = false;
 
@@ -461,6 +462,7 @@
             });
 
             function render() {
+                if (!_memberLoaded) return; // keep the "loading" text; avoids a flash of "not found"
                 if (!_member) {
                     content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
                     return;
@@ -524,6 +526,7 @@
             firebase.auth().signInAnonymously().then(() => {
                 db.collection('members').doc(id).onSnapshot(doc => {
                     _member = doc.exists ? doc.data() : null;
+                    _memberLoaded = true;
                     // Remember this member on the device so the app home opens straight to their card.
                     try { if (doc.exists) localStorage.setItem('club_member_id', id); else if (localStorage.getItem('club_member_id') === id) localStorage.removeItem('club_member_id'); } catch (e) {}
                     render();
