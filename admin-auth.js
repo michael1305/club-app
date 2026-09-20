@@ -14,6 +14,17 @@ function _adminApp() {
     catch (e) { return firebase.initializeApp(_ADMIN_FIREBASE_CONFIG, 'admin'); }
 }
 
+// Admins can sign in with an email OR an Israeli mobile number. A phone number is
+// mapped to a fixed internal email (no SMS involved); the same mapping is used
+// when creating the user in the Firebase console and in firestore.rules.
+function adminLoginEmail(input) {
+    const v = String(input || '').trim();
+    if (v.includes('@')) return v.toLowerCase();
+    let d = v.replace(/\D/g, '');
+    if (d.startsWith('972')) d = '0' + d.slice(3);
+    return d ? d + '@club-admin.local' : '';
+}
+
 function adminSignOut() {
     _adminApp().auth().signOut().then(() => location.reload());
 }
@@ -29,7 +40,7 @@ function requireAdmin(onReady) {
         '<form id="admin-login-form" style="background:#fff;padding:28px 24px;border-radius:14px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%;max-width:340px">' +
         '<h2 style="margin:0 0 6px;color:#6c5ce7;text-align:center">כניסת מנהל</h2>' +
         '<p style="margin:0 0 18px;color:#636e72;font-size:14px;text-align:center">יש להתחבר כדי לנהל את המועדון</p>' +
-        '<input id="admin-email" type="email" autocomplete="username" placeholder="אימייל" required style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;border:1px solid #dfe6e9;border-radius:8px;font-size:16px;direction:ltr">' +
+        '<input id="admin-email" type="text" inputmode="email" autocomplete="username" placeholder="אימייל או טלפון" required style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;border:1px solid #dfe6e9;border-radius:8px;font-size:16px;direction:ltr">' +
         '<input id="admin-password" type="password" autocomplete="current-password" placeholder="סיסמה" required style="width:100%;box-sizing:border-box;padding:12px;margin-bottom:10px;border:1px solid #dfe6e9;border-radius:8px;font-size:16px;direction:ltr">' +
         '<div id="admin-login-error" style="color:#d63031;font-size:14px;min-height:20px;margin-bottom:8px"></div>' +
         '<button id="admin-login-btn" type="submit" style="width:100%;padding:12px;border:none;border-radius:8px;background:#6c5ce7;color:#fff;font-size:16px;cursor:pointer">התחבר</button>' +
@@ -46,7 +57,7 @@ function requireAdmin(onReady) {
         errEl.textContent = '';
         btn.disabled = true;
         auth.signInWithEmailAndPassword(
-            overlay.querySelector('#admin-email').value.trim(),
+            adminLoginEmail(overlay.querySelector('#admin-email').value),
             overlay.querySelector('#admin-password').value
         ).catch(err => {
             const bad = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
