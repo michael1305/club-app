@@ -2,15 +2,12 @@ rules_version = '2';
 
 // Firestore security rules for the club-app-8f954 project.
 //
-// Context: every client (the admin app in index.html, and the public
-// guest.html/register.html/user.html pages) authenticates the same way —
-// an anonymous Firebase Auth session. Firestore rules have no way to tell
-// "the club owner using the admin app" apart from "anyone else who signs
-// in anonymously", so `read` (get + list) and `delete` stay open to any
-// signed-in (including anonymous) request, same as before — narrowing
-// that further would break the admin app itself. Closing that specific
-// gap needs either Firebase App Check or a real login for the admin app,
-// not rules alone (see the audit notes).
+// Access model (2026-09): the club owner signs in to the admin app with
+// email/password (isAdmin() below) and is the only one who can list, read or
+// delete data. Public pages (register.html, user.html) use an anonymous session
+// and can only: read ONE member by id, self-register, change their own photo,
+// look up/claim a phone number in the phones index, and read their own
+// members/{id}/checkins history.
 //
 // What THIS file adds: every `create`/`update` is validated against the
 // exact field shapes the app actually writes, so a request that doesn't
@@ -35,6 +32,14 @@ service cloud.firestore {
 
     function signedIn() {
       return request.auth != null;
+    }
+
+    // The club owner: signed in with email/password (not anonymous) as this address.
+    // Sign-up by strangers cannot claim it, because the account already exists.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'info@av.co.il';
     }
 
     // The app always writes dates as plain JS strings (new Date().toISOString()),
@@ -80,10 +85,37 @@ service cloud.firestore {
         && (!changed.hasAny(['lastBirthdayCheckinWeek']) || isDateishBounded(newData.lastBirthdayCheckinWeek, 20));
     }
 
+    // Public (anonymous) visitors can: read ONE member by id (their own card link),
+    // self-register (balance 0, no VIP/NFC), and change only their own photo.
+    // Only the admin can list, delete, or change anything else.
     match /members/{memberId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && memberCreateOk(request.resource.data, memberId);
-      allow update: if signedIn() && memberUpdateOk(request.resource.data, resource.data, memberId);
+      allow get: if signedIn();
+      allow list, delete: if isAdmin();
+      allow create: if isAdmin() && memberCreateOk(request.resource.data, memberId)
+        || signedIn() && memberCreateOk(request.resource.data, memberId)
+           && request.resource.data.registeredSelf == true
+           && request.resource.data.get('balance', 0) == 0
+           && !('vipSlots' in request.resource.data)
+           && !('nfcTag' in request.resource.data);
+      allow update: if isAdmin() && memberUpdateOk(request.resource.data, resource.data, memberId)
+        || signedIn() && memberUpdateOk(request.resource.data, resource.data, memberId)
+           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photo']);
+
+      // A member's own check-in history (copy of top-level checkins, written by the admin app).
+      match /checkins/{checkinId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
+    }
+
+    // Duplicate-phone index used by register.html: anyone can look up / claim a phone
+    // number once; only the admin can change or remove entries.
+    match /phones/{phoneKey} {
+      allow get: if signedIn();
+      allow create: if signedIn() && phoneKey.size() <= 20
+        && request.resource.data.keys().hasOnly(['memberId','createdAt'])
+        && request.resource.data.memberId is string;
+      allow list, update, delete: if isAdmin();
     }
 
     // ---------------- payments ----------------
@@ -111,9 +143,9 @@ service cloud.firestore {
     }
 
     match /payments/{paymentId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && paymentCreateOk(request.resource.data, paymentId);
-      allow update: if signedIn() && paymentUpdateOk(request.resource.data, resource.data, paymentId);
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && paymentCreateOk(request.resource.data, paymentId);
+      allow update: if isAdmin() && paymentUpdateOk(request.resource.data, resource.data, paymentId);
     }
 
     // ---------------- checkins ----------------
@@ -135,9 +167,9 @@ service cloud.firestore {
     }
 
     match /checkins/{checkinId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && checkinCreateOk(request.resource.data, checkinId);
-      allow update: if signedIn() && checkinUpdateOk(request.resource.data, resource.data, checkinId);
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && checkinCreateOk(request.resource.data, checkinId);
+      allow update: if isAdmin() && checkinUpdateOk(request.resource.data, resource.data, checkinId);
     }
 
     // ---------------- guests (temporary, 48h) ----------------
@@ -158,9 +190,9 @@ service cloud.firestore {
     }
 
     match /guests/{guestId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && guestCreateOk(request.resource.data, guestId);
-      allow update: if signedIn() && guestUpdateOk(request.resource.data, resource.data, guestId);
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && guestCreateOk(request.resource.data, guestId);
+      allow update: if isAdmin() && guestUpdateOk(request.resource.data, resource.data, guestId);
     }
 
     // ---------------- guestcheckins (VIP + temp-guest arrivals) ----------------
@@ -184,9 +216,9 @@ service cloud.firestore {
     }
 
     match /guestcheckins/{gcId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && guestCheckinCreateOk(request.resource.data, gcId);
-      allow update: if signedIn() && guestCheckinUpdateOk(request.resource.data, resource.data, gcId);
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && guestCheckinCreateOk(request.resource.data, gcId);
+      allow update: if isAdmin() && guestCheckinUpdateOk(request.resource.data, resource.data, gcId);
     }
 
     // ---------------- memberLog (admin action audit trail) ----------------
@@ -205,9 +237,9 @@ service cloud.firestore {
     }
 
     match /memberLog/{logId} {
-      allow read, delete: if signedIn();
-      allow create: if signedIn() && memberLogCreateOk(request.resource.data, logId);
-      allow update: if signedIn() && memberLogUpdateOk(request.resource.data, resource.data, logId);
+      allow read, delete: if isAdmin();
+      allow create: if isAdmin() && memberLogCreateOk(request.resource.data, logId);
+      allow update: if isAdmin() && memberLogUpdateOk(request.resource.data, resource.data, logId);
     }
 
     // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------
@@ -221,8 +253,8 @@ service cloud.firestore {
     }
 
     match /settings/{docId} {
-      allow read: if signedIn();
-      allow write: if signedIn() && settingsWriteOk(request.resource.data);
+      allow read: if isAdmin();
+      allow write: if isAdmin() && settingsWriteOk(request.resource.data);
     }
   }
 }

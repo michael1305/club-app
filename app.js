@@ -89,7 +89,31 @@ function _initFirebase() {
         }, () => {});
 
         _migrateFromLocalStorage();
+        _backfillPublicIndexes();
     });
+}
+
+// One-time (per device) fill of the public indexes for data that existed before them.
+async function _backfillPublicIndexes() {
+    if (localStorage.getItem('club_public_index_v1')) return;
+    try {
+        const [mem, chk] = await Promise.all([_db.collection('members').get(), _db.collection('checkins').get()]);
+        const ops = [];
+        mem.docs.forEach(d => {
+            const m = d.data(), k = _phoneKey(m.phone);
+            if (k) ops.push(b => b.set(_db.collection('phones').doc(k), { memberId: m.id, createdAt: new Date().toISOString() }));
+        });
+        chk.docs.forEach(d => {
+            const c = d.data();
+            if (c.memberId) ops.push(b => b.set(_db.collection('members').doc(c.memberId).collection('checkins').doc(c.id), c));
+        });
+        for (let i = 0; i < ops.length; i += 400) {
+            const b = _db.batch();
+            ops.slice(i, i + 400).forEach(f => f(b));
+            await b.commit();
+        }
+        localStorage.setItem('club_public_index_v1', '1');
+    } catch (e) { /* retried on next start */ }
 }
 
 function _onDataChange() {
@@ -132,11 +156,45 @@ function getGuestCheckins() { return _guestCheckins; }
 function getMemberLog()     { return _memberLog; }
 
 // Targeted async writes to Firestore
-function _saveMember(member)              { if (_db) _db.collection('members').doc(member.id).set(member); }
-function _updateMember(id, fields)        { if (_db) _db.collection('members').doc(id).update(fields); }
-function _deleteMemberDoc(id)             { if (_db) _db.collection('members').doc(id).delete(); }
+// Public pages can no longer read the members/checkins collections (only the admin
+// can), so two small public indexes are kept in sync here:
+//   phones/{normalizedPhone}            -> lets register.html detect duplicate phones
+//   members/{id}/checkins/{checkinId}   -> lets a member see their own history (user.html)
+function _phoneKey(p) { const k = normalizePhone(p); return k && k.length <= 20 ? k : null; }
+function _setPhoneIndex(phone, memberId) {
+    const k = _phoneKey(phone);
+    if (_db && k) _db.collection('phones').doc(k).set({ memberId, createdAt: new Date().toISOString() });
+}
+function _clearPhoneIndex(phone, memberId) {
+    const k = _phoneKey(phone);
+    if (_db && k) _db.collection('phones').doc(k).get().then(d => {
+        if (d.exists && d.data().memberId === memberId) d.ref.delete();
+    }).catch(() => {});
+}
+function _saveMember(member)              { if (_db) { _db.collection('members').doc(member.id).set(member); _setPhoneIndex(member.phone, member.id); } }
+function _updateMember(id, fields) {
+    if (!_db) return;
+    _db.collection('members').doc(id).update(fields);
+    if ('phone' in fields) {
+        const old = getMembers().find(m => m.id === id);
+        if (old && old.phone !== fields.phone) _clearPhoneIndex(old.phone, id);
+        _setPhoneIndex(fields.phone, id);
+    }
+}
+function _deleteMemberDoc(id) {
+    if (!_db) return;
+    const old = getMembers().find(m => m.id === id);
+    if (old) _clearPhoneIndex(old.phone, id);
+    _db.collection('members').doc(id).collection('checkins').get()
+        .then(snap => Promise.all(snap.docs.map(d => d.ref.delete()))).catch(() => {});
+    _db.collection('members').doc(id).delete();
+}
 function _savePayment(payment)            { if (_db) _db.collection('payments').doc(payment.id).set(payment); }
-function _saveCheckin(checkin)            { if (_db) _db.collection('checkins').doc(checkin.id).set(checkin); }
+function _saveCheckin(checkin) {
+    if (!_db) return;
+    _db.collection('checkins').doc(checkin.id).set(checkin);
+    if (checkin.memberId) _db.collection('members').doc(checkin.memberId).collection('checkins').doc(checkin.id).set(checkin);
+}
 function _saveGuest(g)                    { if (_db) _db.collection('guests').doc(g.id).set(g); }
 function _deleteGuest(id)                 { if (_db) _db.collection('guests').doc(id).delete(); }
 function _saveGuestCheckin(gc)            { if (_db) _db.collection('guestcheckins').doc(gc.id).set(gc); }
@@ -1812,6 +1870,17 @@ async function resetAllData() {
     await batchDelete('payments');
     await batchDelete('checkins');
     await batchDelete('guestcheckins');
+    {
+        const ms = await _db.collection('members').get();
+        for (const m of ms.docs) {
+            const cs = await m.ref.collection('checkins').get();
+            for (let i = 0; i < cs.docs.length; i += 400) {
+                const b = _db.batch();
+                cs.docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+                await b.commit();
+            }
+        }
+    }
 
     const memSnap = await _db.collection('members').get();
     for (let i = 0; i < memSnap.docs.length; i += 400) {
@@ -1864,6 +1933,8 @@ function importData(event) {
                 (data.members  || []).forEach(m => batch.set(_db.collection('members').doc(m.id),  m));
                 (data.payments || []).forEach(p => batch.set(_db.collection('payments').doc(p.id), p));
                 (data.checkins || []).forEach(c => batch.set(_db.collection('checkins').doc(c.id), c));
+                (data.checkins || []).forEach(c => { if (c.memberId) batch.set(_db.collection('members').doc(c.memberId).collection('checkins').doc(c.id), c); });
+                (data.members  || []).forEach(m => { const k = _phoneKey(m.phone); if (k) batch.set(_db.collection('phones').doc(k), { memberId: m.id, createdAt: new Date().toISOString() }); });
                 batch.commit().then(() => showToast('נתונים יובאו בהצלחה!')).catch(() => showToast('שגיאה בייבוא'));
             }
             if (data.settings) {

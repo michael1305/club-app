@@ -361,10 +361,9 @@
                 let id;
                 const normPhone = normalizePhone(phone);
                 firebase.auth().signInAnonymously().then(() => {
-                    return db.collection('members').get();
+                    return normPhone ? db.collection('phones').doc(normPhone).get() : { exists: false };
                 }).then(snap => {
-                    const dup = snap.docs.find(d => normalizePhone(d.data().phone) === normPhone);
-                    if (dup) return Promise.reject({ duplicatePhone: true });
+                    if (snap.exists) return Promise.reject({ duplicatePhone: true });
 
                     id = genId();
                     const data = {
@@ -378,7 +377,8 @@
                     };
                     if (email) data.email = email;
                     if (_photoDataUrl) data.photo = _photoDataUrl;
-                    return db.collection('members').doc(id).set(data);
+                    return db.collection('members').doc(id).set(data).then(() =>
+                        normPhone ? db.collection('phones').doc(normPhone).set({ memberId: id, createdAt: data.createdAt }) : null);
                 }).then(() => {
                     location.href = 'user.html?id=' + id;
                 }).catch(err => {

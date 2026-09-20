@@ -529,7 +529,7 @@
                     content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
                 });
 
-                db.collection('checkins').where('memberId', '==', id).onSnapshot(snap => {
+                db.collection('members').doc(id).collection('checkins').onSnapshot(snap => {
                     _checkins = snap.docs.map(d => d.data());
                     render();
                 }, () => {});
