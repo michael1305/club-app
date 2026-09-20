@@ -47,7 +47,8 @@ service cloud.firestore {
           'info@av.co.il',
           '0523536536@club-admin.local',
           '0524444500@club-admin.local',
-          '0547448240@club-admin.local'
+          '0547448240@club-admin.local',
+          '0528588408@club-admin.local'
         ];
     }
 
