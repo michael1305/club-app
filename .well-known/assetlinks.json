@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "il.co.gadibitton.club.twa",
+    "sha256_cert_fingerprints": ["D7:37:75:AA:AB:14:A8:11:1E:39:03:3D:A5:F8:70:09:5F:23:92:F8:EF:71:31:64:1C:DA:AF:03:79:E8:F6:1C"]
+  }
+}]
