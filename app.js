@@ -1268,6 +1268,42 @@ function removeNfc(memberId) {
     showToast('שיוך הכרטיס בוטל');
 }
 
+// ===== ALLOWED DAYS (guests & free-entry members) =====
+// A guest / free-entry member can be limited to some of the club days.
+// `days` = array of weekday numbers (0=Sunday); missing/empty = valid on every day.
+const _CLUB_DAYS = [[0, 'ראשון'], [2, 'שלישי'], [4, 'חמישי']];
+
+function _daysPickerHtml(prefix, selected) {
+    const sel = Array.isArray(selected) && selected.length ? selected : _CLUB_DAYS.map(d => d[0]);
+    return `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:6px">` +
+        _CLUB_DAYS.map(([n, name]) => `
+            <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                <input type="checkbox" name="${prefix}-day" value="${n}" ${sel.includes(n) ? 'checked' : ''}> ${name}
+            </label>`).join('') + `</div>`;
+}
+
+function _readDays(prefix) {
+    return [...document.querySelectorAll(`input[name="${prefix}-day"]:checked`)].map(i => Number(i.value));
+}
+
+function _validToday(x) {
+    return !Array.isArray(x.days) || x.days.length === 0 || x.days.includes(new Date().getDay());
+}
+
+function _daysLabel(x) {
+    if (!Array.isArray(x.days) || x.days.length === 0 || x.days.length >= _CLUB_DAYS.length) return '';
+    return ' · ' + _CLUB_DAYS.filter(([n]) => x.days.includes(n)).map(([, name]) => name).join('/');
+}
+
+function _arrivalButtons(kind, id, slots) {
+    const cls = { 1: 'btn-success', 2: 'btn-primary', 3: 'btn-primary' };
+    let h = '';
+    for (let n = 1; n <= 3; n++) {
+        if (n === 1 || slots >= n) h += `<button class="btn ${cls[n]}" style="padding:5px 9px;font-size:0.82rem" onclick="mark${kind}Arrival('${id}',${n})">✓${n}</button>`;
+    }
+    return h;
+}
+
 // ===== VIP =====
 function showVipSettings(id) {
     const member = getMembers().find(m => m.id === id);
@@ -1275,16 +1311,23 @@ function showVipSettings(id) {
     const current = member.vipSlots || 0;
     openModal('כניסה חופשית - ' + member.name, `
         <p style="color:var(--text-light);margin-bottom:16px">הגדר כמה מקומות חופשיים לחבר זה</p>
+        <div style="margin-bottom:16px">
+            <label style="font-weight:600">ימים תקפים</label>
+            ${_daysPickerHtml('vip', member.days)}
+        </div>
         <div style="display:flex;flex-direction:column;gap:10px">
             <button class="btn ${current===0?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',0)">ביטול כניסה חופשית</button>
             <button class="btn ${current===1?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',1)">⭐ כניסה חופשית — 1 אדם</button>
             <button class="btn ${current===2?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',2)">⭐⭐ כניסה חופשית — 2 אנשים</button>
+            <button class="btn ${current===3?'btn-primary':'btn-secondary'} btn-block" onclick="setMemberVip('${id}',3)">⭐⭐⭐ כניסה חופשית — 3 אנשים</button>
         </div>
     `);
 }
 
 function setMemberVip(id, slots) {
-    _updateMember(id, { vipSlots: slots });
+    const days = _readDays('vip');
+    if (slots > 0 && days.length === 0) { showToast('יש לבחור לפחות יום אחד'); return; }
+    _updateMember(id, { vipSlots: slots, days: days.length ? days : _CLUB_DAYS.map(d => d[0]) });
     _logMemberAction(id, slots > 0 ? `⭐ הגדרת כניסה חופשית: ${slots} ${slots>1?'אנשים':'אדם'}` : '⭐ ביטול כניסה חופשית');
     closeModal();
     showToast(slots > 0 ? `כניסה חופשית הוגדרה ל-${slots} ${slots>1?'אנשים':'אדם'} ✓` : 'כניסה חופשית בוטלה');
@@ -1293,16 +1336,22 @@ function setMemberVip(id, slots) {
 function doVipCheckin(member) {
     const today = new Date().toISOString().split('T')[0];
     const existing = getGuestCheckins().find(gc => gc.refId === member.id && gc.date === today);
+    const okToday = _validToday(member);
+    const labels = { 1: '✓ כניסה בודדת (1)', 2: '✓ כניסה זוגית (2)', 3: '✓ שלושה אנשים (3)' };
+    let buttons = '';
+    for (let n = 1; n <= 3; n++) {
+        if (n === 1 || member.vipSlots >= n) buttons += `<button class="btn ${n === 1 ? 'btn-success' : 'btn-primary'} btn-block" onclick="performVipCheckin('${member.id}',${n})">${labels[n]}</button>`;
+    }
     openModal('כניסה חופשית — ' + member.name, `
         <div style="text-align:center;margin-bottom:16px">
             ${avatarHtml(member, 80)}
             <p style="margin-top:8px;font-size:1.1rem;font-weight:700">${escHtml(member.name)}</p>
-            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'})</p>
+            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'})${_daysLabel(member)}</p>
+            ${okToday ? '' : '<p style="color:var(--danger);font-weight:700">⚠️ הכניסה החופשית אינה בתוקף ביום זה</p>'}
             ${existing ? `<p style="color:var(--warning);font-size:0.9rem">כבר בוצעה כניסה היום (${num(existing.count)} ${existing.count>1?'אנשים':'אדם'})</p>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-success btn-block" onclick="performVipCheckin('${member.id}',1)">✓ כניסה בודדת (1)</button>
-            ${member.vipSlots >= 2 ? `<button class="btn btn-primary btn-block" onclick="performVipCheckin('${member.id}',2)">✓ כניסה זוגית (2)</button>` : ''}
+            ${okToday ? buttons : '<button class="btn btn-secondary btn-block" onclick="closeModal()">סגור</button>'}
         </div>
     `);
 }
@@ -1325,7 +1374,7 @@ function performVipCheckin(memberId, count) {
     _saveCheckin({
         id: generateId(),
         memberId,
-        entryType: count === 2 ? 'vip-couple' : 'vip-single',
+        entryType: count === 3 ? 'vip-triple' : count === 2 ? 'vip-couple' : 'vip-single',
         terminal: DB.getSetting('terminalName', 'ראשי'),
         timestamp: new Date().toISOString()
     });
@@ -1363,8 +1412,8 @@ function renderGuestList() {
 
     updateGuestTabVisibility();
 
-    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
-    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && g.name.toLowerCase().includes(search));
+    const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && _validToday(m) && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && _validToday(g) && g.name.toLowerCase().includes(search));
 
     const vipHtml = vipMembers.length === 0
         ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין חברים עם כניסה חופשית קבועה</p>'
@@ -1375,13 +1424,12 @@ function renderGuestList() {
                     ${avatarHtml(m, 36)}
                     <div>
                         <div style="font-weight:600">${escHtml(m.name)}</div>
-                        <div style="font-size:0.78rem;color:var(--text-light)">⭐ עד ${num(m.vipSlots)} ${m.vipSlots>1?'אנשים':'אדם'}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light)">⭐ עד ${num(m.vipSlots)} ${m.vipSlots>1?'אנשים':'אדם'}${_daysLabel(m)}</div>
                     </div>
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
                     ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
-                    <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',1)">✓1</button>
-                    ${m.vipSlots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markVipArrival('${m.id}',2)">✓2</button>` : ''}
+                    ${_arrivalButtons('Vip', m.id, m.vipSlots)}
                 </div>
             </div>`;
         }).join('');
@@ -1394,12 +1442,11 @@ function renderGuestList() {
             return `<div class="recent-item" style="align-items:center;gap:8px">
                 <div style="flex:1;min-width:0">
                     <div style="font-weight:600">${escHtml(g.name)}</div>
-                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${num(g.slots)} ${g.slots>1?'אנשים':'אדם'}</div>
+                    <div style="font-size:0.78rem;color:var(--text-light)">פג תוקף בעוד ${hoursLeft}ש׳ · עד ${num(g.slots)} ${g.slots>1?'אנשים':'אדם'}${_daysLabel(g)}</div>
                 </div>
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
                     ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
-                    <button class="btn btn-success" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',1)">✓1</button>
-                    ${g.slots >= 2 ? `<button class="btn btn-primary" style="padding:5px 9px;font-size:0.82rem" onclick="markTempArrival('${g.id}',2)">✓2</button>` : ''}
+                    ${_arrivalButtons('Temp', g.id, g.slots)}
                     <button class="btn btn-danger" style="padding:5px 9px;font-size:0.82rem" onclick="deleteTempGuest('${g.id}')">✕</button>
                 </div>
             </div>`;
@@ -1474,7 +1521,14 @@ function showAddTempGuest() {
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
                     <input type="radio" name="temp-slots" value="2"> 2 אנשים
                 </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="radio" name="temp-slots" value="3"> 3 אנשים
+                </label>
             </div>
+        </div>
+        <div class="form-group">
+            <label>ימים תקפים</label>
+            ${_daysPickerHtml('tg', null)}
         </div>
         <button class="btn btn-primary btn-block" onclick="addTempGuest()">הוסף לרשימה</button>
     `);
@@ -1485,11 +1539,14 @@ function addTempGuest() {
     const name = document.getElementById('temp-guest-name').value.trim();
     const slots = parseInt(document.querySelector('input[name="temp-slots"]:checked')?.value || '1');
     if (!name) { showToast('נא להזין שם'); return; }
+    const days = _readDays('tg');
+    if (days.length === 0) { showToast('יש לבחור לפחות יום אחד'); return; }
     const now = new Date();
     _saveGuest({
         id: generateId(),
         name,
         slots,
+        days,
         createdAt: now.toISOString(),
         expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
     });
@@ -1557,7 +1614,7 @@ function showReport() {
     const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
     const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
-    const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
+    const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'vip-triple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const birthdayCount = checkins.filter(c => c.entryType === 'birthday').length;
     const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
     const remainingEntries = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).reduce((s, m) => s + (m.balance || 0), 0);
@@ -1596,6 +1653,7 @@ function showReport() {
             let type;
             if (c.entryType === 'vip-single') type = '⭐ כניסה חופשית (1)';
             else if (c.entryType === 'vip-couple') type = '⭐ כניסה חופשית (2)';
+            else if (c.entryType === 'vip-triple') type = '⭐ כניסה חופשית (3)';
             else if (c.entryType === 'birthday') type = '🎂 כניסת יום הולדת';
             else if (c.entryType === 'couple') type = '🚪 כניסה זוגית';
             else type = '🚪 כניסה בודדת';
@@ -1663,9 +1721,9 @@ function exportExcel(share = false) {
         .map(c => ({
             'תאריך ושעה': formatDateTime(new Date(c.timestamp)),
             'שם משתתף':  sheetSafe(members.find(m => m.id === c.memberId)?.name || 'לא ידוע'),
-            'סוג כניסה': c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'birthday' ? 'יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
+            'סוג כניסה': c.entryType === 'vip-triple' ? 'חופשית (3)' : c.entryType === 'vip-couple' ? 'חופשית (2)' : c.entryType === 'vip-single' ? 'חופשית (1)' : c.entryType === 'birthday' ? 'יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית' : 'בודדת',
             'מסוף':      c.terminal || 'ראשי',
-            'כמות':      c.entryType === 'couple' || c.entryType === 'vip-couple' ? 2 : 1
+            'כמות':      c.entryType === 'vip-triple' ? 3 : c.entryType === 'couple' || c.entryType === 'vip-couple' ? 2 : 1
         }));
 
     const guestRows = guestCheckins

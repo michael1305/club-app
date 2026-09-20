@@ -65,7 +65,7 @@ service cloud.firestore {
 
     // ---------------- members ----------------
     function memberCreateOk(d, memberId) {
-      return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
+      return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','days','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
         && d.id is string && d.id == memberId
         && d.name is string && d.name.size() > 0 && d.name.size() < 120
         && (!('phone' in d) || (d.phone is string && d.phone.size() < 40))
@@ -73,7 +73,8 @@ service cloud.firestore {
         && (!('birthDate' in d) || isDateishBounded(d.birthDate, 20))
         && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000 && d.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!('balance' in d) || (d.balance is number && d.balance >= 0 && d.balance < 100000))
-        && (!('vipSlots' in d) || (d.vipSlots is number && d.vipSlots in [0,1,2]))
+        && (!('vipSlots' in d) || (d.vipSlots is number && d.vipSlots in [0,1,2,3]))
+        && (!('days' in d) || (d.days is list && d.days.size() <= 7 && d.days.hasOnly([0,1,2,3,4,5,6])))
         && (!('nfcTag' in d) || d.nfcTag == null || (d.nfcTag is string && d.nfcTag.size() < 500))
         && (!('createdAt' in d) || isDateishBounded(d.createdAt, 40))
         && (!('registeredSelf' in d) || d.registeredSelf is bool)
@@ -89,7 +90,8 @@ service cloud.firestore {
         && (!changed.hasAny(['birthDate']) || isDateishBounded(newData.birthDate, 20))
         && (!changed.hasAny(['photo']) || newData.photo == null || (newData.photo is string && newData.photo.size() < 900000 && newData.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!changed.hasAny(['balance']) || (newData.balance is number && newData.balance >= 0 && newData.balance < 100000))
-        && (!changed.hasAny(['vipSlots']) || (newData.vipSlots is number && newData.vipSlots in [0,1,2]))
+        && (!changed.hasAny(['vipSlots']) || (newData.vipSlots is number && newData.vipSlots in [0,1,2,3]))
+        && (!changed.hasAny(['days']) || (newData.days is list && newData.days.size() <= 7 && newData.days.hasOnly([0,1,2,3,4,5,6])))
         && (!changed.hasAny(['nfcTag']) || newData.nfcTag == null || (newData.nfcTag is string && newData.nfcTag.size() < 500))
         && (!changed.hasAny(['registeredSelf']) || newData.registeredSelf is bool)
         && (!changed.hasAny(['lastBirthdayCheckinWeek']) || isDateishBounded(newData.lastBirthdayCheckinWeek, 20));
@@ -163,7 +165,7 @@ service cloud.firestore {
       return d.keys().hasOnly(['id','memberId','entryType','terminal','timestamp'])
         && d.id is string && d.id == checkinId
         && d.memberId is string
-        && d.entryType in ['single','couple','birthday','vip-single','vip-couple']
+        && d.entryType in ['single','couple','birthday','vip-single','vip-couple','vip-triple']
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
         && isDateish(d.timestamp);
     }
@@ -172,7 +174,7 @@ service cloud.firestore {
       let changed = newData.diff(oldData).affectedKeys();
       return (!changed.hasAny(['id']) || (newData.id is string && newData.id == checkinId))
         && (!changed.hasAny(['memberId']) || newData.memberId is string)
-        && (!changed.hasAny(['entryType']) || newData.entryType in ['single','couple','birthday','vip-single','vip-couple'])
+        && (!changed.hasAny(['entryType']) || newData.entryType in ['single','couple','birthday','vip-single','vip-couple','vip-triple'])
         && (!changed.hasAny(['terminal']) || (newData.terminal is string && newData.terminal.size() < 100));
     }
 
@@ -184,10 +186,11 @@ service cloud.firestore {
 
     // ---------------- guests (temporary, 48h) ----------------
     function guestCreateOk(d, guestId) {
-      return d.keys().hasOnly(['id','name','slots','createdAt','expiresAt'])
+      return d.keys().hasOnly(['id','name','slots','days','createdAt','expiresAt'])
         && d.id is string && d.id == guestId
         && d.name is string && d.name.size() > 0 && d.name.size() < 120
-        && d.slots is number && d.slots in [1,2]
+        && d.slots is number && d.slots in [1,2,3]
+        && (!('days' in d) || (d.days is list && d.days.size() <= 7 && d.days.hasOnly([0,1,2,3,4,5,6])))
         && isDateish(d.createdAt)
         && isDateish(d.expiresAt);
     }
@@ -196,7 +199,8 @@ service cloud.firestore {
       let changed = newData.diff(oldData).affectedKeys();
       return (!changed.hasAny(['id']) || (newData.id is string && newData.id == guestId))
         && (!changed.hasAny(['name']) || (newData.name is string && newData.name.size() > 0 && newData.name.size() < 120))
-        && (!changed.hasAny(['slots']) || (newData.slots is number && newData.slots in [1,2]));
+        && (!changed.hasAny(['slots']) || (newData.slots is number && newData.slots in [1,2,3]))
+        && (!changed.hasAny(['days']) || (newData.days is list && newData.days.size() <= 7 && newData.days.hasOnly([0,1,2,3,4,5,6])));
     }
 
     match /guests/{guestId} {
@@ -213,7 +217,7 @@ service cloud.firestore {
         && d.name is string && d.name.size() < 120
         && d.type in ['vip','temp']
         && isDateish(d.date)
-        && d.count is number && d.count in [1,2]
+        && d.count is number && d.count in [1,2,3]
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
         && isDateish(d.timestamp);
     }
@@ -221,7 +225,7 @@ service cloud.firestore {
     function guestCheckinUpdateOk(newData, oldData, gcId) {
       let changed = newData.diff(oldData).affectedKeys();
       return (!changed.hasAny(['id']) || (newData.id is string && newData.id == gcId))
-        && (!changed.hasAny(['count']) || (newData.count is number && newData.count in [1,2]))
+        && (!changed.hasAny(['count']) || (newData.count is number && newData.count in [1,2,3]))
         && (!changed.hasAny(['type']) || newData.type in ['vip','temp']);
     }
 

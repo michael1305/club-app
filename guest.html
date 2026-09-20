@@ -161,6 +161,16 @@
                 <div class="slots-group" id="count-slots-group">
                     <button class="slot-option selected" onclick="selectSlots(1)">👤 אדם אחד</button>
                     <button class="slot-option" onclick="selectSlots(2)">👥 שניים</button>
+                    <button class="slot-option" onclick="selectSlots(3)">👥 שלושה</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ימים תקפים</label>
+                <div id="days-group" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="0" checked> ראשון</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="2" checked> שלישי</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="4" checked> חמישי</label>
                 </div>
             </div>
 
@@ -270,6 +280,14 @@
             btn.disabled = true;
             btn.textContent = 'שולח...';
 
+            const days = [...document.querySelectorAll('input[name="guest-day"]:checked')].map(i => Number(i.value));
+            if (days.length === 0) {
+                showError('יש לבחור לפחות יום אחד');
+                btn.disabled = false;
+                btn.textContent = 'הוסף לרשימה ✓';
+                return;
+            }
+
             try {
                 const now = new Date();
                 const id = generateId();
@@ -279,6 +297,7 @@
                         id,
                         name,
                         vipSlots: selectedSlots,
+                        days,
                         balance: 0,
                         createdAt: now.toISOString()
                     });
@@ -288,6 +307,7 @@
                         id,
                         name,
                         slots: selectedSlots,
+                        days,
                         createdAt: now.toISOString(),
                         expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
                     });
@@ -342,7 +362,7 @@
             }
 
             container.innerHTML = active.map(g => {
-                const slotsLabel = g.slots === 2 ? '👥 שניים' : '👤 אחד';
+                const slotsLabel = g.slots === 3 ? '👥 שלושה' : g.slots === 2 ? '👥 שניים' : '👤 אחד';
                 return `<div class="guest-list-item">
                     <div>
                         <div style="font-weight:600">${escHtml(g.name)}</div>
