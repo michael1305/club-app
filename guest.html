@@ -193,14 +193,14 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
+    <script src="admin-auth.js?v=1"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
             projectId: "club-app-8f954",
             appId: "1:181296970595:web:6cd7578d10d563f3c73156"
         };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        let db;
 
         let selectedSlots = 1;
         let selectedType = 'temp';
@@ -365,7 +365,7 @@
             db.collection('guests').orderBy('createdAt', 'desc').onSnapshot(snap => renderGuests(snap.docs));
         }
 
-        firebase.auth().signInAnonymously().then(loadActiveGuests);
+        requireAdmin(adminDb => { db = adminDb; loadActiveGuests(); });
     </script>
 </body>
 </html>

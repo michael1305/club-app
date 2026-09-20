@@ -34,11 +34,11 @@ const DB = {
 
 function _initFirebase() {
     if (typeof firebase === 'undefined') return;
-    if (!firebase.apps.length) firebase.initializeApp(_firebaseConfig);
-    _db = firebase.firestore();
-    _db.enablePersistence().catch(() => {});
-
-    firebase.auth().signInAnonymously().then(() => {
+    // Admin must sign in with email/password (see admin-auth.js); the listeners
+    // below only start once that succeeds.
+    requireAdmin(db => {
+        _db = db;
+        _db.enablePersistence().catch(() => {});
         _db.collection('settings').doc('main').onSnapshot(snap => {
             if (snap.exists) {
                 _cloudSettings = snap.data();
@@ -89,8 +89,6 @@ function _initFirebase() {
         }, () => {});
 
         _migrateFromLocalStorage();
-    }).catch(() => {
-        showToast('שגיאת חיבור — נסה שוב');
     });
 }
 
