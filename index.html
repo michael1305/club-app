@@ -63,20 +63,16 @@
 <body>
     <!-- Screen 1: welcome -->
     <main id="screen-welcome" class="screen center active">
-        <img class="logo-wide" src="LOGO BIG.jpg" alt="גדי ביטון">
+        <img class="logo" src="LOGO.jpg" alt="מועדון מחול ישראלי">
         <h1>ברוכים הבאים<br>למועדון מחול ישראלי</h1>
         <p class="welcome-sub">שמחים לראות אתכם</p>
         <button class="btn" id="btn-enter">כניסה</button>
-        <div class="quick">
-            <button id="btn-dances"><span class="ico">💃</span>הרקדות</button>
-            <a href="http://www.gadibitton.co.il/" target="_blank" rel="noopener"><span class="ico">🌐</span>האתר של גדי</a>
-            <button id="btn-contact"><span class="ico">📞</span>צור קשר</button>
-        </div>
     </main>
 
     <!-- Screen 2: menu -->
     <main id="screen-menu" class="screen">
         <div class="topbar"><button class="back" data-go="welcome">→ חזרה</button></div>
+        <img class="logo-wide" src="LOGO BIG.jpg" alt="גדי ביטון" style="align-self:center;max-width:260px">
         <h2>מה תרצו לעשות?</h2>
         <div class="menu">
             <button class="menu-card" id="btn-promos">
@@ -86,6 +82,18 @@
             <button class="menu-card" id="btn-card">
                 <span class="ico">🎫</span>
                 <span>הכרטיסיה שלי<small>יתרה, היסטוריית כניסות וכרטיס אישי</small></span>
+            </button>
+            <button class="menu-card" id="btn-dances">
+                <span class="ico">💃</span>
+                <span>הרקדות<small>ימים, שעות ומקומות</small></span>
+            </button>
+            <a class="menu-card" href="http://www.gadibitton.co.il/" target="_blank" rel="noopener" style="text-decoration:none">
+                <span class="ico">🌐</span>
+                <span>האתר של גדי<small>gadibitton.co.il</small></span>
+            </a>
+            <button class="menu-card" id="btn-contact">
+                <span class="ico">📞</span>
+                <span>צור קשר<small>וואטסאפ וטלפון</small></span>
             </button>
         </div>
         <p class="hint">📱 יש לכם כרטיס NFC? הצמידו אותו לגב הטלפון ותגיעו ישר לכרטיסיה.</p>
@@ -100,7 +108,7 @@
 
     <!-- Screen 4: dance sessions (details from gadibitton.co.il) -->
     <main id="screen-dances" class="screen">
-        <div class="topbar"><button class="back" data-go="welcome">→ חזרה</button></div>
+        <div class="topbar"><button class="back" data-go="menu">→ חזרה</button></div>
         <h2>💃 הרקדות</h2>
         <div class="session">
             <h3>יום ראשון — רעננה</h3>
@@ -158,6 +166,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
-    <script src="home.js?v=2"></script>
+    <script src="home.js?v=3"></script>
 </body>
 </html>
