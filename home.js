@@ -27,11 +27,7 @@
     $('btn-card').addEventListener('click', openCard);
 
     // Staff entry: long-press (1.2s) either logo to open the back office login (admin.html).
-    // Disabled inside the installed Play Store app (standalone / launched from android-app://):
-    // the store app has no restricted areas. Staff use admin.html in Chrome instead.
-    const inStoreApp = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) ||
-        (document.referrer || '').startsWith('android-app://');
-    if (!inStoreApp) document.querySelectorAll('#screen-welcome .logo, #screen-menu .logo-wide').forEach(img => {
+    document.querySelectorAll('#screen-welcome .logo, #screen-menu .logo-wide').forEach(img => {
         let timer = null;
         const start = () => { clearTimeout(timer); timer = setTimeout(() => { location.href = 'admin.html'; }, 1200); };
         const cancel = () => { clearTimeout(timer); timer = null; };
