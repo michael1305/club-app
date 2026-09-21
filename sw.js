@@ -1,4 +1,4 @@
-const CACHE_NAME = 'club-v125';
+const CACHE_NAME = 'club-v126';
 const NEVER_CACHE = ['app.js', 'index.html', 'admin.html', 'home.js'];
 const ASSETS = ['./style.css', './user.html', './register.html', './guest.html', './admin-auth.js', './admin-promos.js', './LOGO.jpg', './jsQR.js', './qrcode.min.js', './manifest.json'];
 
@@ -17,7 +17,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
     const url = new URL(e.request.url);
-    const noCache = NEVER_CACHE.some(f => url.pathname.endsWith(f));
+    const noCache = url.pathname.endsWith('/') || NEVER_CACHE.some(f => url.pathname.endsWith(f)); // '/' = app home (index.html)
     if (noCache) {
         e.respondWith(fetch(e.request, { cache: 'no-store' }));
         return;
