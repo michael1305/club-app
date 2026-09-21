@@ -41,10 +41,17 @@
 
     function goCard(id) { location.href = 'user.html?id=' + encodeURIComponent(id); }
 
-    function openCard() {
+    async function openCard() {
         const id = getStored();
-        if (id) goCard(id);
-        else openIdentify();
+        if (!id) { openIdentify(); return; }
+        if (window.ClubFp && ClubFp.enabled(id)) {
+            if (await ClubFp.verify(id)) { goCard(id); return; }
+            // fingerprint failed/cancelled: fall back to NFC card / QR
+            openIdentify();
+            status('האימות בטביעת אצבע לא הושלם. אפשר לנסות שוב או להזדהות עם כרטיס NFC / QR.', true);
+            return;
+        }
+        goCard(id);
     }
 
     // ---------- Firebase (anonymous, read-only usage) ----------

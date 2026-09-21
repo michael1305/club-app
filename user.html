@@ -14,6 +14,7 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
+    <script src="fp.js?v=1"></script>
     <script src="qrcode.min.js"></script>
     <style>
         .user-page {
@@ -493,6 +494,7 @@
                         </div>
                         <button id="btn-qr" style="display:block;width:100%;background:var(--primary);color:white;border:none;border-radius:16px;padding:14px;font-size:1.05rem;font-weight:700;cursor:pointer;margin-bottom:16px">📷 הצג קוד לכניסה</button>
                         ${uCanInstall() ? `<button id="btn-install" style="display:block;width:100%;background:#00b894;color:white;border:none;border-radius:16px;padding:12px;font-size:0.95rem;font-weight:700;cursor:pointer;margin-bottom:16px">📲 הוסף למסך הבית</button>` : ''}
+                        <button id="btn-fp" hidden style="display:none;width:100%;background:#fff;color:var(--primary);border:2px solid var(--primary);border-radius:16px;padding:12px;font-size:1rem;font-weight:700;margin-bottom:12px;cursor:pointer"></button>
                         <div class="balance-card ${balanceClass}">
                             <div class="balance-number">${balance}</div>
                             <div class="balance-label">כניסות נותרו</div>
@@ -506,6 +508,23 @@
                 document.getElementById('btn-gallery')?.addEventListener('click', () => document.getElementById('u-photo-file').click());
                 document.getElementById('btn-qr')?.addEventListener('click', uShowQr);
                 document.getElementById('btn-install')?.addEventListener('click', uInstall);
+                uSetupFingerprint();
+            }
+
+            // Fingerprint unlock for opening this card from the app (see fp.js)
+            async function uSetupFingerprint() {
+                const btn = document.getElementById('btn-fp');
+                if (!btn || !window.ClubFp || !(await ClubFp.available())) return;
+                const paint = () => { btn.textContent = ClubFp.enabled(id) ? '🔓 ביטול נעילה בטביעת אצבע' : '🔐 נעילת הכרטיסיה בטביעת אצבע'; };
+                btn.hidden = false; btn.style.display = 'block';
+                paint();
+                btn.onclick = async () => {
+                    try {
+                        if (ClubFp.enabled(id)) { if (await ClubFp.verify(id)) ClubFp.disable(id); }
+                        else await ClubFp.enable(id);
+                    } catch (e) { alert('לא ניתן להפעיל טביעת אצבע במכשיר זה.'); }
+                    paint();
+                };
             }
 
             window.uCapturePhoto = uCapturePhoto;
