@@ -48,7 +48,8 @@ service cloud.firestore {
           '0523536536@club-admin.local',
           '0524444500@club-admin.local',
           '0547448240@club-admin.local',
-          '0528588408@club-admin.local'
+          '0528588408@club-admin.local',
+          'google-review@club-admin.local'   // TEMPORARY: Google Play reviewer - remove after approval
         ];
     }
 
