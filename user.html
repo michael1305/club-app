@@ -502,6 +502,9 @@
                         </div>
                         <div class="section-title">היסטוריית כניסות</div>
                         <div class="recent-list">${historyHtml}</div>
+                        <div style="margin-top:28px;text-align:center">
+                            <button id="btn-delete-account" style="background:none;border:none;color:#d63031;font-size:0.9rem;text-decoration:underline;cursor:pointer;padding:10px">🗑️ מחיקת הכרטיסיה שלי</button>
+                        </div>
                     </div>
                 `;
                 document.getElementById('btn-camera')?.addEventListener('click', uOpenCamera);
@@ -509,6 +512,44 @@
                 document.getElementById('btn-qr')?.addEventListener('click', uShowQr);
                 document.getElementById('btn-install')?.addEventListener('click', uInstall);
                 uSetupFingerprint();
+                document.getElementById('btn-delete-account')?.addEventListener('click', uDeleteAccount);
+            }
+
+            // In-app account deletion (App Store guideline 5.1.1(v)): removes the member's
+            // personal data (profile, check-in history, phone index entry) right away.
+            function uNormPhone(p) {
+                let d = (p || '').replace(/\D/g, '');
+                if (d.startsWith('972')) d = '0' + d.slice(3);
+                return d;
+            }
+            async function uDeleteAccount() {
+                if (!_member) return;
+                const btn = document.getElementById('btn-delete-account');
+                if (!confirm('למחוק את הכרטיסיה שלך?\n\nיימחקו השם, הטלפון, המייל, תאריך הלידה, התמונה והיסטוריית הכניסות, ויתרת הכניסות תאבד. הפעולה אינה הפיכה.')) return;
+                const typed = prompt('לאישור סופי, כתבו: מחק');
+                if (typed === null || typed.trim() !== 'מחק') { alert('המחיקה בוטלה.'); return; }
+                if (btn) btn.disabled = true;
+                try {
+                    const memRef = db.collection('members').doc(id);
+                    const hist = await memRef.collection('checkins').get();
+                    for (let i = 0; i < hist.docs.length; i += 400) {
+                        const b = db.batch();
+                        hist.docs.slice(i, i + 400).forEach(d => b.delete(d.ref));
+                        await b.commit();
+                    }
+                    const key = uNormPhone(_member.phone);
+                    if (key && key.length <= 20) await db.collection('phones').doc(key).delete().catch(() => {});
+                    await memRef.delete();
+                    try {
+                        localStorage.removeItem('club_member_id');
+                        localStorage.removeItem('club_fp_' + id);
+                    } catch (e) { /* ignore */ }
+                    alert('הכרטיסיה נמחקה.');
+                    location.href = 'index.html';
+                } catch (e) {
+                    if (btn) btn.disabled = false;
+                    alert('לא הצלחנו למחוק כרגע. נסו שוב מאוחר יותר או פנו אלינו.');
+                }
             }
 
             // Fingerprint unlock for opening this card from the app (see fp.js)

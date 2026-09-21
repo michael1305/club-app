@@ -100,10 +100,13 @@ service cloud.firestore {
 
     // Public (anonymous) visitors can: read ONE member by id (their own card link),
     // self-register (balance 0, no VIP/NFC), and change only their own photo.
-    // Only the admin can list, delete, or change anything else.
+    // Only the admin can list or change anything else. Deleting is open to a signed-in
+    // holder of the (unguessable) member id so a member can delete their own account
+    // in the app (App Store requirement).
     match /members/{memberId} {
       allow get: if signedIn();
-      allow list, delete: if isAdmin();
+      allow list: if isAdmin();
+      allow delete: if signedIn();
       allow create: if isAdmin() && memberCreateOk(request.resource.data, memberId)
         || signedIn() && memberCreateOk(request.resource.data, memberId)
            && request.resource.data.registeredSelf == true
@@ -117,7 +120,8 @@ service cloud.firestore {
       // A member's own check-in history (copy of top-level checkins, written by the admin app).
       match /checkins/{checkinId} {
         allow read: if signedIn();
-        allow write: if isAdmin();
+        allow create, update: if isAdmin();
+        allow delete: if signedIn();   // removed together with the member's own account
       }
     }
 
@@ -128,7 +132,8 @@ service cloud.firestore {
       allow get: if signedIn();
       allow create: if signedIn() && phoneKey.size() <= 20
         && request.resource.data.keys().hasOnly(['createdAt']);
-      allow list, update, delete: if isAdmin();
+      allow list, update: if isAdmin();
+      allow delete: if signedIn();   // removed when a member deletes their own account
     }
 
     // ---------------- payments ----------------
