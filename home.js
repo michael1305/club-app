@@ -26,6 +26,19 @@
     $('btn-promos').addEventListener('click', () => { show('promos'); loadPromos(); });
     $('btn-card').addEventListener('click', openCard);
 
+    // Staff entry: long-press (1.2s) either logo to open the back office login (admin.html).
+    document.querySelectorAll('#screen-welcome .logo, #screen-menu .logo-wide').forEach(img => {
+        let timer = null;
+        const start = () => { clearTimeout(timer); timer = setTimeout(() => { location.href = 'admin.html'; }, 1200); };
+        const cancel = () => { clearTimeout(timer); timer = null; };
+        img.addEventListener('pointerdown', start);
+        ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => img.addEventListener(ev, cancel));
+        img.addEventListener('contextmenu', e => e.preventDefault()); // no "save image" menu on long-press
+        img.draggable = false;
+        img.style.webkitTouchCallout = 'none';
+        img.style.userSelect = 'none';
+    });
+
     function goCard(id) { location.href = 'user.html?id=' + encodeURIComponent(id); }
 
     function openCard() {
