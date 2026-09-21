@@ -202,6 +202,11 @@
             <div class="settings-container">
                 <h2>⚙️ הגדרות</h2>
                 <button class="btn" style="margin-bottom:14px" onclick="adminSignOut()">🔒 התנתק</button>
+                <div class="setting-group" id="deletion-requests-section" style="display:none">
+                    <h3>🗑 בקשות מחיקה ממתינות</h3>
+                    <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:8px">חברים עם יתרה שביקשו למחוק את הכרטיסיה. הסדר איתם את היתרה, ואז אשר.</p>
+                    <div id="deletion-requests-list"></div>
+                </div>
                 <div class="setting-group">
                     <label>שם האירוע</label>
                     <input type="text" id="setting-event-name" placeholder="שם האירוע">
@@ -317,7 +322,8 @@
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
     <script src="admin-auth.js?v=3"></script>
-    <script src="app.js?v=128"></script>
+    <script src="app.js?v=129"></script>
     <script src="admin-promos.js?v=1"></script>
+    <script src="admin-requests.js?v=1"></script>
 </body>
 </html>

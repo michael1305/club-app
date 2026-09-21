@@ -100,13 +100,14 @@ service cloud.firestore {
 
     // Public (anonymous) visitors can: read ONE member by id (their own card link),
     // self-register (balance 0, no VIP/NFC), and change only their own photo.
-    // Only the admin can list or change anything else. Deleting is open to a signed-in
-    // holder of the (unguessable) member id so a member can delete their own account
-    // in the app (App Store requirement).
+    // Only the admin can list or change anything else. A signed-in holder of the
+    // (unguessable) member id may delete the member ONLY when there is no money left on
+    // the card (App Store requires in-app deletion; paid balances must go through the
+    // team via deletionRequests below). The admin can always delete.
     match /members/{memberId} {
       allow get: if signedIn();
       allow list: if isAdmin();
-      allow delete: if signedIn();
+      allow delete: if isAdmin() || (signedIn() && resource.data.get('balance', 0) == 0);
       allow create: if isAdmin() && memberCreateOk(request.resource.data, memberId)
         || signedIn() && memberCreateOk(request.resource.data, memberId)
            && request.resource.data.registeredSelf == true
@@ -121,8 +122,21 @@ service cloud.firestore {
       match /checkins/{checkinId} {
         allow read: if signedIn();
         allow create, update: if isAdmin();
-        allow delete: if signedIn();   // removed together with the member's own account
+        // removed together with the member's own account (only when nothing is owed)
+        allow delete: if isAdmin() || (signedIn()
+          && get(/databases/$(database)/documents/members/$(memberId)).data.get('balance', 0) == 0);
       }
+    }
+
+    // A member with a remaining balance cannot self-delete; they send a request that the
+    // team reviews in the back office (settings). Doc id = the member id.
+    match /deletionRequests/{reqId} {
+      allow create, update: if signedIn()
+        && request.resource.data.keys().hasOnly(['memberId','createdAt'])
+        && request.resource.data.memberId is string && request.resource.data.memberId == reqId
+        && isDateishBounded(request.resource.data.createdAt, 40)
+        && exists(/databases/$(database)/documents/members/$(reqId));
+      allow read, delete: if isAdmin();
     }
 
     // Duplicate-phone index used by register.html: anyone can check whether a phone is

@@ -522,8 +522,21 @@
                 if (d.startsWith('972')) d = '0' + d.slice(3);
                 return d;
             }
+            // A card that still holds paid entries cannot be deleted on the spot (the rules
+            // enforce this too): the member sends a deletion request for the team to handle.
+            async function uRequestDeletion(bal) {
+                if (!confirm('נשארו לכרטיסיה שלך ' + bal + ' כניסות.\n\nכדי להגן על הכסף ששולם, לא ניתן למחוק כרטיסיה עם יתרה באופן מיידי. אפשר לשלוח בקשת מחיקה, והצוות יטפל בה (למשל ינצל או יחזיר את היתרה) ויאשר את המחיקה.\n\nלשלוח בקשת מחיקה?')) return;
+                try {
+                    await db.collection('deletionRequests').doc(id).set({ memberId: id, createdAt: new Date().toISOString() });
+                    alert('בקשת המחיקה נשלחה. הצוות ייצור איתך קשר בהקדם.');
+                } catch (e) {
+                    alert('לא הצלחנו לשלוח את הבקשה כרגע. נסו שוב מאוחר יותר או פנו לצוות בהרקדה.');
+                }
+            }
             async function uDeleteAccount() {
                 if (!_member) return;
+                const bal = Number(_member.balance) || 0;
+                if (bal > 0) { await uRequestDeletion(bal); return; }
                 const btn = document.getElementById('btn-delete-account');
                 if (!confirm('למחוק את הכרטיסיה שלך?\n\nיימחקו השם, הטלפון, המייל, תאריך הלידה, התמונה והיסטוריית הכניסות, ויתרת הכניסות תאבד. הפעולה אינה הפיכה.')) return;
                 const typed = prompt('לאישור סופי, כתבו: מחק');
