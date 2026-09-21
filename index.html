@@ -56,6 +56,37 @@
         .session .when { font-weight: 700; margin-bottom: 6px; }
         .session p { margin: 4px 0; color: var(--muted); line-height: 1.5; }
         .session a { display: inline-block; margin-top: 8px; color: var(--primary); font-weight: 700; text-decoration: none; }
+        /* ---- animated menu ---- */
+        .menu-screen { position: relative; overflow: hidden; background: linear-gradient(160deg, #fff4f4 0%, #f3f0ff 55%, #eafaf6 100%); max-width: none; }
+        .menu-screen > *:not(.floaters) { position: relative; z-index: 1; max-width: 480px; width: 100%; margin-left: auto; margin-right: auto; }
+        .floaters span { position: absolute; bottom: -40px; left: var(--x); font-size: 1.8rem; opacity: 0; animation: floatUp var(--t) linear var(--d) infinite; z-index: 0; }
+        @keyframes floatUp { 0% { transform: translateY(0) rotate(-12deg); opacity: 0; } 10% { opacity: .35; } 90% { opacity: .25; } 100% { transform: translateY(-110vh) rotate(18deg); opacity: 0; } }
+        .menu-head { text-align: center; margin-bottom: 18px; animation: popIn .6s cubic-bezier(.2,1.4,.4,1) both; }
+        .menu-head .logo-wide { max-width: 230px; margin-bottom: 10px; mix-blend-mode: normal; background: #fff; border-radius: 16px; padding: 6px 12px; box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+        .menu-head h2 { margin: 0; font-size: 1.6rem; }
+        .menu-sub { margin: 4px 0 0; color: var(--muted); }
+        .wiggle { display: inline-block; animation: wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+        @keyframes wiggle { 0%, 60%, 100% { transform: rotate(0); } 68% { transform: rotate(-14deg); } 76% { transform: rotate(12deg); } 84% { transform: rotate(-8deg); } 92% { transform: rotate(6deg); } }
+        @keyframes popIn { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
+        .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 128px; border: none; border-radius: 22px; padding: 16px 10px; color: #fff; text-decoration: none; cursor: pointer; font-family: inherit; box-shadow: 0 8px 20px rgba(0,0,0,.14); animation: popIn .55s cubic-bezier(.2,1.4,.4,1) both; animation-delay: calc(.12s + var(--i) * .09s); transition: transform .15s ease, box-shadow .15s ease; -webkit-tap-highlight-color: transparent; }
+        .tile:active { transform: scale(.94); box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+        .tile.wide { grid-column: 1 / -1; min-height: 110px; flex-direction: row; gap: 14px; }
+        .t-ico { font-size: 2.3rem; line-height: 1; animation: bob 3s ease-in-out infinite; animation-delay: calc(var(--i) * -.6s); }
+        @keyframes bob { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-5px) rotate(-6deg); } }
+        .t-title { font-size: 1.15rem; font-weight: 800; }
+        .t-sub { font-size: .82rem; opacity: .92; }
+        .tile.wide .t-title, .tile.wide .t-sub { text-align: right; }
+        .tile.wide { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 16px; align-content: center; justify-items: start; padding: 16px 24px; }
+        .tile.wide .t-ico { grid-row: 1 / 3; font-size: 2.8rem; }
+        .tile.wide .t-title { align-self: end; } .tile.wide .t-sub { align-self: start; }
+        .t-promo { background: linear-gradient(135deg, #ff9a44, #fc6076); }
+        .t-card { background: linear-gradient(135deg, #7f6cf0, #5b4bd5); }
+        .t-dance { background: linear-gradient(135deg, #e5252b, #ff5f6d); }
+        .t-site { background: linear-gradient(135deg, #17b1c4, #2f8fe8); }
+        .t-contact { background: linear-gradient(135deg, #2fd27a, #12a35a); }
+        .menu-screen .hint { animation: popIn .6s ease both; animation-delay: .7s; }
+        @media (prefers-reduced-motion: reduce) { .floaters, .wiggle, .t-ico { animation: none !important; } .tile, .menu-head, .menu-screen .hint { animation: none !important; } }
         #qr-wrap { display: none; margin-top: 12px; }
         #qr-video { width: 100%; border-radius: 12px; background: #000; }
     </style>
@@ -70,30 +101,33 @@
     </main>
 
     <!-- Screen 2: menu -->
-    <main id="screen-menu" class="screen">
+    <main id="screen-menu" class="screen menu-screen">
+        <div class="floaters" aria-hidden="true">
+            <span style="--x:8%;--d:0s;--t:11s">🎵</span><span style="--x:24%;--d:2s;--t:13s">💃</span>
+            <span style="--x:41%;--d:5s;--t:12s">🎶</span><span style="--x:58%;--d:1s;--t:14s">🕺</span>
+            <span style="--x:74%;--d:4s;--t:11s">🎵</span><span style="--x:90%;--d:3s;--t:13s">🎶</span>
+        </div>
         <div class="topbar"><button class="back" data-go="welcome">→ חזרה</button></div>
-        <img class="logo-wide" src="LOGO BIG.jpg" alt="גדי ביטון" style="align-self:center;max-width:260px">
-        <h2>מה תרצו לעשות?</h2>
-        <div class="menu">
-            <button class="menu-card" id="btn-promos">
-                <span class="ico">🎁</span>
-                <span>מבצעים<small>הצעות והטבות למועדון</small></span>
+        <div class="menu-head">
+            <img class="logo-wide" src="LOGO BIG.jpg" alt="גדי ביטון">
+            <h2>מוכנים לרקוד? <span class="wiggle">💃</span></h2>
+            <p class="menu-sub">מה תרצו לעשות?</p>
+        </div>
+        <div class="tiles">
+            <button class="tile t-promo" id="btn-promos" style="--i:0">
+                <span class="t-ico">🎁</span><span class="t-title">מבצעים</span><span class="t-sub">הטבות למועדון</span>
             </button>
-            <button class="menu-card" id="btn-card">
-                <span class="ico">🎫</span>
-                <span>הכרטיסיה שלי<small>יתרה, היסטוריית כניסות וכרטיס אישי</small></span>
+            <button class="tile t-card" id="btn-card" style="--i:1">
+                <span class="t-ico">🎫</span><span class="t-title">הכרטיסיה שלי</span><span class="t-sub">יתרה והיסטוריה</span>
             </button>
-            <button class="menu-card" id="btn-dances">
-                <span class="ico">💃</span>
-                <span>הרקדות<small>ימים, שעות ומקומות</small></span>
+            <button class="tile t-dance wide" id="btn-dances" style="--i:2">
+                <span class="t-ico">💃</span><span class="t-title">הרקדות</span><span class="t-sub">ימים, שעות ומקומות</span>
             </button>
-            <a class="menu-card" href="http://www.gadibitton.co.il/" target="_blank" rel="noopener" style="text-decoration:none">
-                <span class="ico">🌐</span>
-                <span>האתר של גדי<small>gadibitton.co.il</small></span>
+            <a class="tile t-site" href="http://www.gadibitton.co.il/" target="_blank" rel="noopener" style="--i:3">
+                <span class="t-ico">🌐</span><span class="t-title">האתר של גדי</span><span class="t-sub">gadibitton.co.il</span>
             </a>
-            <button class="menu-card" id="btn-contact">
-                <span class="ico">📞</span>
-                <span>צור קשר<small>וואטסאפ ומייל</small></span>
+            <button class="tile t-contact" id="btn-contact" style="--i:4">
+                <span class="t-ico">💬</span><span class="t-title">צור קשר</span><span class="t-sub">וואטסאפ ומייל</span>
             </button>
         </div>
         <p class="hint">📱 יש לכם כרטיס NFC? הצמידו אותו לגב הטלפון ותגיעו ישר לכרטיסיה.</p>
@@ -166,6 +200,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
-    <script src="home.js?v=7"></script>
+    <script src="home.js?v=8"></script>
 </body>
 </html>
