@@ -96,13 +96,13 @@ function _initFirebase() {
 
 // One-time (per device) fill of the public indexes for data that existed before them.
 async function _backfillPublicIndexes() {
-    if (localStorage.getItem('club_public_index_v1')) return;
+    if (localStorage.getItem('club_public_index_v2')) return;
     try {
         const [mem, chk] = await Promise.all([_db.collection('members').get(), _db.collection('checkins').get()]);
         const ops = [];
         mem.docs.forEach(d => {
             const m = d.data(), k = _phoneKey(m.phone);
-            if (k) ops.push(b => b.set(_db.collection('phones').doc(k), { memberId: m.id, createdAt: new Date().toISOString() }));
+            if (k) ops.push(b => b.set(_db.collection('phones').doc(k), { createdAt: new Date().toISOString() }));
         });
         chk.docs.forEach(d => {
             const c = d.data();
@@ -113,7 +113,7 @@ async function _backfillPublicIndexes() {
             ops.slice(i, i + 400).forEach(f => f(b));
             await b.commit();
         }
-        localStorage.setItem('club_public_index_v1', '1');
+        localStorage.setItem('club_public_index_v2', '1');
     } catch (e) { /* retried on next start */ }
 }
 
@@ -164,13 +164,11 @@ function getMemberLog()     { return _memberLog; }
 function _phoneKey(p) { const k = normalizePhone(p); return k && k.length <= 20 ? k : null; }
 function _setPhoneIndex(phone, memberId) {
     const k = _phoneKey(phone);
-    if (_db && k) _db.collection('phones').doc(k).set({ memberId, createdAt: new Date().toISOString() });
+    if (_db && k) _db.collection('phones').doc(k).set({ createdAt: new Date().toISOString() }); // existence only - never link a phone to a member id
 }
 function _clearPhoneIndex(phone, memberId) {
     const k = _phoneKey(phone);
-    if (_db && k) _db.collection('phones').doc(k).get().then(d => {
-        if (d.exists && d.data().memberId === memberId) d.ref.delete();
-    }).catch(() => {});
+    if (_db && k) _db.collection('phones').doc(k).delete().catch(() => {});
 }
 function _saveMember(member)              { if (_db) { _db.collection('members').doc(member.id).set(member); _setPhoneIndex(member.phone, member.id); } }
 function _updateMember(id, fields) {
@@ -1993,7 +1991,7 @@ function importData(event) {
                 (data.payments || []).forEach(p => batch.set(_db.collection('payments').doc(p.id), p));
                 (data.checkins || []).forEach(c => batch.set(_db.collection('checkins').doc(c.id), c));
                 (data.checkins || []).forEach(c => { if (c.memberId) batch.set(_db.collection('members').doc(c.memberId).collection('checkins').doc(c.id), c); });
-                (data.members  || []).forEach(m => { const k = _phoneKey(m.phone); if (k) batch.set(_db.collection('phones').doc(k), { memberId: m.id, createdAt: new Date().toISOString() }); });
+                (data.members  || []).forEach(m => { const k = _phoneKey(m.phone); if (k) batch.set(_db.collection('phones').doc(k), { createdAt: new Date().toISOString() }); });
                 batch.commit().then(() => showToast('נתונים יובאו בהצלחה!')).catch(() => showToast('שגיאה בייבוא'));
             }
             if (data.settings) {

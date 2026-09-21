@@ -378,7 +378,7 @@
                     if (email) data.email = email;
                     if (_photoDataUrl) data.photo = _photoDataUrl;
                     return db.collection('members').doc(id).set(data).then(() =>
-                        normPhone ? db.collection('phones').doc(normPhone).set({ memberId: id, createdAt: data.createdAt }) : null);
+                        normPhone ? db.collection('phones').doc(normPhone).set({ createdAt: data.createdAt }) : null);
                 }).then(() => {
                     location.href = 'user.html?id=' + id;
                 }).catch(err => {

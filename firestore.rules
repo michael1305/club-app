@@ -120,13 +120,13 @@ service cloud.firestore {
       }
     }
 
-    // Duplicate-phone index used by register.html: anyone can look up / claim a phone
-    // number once; only the admin can change or remove entries.
+    // Duplicate-phone index used by register.html: anyone can check whether a phone is
+    // already registered / claim it once. It holds NO member id on purpose (a phone must
+    // never lead to a member profile); only the admin can change or remove entries.
     match /phones/{phoneKey} {
       allow get: if signedIn();
       allow create: if signedIn() && phoneKey.size() <= 20
-        && request.resource.data.keys().hasOnly(['memberId','createdAt'])
-        && request.resource.data.memberId is string;
+        && request.resource.data.keys().hasOnly(['createdAt']);
       allow list, update, delete: if isAdmin();
     }
 
