@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "il.co.gadibitton.club.twa",
-    "sha256_cert_fingerprints": ["D7:37:75:AA:AB:14:A8:11:1E:39:03:3D:A5:F8:70:09:5F:23:92:F8:EF:71:31:64:1C:DA:AF:03:79:E8:F6:1C"]
+    "sha256_cert_fingerprints": [
+      "89:FD:6E:C6:D0:45:94:80:A2:3D:5B:1E:0D:47:15:DA:24:FF:48:EF:22:16:F3:66:B0:CB:3D:34:20:28:43:9E",
+      "D7:37:75:AA:AB:14:A8:11:1E:39:03:3D:A5:F8:70:09:5F:23:92:F8:EF:71:31:64:1C:DA:AF:03:79:E8:F6:1C"
+    ]
   }
 }]
