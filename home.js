@@ -19,6 +19,10 @@
     }
     document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
     $('btn-enter').addEventListener('click', () => show('menu'));
+    $('btn-dances').addEventListener('click', () => show('dances'));
+    $('btn-contact').addEventListener('click', () => $('contact').classList.add('open'));
+    $('btn-close-contact').addEventListener('click', () => $('contact').classList.remove('open'));
+    $('contact').addEventListener('click', e => { if (e.target === $('contact')) $('contact').classList.remove('open'); });
     $('btn-promos').addEventListener('click', () => { show('promos'); loadPromos(); });
     $('btn-card').addEventListener('click', openCard);
 

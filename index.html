@@ -45,6 +45,17 @@
         .sheet .btn { margin-top: 10px; }
         .status { min-height: 22px; margin-top: 12px; text-align: center; font-size: .95rem; color: var(--muted); }
         .status.err { color: #d63031; }
+        .logo-wide { width: 100%; max-width: 320px; height: auto; margin-bottom: 22px; mix-blend-mode: multiply; }
+        .quick { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; margin-top: 22px; }
+        .quick a, .quick button { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #fff; border: 1px solid #e3e6ea; border-radius: 14px; padding: 14px 6px; font-size: .92rem; font-weight: 700; color: var(--text); text-decoration: none; cursor: pointer; font-family: inherit; }
+        .quick .ico { font-size: 1.5rem; }
+        .btn-wa { background: #25d366; color: #fff; }
+        .btn-wa:active { background: #1ebe5a; }
+        .session { background: #fff; border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+        .session h3 { margin: 0 0 4px; color: var(--primary); }
+        .session .when { font-weight: 700; margin-bottom: 6px; }
+        .session p { margin: 4px 0; color: var(--muted); line-height: 1.5; }
+        .session a { display: inline-block; margin-top: 8px; color: var(--primary); font-weight: 700; text-decoration: none; }
         #qr-wrap { display: none; margin-top: 12px; }
         #qr-video { width: 100%; border-radius: 12px; background: #000; }
     </style>
@@ -52,10 +63,15 @@
 <body>
     <!-- Screen 1: welcome -->
     <main id="screen-welcome" class="screen center active">
-        <img class="logo" src="LOGO.jpg" alt="מועדון מחול ישראלי">
+        <img class="logo-wide" src="LOGO BIG.jpg" alt="גדי ביטון">
         <h1>ברוכים הבאים<br>למועדון מחול ישראלי</h1>
         <p class="welcome-sub">שמחים לראות אתכם</p>
         <button class="btn" id="btn-enter">כניסה</button>
+        <div class="quick">
+            <button id="btn-dances"><span class="ico">💃</span>הרקדות</button>
+            <a href="http://www.gadibitton.co.il/" target="_blank" rel="noopener"><span class="ico">🌐</span>האתר של גדי</a>
+            <button id="btn-contact"><span class="ico">📞</span>צור קשר</button>
+        </div>
     </main>
 
     <!-- Screen 2: menu -->
@@ -82,6 +98,48 @@
         <div id="promos-list"><div class="empty">טוען...</div></div>
     </main>
 
+    <!-- Screen 4: dance sessions (details from gadibitton.co.il) -->
+    <main id="screen-dances" class="screen">
+        <div class="topbar"><button class="back" data-go="welcome">→ חזרה</button></div>
+        <h2>💃 הרקדות</h2>
+        <div class="session">
+            <h3>יום ראשון — רעננה</h3>
+            <div class="when">מהשעה 19:15</div>
+            <p>אולם לב הפארק, יאיר שטרן 3, רעננה</p>
+            <p>אולם ממוזג · רצפת פרקט (נעלי ספורט/ריקוד בלבד) · חניה חופשית · שתייה חמה חופשית</p>
+            <p>כניסה: 40 ₪</p>
+            <a href="https://waze.com/ul/hsv8z1egwj" target="_blank" rel="noopener">🚗 ניווט ב-Waze</a>
+        </div>
+        <div class="session">
+            <h3>יום שלישי — רמת גן</h3>
+            <div class="when">מהשעה 19:30</div>
+            <p>אולם הספורט בכפר המכביה, רמת גן</p>
+            <p>רצפת פרקט (נעלי ספורט/ריקוד בלבד) · חניה חינם בחניון מלון כפר המכביה · שתייה חמה חופשית</p>
+            <p>כניסה: 40 ₪ (מזומן בלבד) · כרטיסיות של גדי ביטון מכובדות</p>
+            <a href="http://www.gadibitton.co.il/?CategoryID=22&ArticleID=73" target="_blank" rel="noopener">פרטים והגעה באתר</a>
+        </div>
+        <div class="session">
+            <h3>יום חמישי — תל אביב</h3>
+            <div class="when">מהשעה 20:00</div>
+            <p>מרכז הספורט באוניברסיטת תל אביב, רח׳ חיים לבנון, שער 8</p>
+            <p>אולם ממוזג · רצפת פרקט (נעלי ספורט/ריקוד בלבד) · חניה חינם · שתייה חמה חופשית</p>
+            <p>כניסה: 40 ₪</p>
+            <a href="https://waze.com/ul/hsv8wxyw4r" target="_blank" rel="noopener">🚗 ניווט ב-Waze לחניון הבריכה (שער 9)</a>
+        </div>
+        <a class="btn btn-light" href="http://www.gadibitton.co.il/?CategoryID=859" target="_blank" rel="noopener">📅 לתוכנית ההרקדות השבועית באתר</a>
+    </main>
+
+    <!-- Contact sheet -->
+    <div class="sheet-bg" id="contact">
+        <div class="sheet" role="dialog" aria-modal="true">
+            <h3>צור קשר</h3>
+            <p>נשמח לענות על כל שאלה</p>
+            <a class="btn btn-wa" href="https://wa.me/972524444700" target="_blank" rel="noopener">💬 שליחת הודעה בוואטסאפ</a>
+            <a class="btn btn-light" href="tel:0524444700">📞 052-4444700</a>
+            <button class="btn btn-link" id="btn-close-contact">סגירה</button>
+        </div>
+    </div>
+
     <!-- Identify sheet (shown when this device doesn't know the member yet) -->
     <div class="sheet-bg" id="identify">
         <div class="sheet" role="dialog" aria-modal="true">
@@ -100,6 +158,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
-    <script src="home.js?v=1"></script>
+    <script src="home.js?v=2"></script>
 </body>
 </html>
