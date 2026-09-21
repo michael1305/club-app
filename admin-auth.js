@@ -25,6 +25,12 @@ function adminLoginEmail(input) {
     return d ? d + '@club-admin.local' : '';
 }
 
+// Admins whose login should land on a specific page instead of the main back office.
+// (Only applied when they sign in on admin.html; guest.html itself is unaffected.)
+const _ADMIN_LANDING = {
+    '0528588408@club-admin.local': 'guest.html'   // guest entry
+};
+
 function adminSignOut() {
     _adminApp().auth().signOut().then(() => location.reload());
 }
@@ -70,6 +76,8 @@ function requireAdmin(onReady) {
     let started = false;
     auth.onAuthStateChanged(user => {
         if (user && !user.isAnonymous) {
+            const landing = _ADMIN_LANDING[(user.email || '').toLowerCase()];
+            if (landing && /admin\.html$/.test(location.pathname)) { location.replace(landing); return; }
             overlay.hidden = true;
             overlay.style.display = 'none';
             if (!started) { started = true; onReady(app.firestore()); }
