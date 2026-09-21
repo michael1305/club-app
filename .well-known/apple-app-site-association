@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["VA2RQCYV47.il.co.gadibitton.club"],
+        "components": [
+          { "/": "/user.html" }
+        ]
+      }
+    ]
+  }
+}
