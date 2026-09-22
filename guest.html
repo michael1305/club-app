@@ -191,21 +191,21 @@
             </div>
 
             <div class="form-group">
-                <label>ימים תקפים</label>
-                <div id="days-group" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px">
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="0" checked> ראשון</label>
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="2" checked> שלישי</label>
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="4" checked> חמישי</label>
-                </div>
-            </div>
-
-            <div class="form-group">
                 <label>סוג אורח</label>
                 <div class="slots-group" id="type-slots-group">
                     <button class="slot-option selected" id="type-temp" onclick="selectType('temp')">🕐 חד-פעמי</button>
                     <button class="slot-option" id="type-recurring" onclick="selectType('recurring')">⭐ קבוע</button>
                 </div>
                 <div id="type-hint" style="font-size:0.78rem;color:var(--text-light);margin-top:6px">בתוקף 48 שעות</div>
+            </div>
+
+            <div class="form-group" id="days-field" style="display:none">
+                <label>ימים תקפים</label>
+                <div id="days-group" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px">
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="0" checked> ראשון</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="2" checked> שלישי</label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" name="guest-day" value="4" checked> חמישי</label>
+                </div>
             </div>
 
             <div id="error-msg" class="error-msg"></div>
@@ -272,6 +272,9 @@
             document.getElementById('type-hint').textContent = t === 'recurring'
                 ? 'ייווצר כחבר מועדון קבוע עם כניסה חופשית (⭐ קבועים)'
                 : 'בתוקף 48 שעות';
+            // A one-time guest is already bounded by the 48h expiry — the weekday
+            // picker only matters for a recurring member's ongoing weekly schedule.
+            document.getElementById('days-field').style.display = t === 'recurring' ? 'block' : 'none';
         }
 
         function generateId() {
@@ -323,8 +326,12 @@
             btn.disabled = true;
             btn.textContent = 'שולח...';
 
-            const days = [...document.querySelectorAll('input[name="guest-day"]:checked')].map(i => Number(i.value));
-            if (days.length === 0) {
+            // Days only apply to a recurring member's weekly schedule — a one-time
+            // guest is already bounded by the 48h expiry below, so it's always valid.
+            const days = selectedType === 'recurring'
+                ? [...document.querySelectorAll('input[name="guest-day"]:checked')].map(i => Number(i.value))
+                : [];
+            if (selectedType === 'recurring' && days.length === 0) {
                 showError('יש לבחור לפחות יום אחד');
                 btn.disabled = false;
                 btn.textContent = 'הוסף לרשימה ✓';
@@ -350,7 +357,6 @@
                         id,
                         name,
                         slots: selectedSlots,
-                        days,
                         createdAt: now.toISOString(),
                         expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
                     });
