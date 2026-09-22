@@ -77,7 +77,8 @@ function requireAdmin(onReady) {
     auth.onAuthStateChanged(user => {
         if (user && !user.isAnonymous) {
             const landing = _ADMIN_LANDING[(user.email || '').toLowerCase()];
-            if (landing && /admin\.html$/.test(location.pathname)) { location.replace(landing); return; }
+            const skipLanding = /[?&]full=1(&|$)/.test(location.search);
+            if (landing && !skipLanding && /admin\.html$/.test(location.pathname)) { location.replace(landing); return; }
             overlay.hidden = true;
             overlay.style.display = 'none';
             if (!started) { started = true; onReady(app.firestore()); }

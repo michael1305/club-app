@@ -182,6 +182,7 @@
                 <div class="checkin-tabs">
                     <button class="tab-btn active" id="guest-tab-temp" onclick="switchGuestTab('temp')">🕐 זמניים</button>
                     <button class="tab-btn" id="guest-tab-vip" onclick="switchGuestTab('vip')">⭐ קבועים</button>
+                    <button class="tab-btn" id="guest-tab-marathon" onclick="switchGuestTab('marathon')">🏃 מרתונים</button>
                 </div>
                 <div id="guest-panel-temp" class="checkin-tab-content active" style="padding:0 4px">
                     <div id="guestlist-temp-label" style="display:none;font-weight:700;font-size:0.85rem;color:var(--text-light);margin-bottom:8px">🕐 זמניים</div>
@@ -193,6 +194,10 @@
                 <div id="guest-panel-vip" class="checkin-tab-content" style="padding:0 4px">
                     <div id="guestlist-vip-label" style="display:none;font-weight:700;font-size:0.85rem;color:var(--text-light);margin-bottom:8px">⭐ קבועים</div>
                     <div id="guestlist-vip" class="recent-list" style="max-height:none"></div>
+                </div>
+                <div id="guest-panel-marathon" class="checkin-tab-content" style="padding:0 4px">
+                    <div id="guestlist-marathon-label" style="display:none;font-weight:700;font-size:0.85rem;color:var(--text-light);margin-bottom:8px">🏃 מרתונים</div>
+                    <div id="guestlist-marathon" class="recent-list" style="max-height:none"></div>
                 </div>
             </div>
         </main>
@@ -321,8 +326,8 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="admin-auth.js?v=3"></script>
-    <script src="app.js?v=129"></script>
+    <script src="admin-auth.js?v=4"></script>
+    <script src="app.js?v=130"></script>
     <script src="admin-promos.js?v=1"></script>
     <script src="admin-requests.js?v=1"></script>
 </body>

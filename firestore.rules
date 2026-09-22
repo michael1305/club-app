@@ -66,7 +66,7 @@ service cloud.firestore {
 
     // ---------------- members ----------------
     function memberCreateOk(d, memberId) {
-      return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','days','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
+      return d.keys().hasOnly(['id','name','phone','email','birthDate','photo','balance','vipSlots','marathonSlots','days','nfcTag','createdAt','registeredSelf','lastBirthdayCheckinWeek'])
         && d.id is string && d.id == memberId
         && d.name is string && d.name.size() > 0 && d.name.size() < 120
         && (!('phone' in d) || (d.phone is string && d.phone.size() < 40))
@@ -75,6 +75,7 @@ service cloud.firestore {
         && (!('photo' in d) || d.photo == null || (d.photo is string && d.photo.size() < 900000 && d.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!('balance' in d) || (d.balance is number && d.balance >= 0 && d.balance < 100000))
         && (!('vipSlots' in d) || (d.vipSlots is number && d.vipSlots in [0,1,2,3]))
+        && (!('marathonSlots' in d) || (d.marathonSlots is number && d.marathonSlots in [0,1,2,3]))
         && (!('days' in d) || (d.days is list && d.days.size() <= 7 && d.days.hasOnly([0,1,2,3,4,5,6])))
         && (!('nfcTag' in d) || d.nfcTag == null || (d.nfcTag is string && d.nfcTag.size() < 500))
         && (!('createdAt' in d) || isDateishBounded(d.createdAt, 40))
@@ -92,6 +93,7 @@ service cloud.firestore {
         && (!changed.hasAny(['photo']) || newData.photo == null || (newData.photo is string && newData.photo.size() < 900000 && newData.photo.matches('^data:image/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/]+=*$')))
         && (!changed.hasAny(['balance']) || (newData.balance is number && newData.balance >= 0 && newData.balance < 100000))
         && (!changed.hasAny(['vipSlots']) || (newData.vipSlots is number && newData.vipSlots in [0,1,2,3]))
+        && (!changed.hasAny(['marathonSlots']) || (newData.marathonSlots is number && newData.marathonSlots in [0,1,2,3]))
         && (!changed.hasAny(['days']) || (newData.days is list && newData.days.size() <= 7 && newData.days.hasOnly([0,1,2,3,4,5,6])))
         && (!changed.hasAny(['nfcTag']) || newData.nfcTag == null || (newData.nfcTag is string && newData.nfcTag.size() < 500))
         && (!changed.hasAny(['registeredSelf']) || newData.registeredSelf is bool)

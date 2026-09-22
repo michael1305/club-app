@@ -1393,12 +1393,13 @@ function switchGuestTab(tab) {
 
 function updateGuestTabVisibility() {
     const searching = document.getElementById('search-guests').value.trim().length > 0;
-    ['temp', 'vip'].forEach(t => {
+    ['temp', 'vip', 'marathon'].forEach(t => {
         document.getElementById('guest-tab-' + t).classList.toggle('active', t === guestListTab);
         document.getElementById('guest-panel-' + t).classList.toggle('active', searching || t === guestListTab);
     });
     document.getElementById('guestlist-vip-label').style.display = searching ? 'block' : 'none';
     document.getElementById('guestlist-temp-label').style.display = searching ? 'block' : 'none';
+    document.getElementById('guestlist-marathon-label').style.display = searching ? 'block' : 'none';
 }
 
 function filterGuests() { renderGuestList(); }
@@ -1413,11 +1414,12 @@ function renderGuestList() {
 
     const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && _validToday(m) && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && _validToday(g) && g.name.toLowerCase().includes(search));
+    const marathonMembers = getMembers().filter(m => (m.marathonSlots || 0) > 0 && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
 
     const vipHtml = vipMembers.length === 0
         ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין חברים עם כניסה חופשית קבועה</p>'
         : vipMembers.map(m => {
-            const checkin = todayCheckins.find(gc => gc.refId === m.id);
+            const checkin = todayCheckins.find(gc => gc.refId === m.id && gc.type === 'vip');
             return `<div class="recent-item" style="align-items:center;gap:8px">
                 <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer" onclick="showMemberDetails('${m.id}')">
                     ${avatarHtml(m, 36)}
@@ -1429,6 +1431,25 @@ function renderGuestList() {
                 <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
                     ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
                     ${_arrivalButtons('Vip', m.id, m.vipSlots)}
+                </div>
+            </div>`;
+        }).join('');
+
+    const marathonHtml = marathonMembers.length === 0
+        ? '<p style="color:#b2bec3;text-align:center;padding:12px">אין רשומים למרתון כרגע</p>'
+        : marathonMembers.map(m => {
+            const checkin = todayCheckins.find(gc => gc.refId === m.id && gc.type === 'marathon');
+            return `<div class="recent-item" style="align-items:center;gap:8px">
+                <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer" onclick="showMemberDetails('${m.id}')">
+                    ${avatarHtml(m, 36)}
+                    <div>
+                        <div style="font-weight:600">${escHtml(m.name)}</div>
+                        <div style="font-size:0.78rem;color:var(--text-light)">🏃 עד ${num(m.marathonSlots)} ${m.marathonSlots>1?'אנשים':'אדם'}</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+                    ${checkin ? `<span class="badge badge-success">הגיע (${num(checkin.count)})</span>` : ''}
+                    ${_arrivalButtons('Marathon', m.id, m.marathonSlots)}
                 </div>
             </div>`;
         }).join('');
@@ -1453,17 +1474,20 @@ function renderGuestList() {
 
     const vipEl = document.getElementById('guestlist-vip');
     const tempEl = document.getElementById('guestlist-temp');
+    const marathonEl = document.getElementById('guestlist-marathon');
     vipEl.innerHTML = vipHtml;
     tempEl.innerHTML = tempHtml;
+    marathonEl.innerHTML = marathonHtml;
     vipEl.style.maxHeight = 'none';
     tempEl.style.maxHeight = 'none';
+    marathonEl.style.maxHeight = 'none';
 }
 
 function markVipArrival(memberId, count) {
     const member = getMembers().find(m => m.id === memberId);
     if (!member) return;
     const today = new Date().toISOString().split('T')[0];
-    const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today);
+    const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today && gc.type === 'vip');
     if (existing && existing.count === count) {
         _deleteGuestCheckin(existing.id);
         showToast(`${member.name} — סימון בוטל`);
@@ -1474,6 +1498,29 @@ function markVipArrival(memberId, count) {
         refId: memberId,
         name: member.name,
         type: 'vip',
+        date: today,
+        count,
+        terminal: DB.getSetting('terminalName', 'ראשי'),
+        timestamp: new Date().toISOString()
+    });
+    showToast(`${member.name} סומן כהגיע (${count}) ✓`);
+}
+
+function markMarathonArrival(memberId, count) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    const today = new Date().toISOString().split('T')[0];
+    const existing = getGuestCheckins().find(gc => gc.refId === memberId && gc.date === today && gc.type === 'marathon');
+    if (existing && existing.count === count) {
+        _deleteGuestCheckin(existing.id);
+        showToast(`${member.name} — סימון בוטל`);
+        return;
+    }
+    _saveGuestCheckin({
+        id: existing?.id || generateId(),
+        refId: memberId,
+        name: member.name,
+        type: 'marathon',
         date: today,
         count,
         terminal: DB.getSetting('terminalName', 'ראשי'),

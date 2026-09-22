@@ -17,6 +17,27 @@
             flex-direction: column;
             align-items: center;
         }
+        .guest-topbar {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .guest-topbar a, .guest-topbar button {
+            flex: 1;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+            text-align: center;
+            cursor: pointer;
+            font-family: inherit;
+        }
         .guest-logo {
             text-align: center;
             margin-bottom: 28px;
@@ -141,6 +162,10 @@
 </head>
 <body>
     <div class="guest-page">
+        <div class="guest-topbar">
+            <a href="admin.html?full=1">🏢 משרד אחורי</a>
+            <button onclick="adminSignOut()">🚪 התנתקות</button>
+        </div>
         <div class="guest-logo">
             <img src="LOGO.jpg" alt="לוגו" onerror="this.style.display='none'">
         </div>
@@ -185,6 +210,7 @@
 
             <div id="error-msg" class="error-msg"></div>
             <button class="submit-btn" id="submit-btn" onclick="submitGuest()">הוסף לרשימה ✓</button>
+            <button class="submit-btn" style="background:#fff;color:var(--primary);border:2px solid var(--primary);margin-top:10px" onclick="openMarathonModal()">🏃 מרתונים</button>
 
             <p style="text-align:center;font-size:0.85rem;color:var(--text-light);margin-top:18px">
                 רוצה/ה להקים כרטיס מועדון מלא (עם יתרת כניסות בתשלום)?<br>
@@ -200,10 +226,27 @@
         </div>
     </div>
 
+    <!-- Marathon picker modal -->
+    <div class="modal-overlay" id="marathon-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🏃 רשימת מרתון</h3>
+                <button onclick="closeMarathonModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light)">✕</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:14px">בחרו את החברים שמוזמנים למרתון וסמנו כמות מקומות לכל אחד. הסימון מוסיף אותם לרשימת הכניסה החופשית עד שיוסר.</p>
+                <input type="text" id="marathon-search" placeholder="🔍 חיפוש חבר..." style="width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:12px;font-size:1rem;direction:rtl;margin-bottom:14px" oninput="renderMarathonPicker()">
+                <div id="marathon-picker-list" class="recent-list" style="max-height:none"></div>
+                <button class="submit-btn" style="margin-top:18px" onclick="saveMarathonList()">💾 שמירה</button>
+                <button class="submit-btn" style="background:#fff;color:var(--danger);border:2px solid var(--danger);margin-top:10px" onclick="clearMarathonList()">🗑️ נקה את כל רשימת המרתון</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
-    <script src="admin-auth.js?v=3"></script>
+    <script src="admin-auth.js?v=4"></script>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",
@@ -347,6 +390,90 @@
             snap.docs.forEach(d => batch.delete(d.ref));
             await batch.commit();
             showToast('✓ כל האורחים נמחקו');
+        }
+
+        // ===== Marathon picker: grant existing members free entry for a one-off event =====
+        let _marathonMembers = [];
+        let _marathonPending = {};
+
+        async function openMarathonModal() {
+            document.getElementById('marathon-modal').classList.add('visible');
+            document.getElementById('marathon-search').value = '';
+            _marathonPending = {};
+            document.getElementById('marathon-picker-list').innerHTML = '<p style="color:var(--text-light);text-align:center;padding:14px">טוען...</p>';
+            try {
+                const snap = await db.collection('members').orderBy('name').get();
+                _marathonMembers = snap.docs.map(d => d.data());
+                renderMarathonPicker();
+            } catch (e) {
+                document.getElementById('marathon-picker-list').innerHTML = '<p style="color:var(--danger);text-align:center;padding:14px">שגיאה בטעינת רשימת החברים — נסה שוב</p>';
+            }
+        }
+
+        function closeMarathonModal() {
+            document.getElementById('marathon-modal').classList.remove('visible');
+        }
+
+        function renderMarathonPicker() {
+            const search = document.getElementById('marathon-search').value.trim().toLowerCase();
+            const list = document.getElementById('marathon-picker-list');
+            const filtered = _marathonMembers.filter(m => !search || m.name.toLowerCase().includes(search));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:14px">לא נמצאו חברים</p>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(m => {
+                const current = m.id in _marathonPending ? _marathonPending[m.id] : (m.marathonSlots || 0);
+                const btn = n => `<button type="button" class="slot-option ${current === n ? 'selected' : ''}" style="flex:none;width:38px;padding:8px 4px;font-size:0.85rem" onclick="setMarathonPending('${escJsAttr(m.id)}',${n})">${n}</button>`;
+                return `<div class="recent-item" style="align-items:center;gap:8px">
+                    <div style="flex:1;min-width:0;font-weight:600">${escHtml(m.name)}</div>
+                    <div style="display:flex;gap:6px">${btn(1)}${btn(2)}${btn(3)}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function setMarathonPending(id, n) {
+            const member = _marathonMembers.find(m => m.id === id);
+            const current = id in _marathonPending ? _marathonPending[id] : (member?.marathonSlots || 0);
+            _marathonPending[id] = current === n ? 0 : n;
+            renderMarathonPicker();
+        }
+
+        async function saveMarathonList() {
+            const changedIds = Object.keys(_marathonPending).filter(id => {
+                const member = _marathonMembers.find(m => m.id === id);
+                return _marathonPending[id] !== (member?.marathonSlots || 0);
+            });
+            if (changedIds.length === 0) { closeMarathonModal(); return; }
+
+            const batch = db.batch();
+            changedIds.forEach(id => batch.update(db.collection('members').doc(id), { marathonSlots: _marathonPending[id] }));
+            await batch.commit();
+
+            changedIds.forEach(id => {
+                const member = _marathonMembers.find(m => m.id === id);
+                if (member) member.marathonSlots = _marathonPending[id];
+            });
+            _marathonPending = {};
+            showToast(`✓ רשימת המרתון עודכנה (${changedIds.length})`);
+            closeMarathonModal();
+        }
+
+        async function clearMarathonList() {
+            const toClear = _marathonMembers.filter(m => (m.marathonSlots || 0) > 0);
+            if (toClear.length === 0) { showToast('אין מי לנקות'); return; }
+            if (!confirm('לבטל את הכניסה החופשית למרתון מכל מי שסומן? הפעולה לא ניתנת לביטול.')) return;
+
+            const batch = db.batch();
+            toClear.forEach(m => batch.update(db.collection('members').doc(m.id), { marathonSlots: 0 }));
+            await batch.commit();
+
+            toClear.forEach(m => m.marathonSlots = 0);
+            _marathonPending = {};
+            showToast('✓ רשימת המרתון נוקתה');
+            renderMarathonPicker();
         }
 
         function renderGuests(docs) {
