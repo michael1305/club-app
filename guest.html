@@ -241,8 +241,7 @@
                 <h4 style="margin:20px 0 8px;font-size:0.95rem;color:var(--text-light)">📋 ברשימת המרתון</h4>
                 <div id="marathon-added-list" class="recent-list" style="max-height:none"></div>
 
-                <button class="submit-btn" style="margin-top:18px" onclick="saveMarathonList()">💾 שמירה</button>
-                <button class="submit-btn" style="background:#fff;color:var(--danger);border:2px solid var(--danger);margin-top:10px" onclick="clearMarathonList()">🗑️ נקה את כל רשימת המרתון</button>
+                <button class="submit-btn" style="background:#fff;color:var(--danger);border:2px solid var(--danger);margin-top:18px" onclick="clearMarathonList()">🗑️ נקה את כל רשימת המרתון</button>
             </div>
         </div>
     </div>
@@ -399,9 +398,9 @@
         // ===== Marathon picker: grant existing members free entry for a one-off event =====
         // The picker starts empty — search by name to add someone, rather than
         // scrolling the entire member roster. A separate "added" list manages
-        // who's currently on it (adjust slots / remove).
+        // who's currently on it (adjust slots / remove). Every action saves to
+        // Firestore immediately — there's no separate Save step to forget.
         let _marathonMembers = [];
-        let _marathonPending = {};
 
         async function openMarathonModal() {
             document.getElementById('marathon-modal').classList.add('visible');
@@ -411,8 +410,6 @@
             try {
                 const snap = await db.collection('members').orderBy('name').get();
                 _marathonMembers = snap.docs.map(d => d.data());
-                _marathonPending = {};
-                _marathonMembers.forEach(m => { if (m.marathonSlots > 0) _marathonPending[m.id] = m.marathonSlots; });
                 renderMarathonAddedList();
             } catch (e) {
                 document.getElementById('marathon-added-list').innerHTML = '<p style="color:var(--danger);text-align:center;padding:14px">שגיאה בטעינת רשימת החברים — נסה שוב</p>';
@@ -428,7 +425,7 @@
             const results = document.getElementById('marathon-search-results');
             if (!search) { results.innerHTML = ''; return; }
 
-            const matches = _marathonMembers.filter(m => m.name.toLowerCase().includes(search) && !(_marathonPending[m.id] > 0)).slice(0, 15);
+            const matches = _marathonMembers.filter(m => m.name.toLowerCase().includes(search) && !(m.marathonSlots > 0)).slice(0, 15);
             if (matches.length === 0) {
                 results.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:10px">לא נמצאו חברים תואמים</p>';
                 return;
@@ -440,39 +437,45 @@
                 </div>`).join('');
         }
 
-        function addMarathonMember(id) {
-            _marathonPending[id] = 1;
+        async function setMemberMarathonSlots(id, n) {
+            const member = _marathonMembers.find(m => m.id === id);
+            if (!member) return;
+            try {
+                await db.collection('members').doc(id).update({ marathonSlots: n });
+                member.marathonSlots = n;
+            } catch (e) {
+                showToast('שגיאה בשמירה — נסה שוב');
+            }
+        }
+
+        async function addMarathonMember(id) {
             document.getElementById('marathon-search').value = '';
             document.getElementById('marathon-search-results').innerHTML = '';
+            await setMemberMarathonSlots(id, 1);
             renderMarathonAddedList();
         }
 
-        function removeMarathonMember(id) {
-            _marathonPending[id] = 0;
+        async function removeMarathonMember(id) {
+            await setMemberMarathonSlots(id, 0);
             renderMarathonAddedList();
         }
 
-        function setMarathonSlots(id, n) {
-            _marathonPending[id] = n;
+        async function setMarathonSlots(id, n) {
+            await setMemberMarathonSlots(id, n);
             renderMarathonAddedList();
         }
 
         function renderMarathonAddedList() {
             const list = document.getElementById('marathon-added-list');
-            const addedIds = Object.keys(_marathonPending).filter(id => _marathonPending[id] > 0);
+            const added = _marathonMembers.filter(m => m.marathonSlots > 0).sort((a, b) => a.name.localeCompare(b.name, 'he'));
 
-            if (addedIds.length === 0) {
+            if (added.length === 0) {
                 list.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:14px">הרשימה ריקה — חפשו חבר/ה למעלה כדי להוסיף</p>';
                 return;
             }
 
-            const added = addedIds
-                .map(id => _marathonMembers.find(m => m.id === id))
-                .filter(Boolean)
-                .sort((a, b) => a.name.localeCompare(b.name, 'he'));
-
             list.innerHTML = added.map(m => {
-                const current = _marathonPending[m.id];
+                const current = m.marathonSlots;
                 const btn = n => `<button type="button" class="slot-option ${current === n ? 'selected' : ''}" style="flex:none;width:34px;padding:8px 4px;font-size:0.85rem" onclick="setMarathonSlots('${escJsAttr(m.id)}',${n})">${n}</button>`;
                 return `<div class="recent-item" style="align-items:center;gap:8px">
                     <div style="flex:1;min-width:0;font-weight:600">${escHtml(m.name)}</div>
@@ -484,25 +487,6 @@
             }).join('');
         }
 
-        async function saveMarathonList() {
-            const changedIds = Object.keys(_marathonPending).filter(id => {
-                const member = _marathonMembers.find(m => m.id === id);
-                return _marathonPending[id] !== (member?.marathonSlots || 0);
-            });
-            if (changedIds.length === 0) { closeMarathonModal(); return; }
-
-            const batch = db.batch();
-            changedIds.forEach(id => batch.update(db.collection('members').doc(id), { marathonSlots: _marathonPending[id] }));
-            await batch.commit();
-
-            changedIds.forEach(id => {
-                const member = _marathonMembers.find(m => m.id === id);
-                if (member) member.marathonSlots = _marathonPending[id];
-            });
-            showToast(`✓ רשימת המרתון עודכנה (${changedIds.length})`);
-            closeMarathonModal();
-        }
-
         async function clearMarathonList() {
             const toClear = _marathonMembers.filter(m => (m.marathonSlots || 0) > 0);
             if (toClear.length === 0) { showToast('אין מי לנקות'); return; }
@@ -512,7 +496,7 @@
             toClear.forEach(m => batch.update(db.collection('members').doc(m.id), { marathonSlots: 0 }));
             await batch.commit();
 
-            toClear.forEach(m => { m.marathonSlots = 0; _marathonPending[m.id] = 0; });
+            toClear.forEach(m => { m.marathonSlots = 0; });
             showToast('✓ רשימת המרתון נוקתה');
             renderMarathonAddedList();
         }
