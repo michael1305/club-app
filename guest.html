@@ -421,20 +421,47 @@
         }
 
         function renderMarathonSearch() {
-            const search = document.getElementById('marathon-search').value.trim().toLowerCase();
+            const raw = document.getElementById('marathon-search').value.trim();
+            const search = raw.toLowerCase();
             const results = document.getElementById('marathon-search-results');
             if (!search) { results.innerHTML = ''; return; }
 
             const matches = _marathonMembers.filter(m => m.name.toLowerCase().includes(search) && !(m.marathonSlots > 0)).slice(0, 15);
-            if (matches.length === 0) {
-                results.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:10px">לא נמצאו חברים תואמים</p>';
-                return;
-            }
-            results.innerHTML = matches.map(m => `
+
+            const matchesHtml = matches.map(m => `
                 <div class="recent-item" style="align-items:center;gap:8px;cursor:pointer" onclick="addMarathonMember('${escJsAttr(m.id)}')">
                     <div style="flex:1;min-width:0;font-weight:600">${escHtml(m.name)}</div>
                     <div style="color:var(--primary);font-weight:700">+ הוספה</div>
                 </div>`).join('');
+
+            const noMatchMsg = matches.length === 0
+                ? '<p style="color:var(--text-light);text-align:center;padding:10px 0 4px">לא נמצאו חברים תואמים</p>'
+                : '';
+
+            // Not an existing member (e.g. a first-time guest for this marathon) — offer to add them fresh.
+            const newPersonHtml = `
+                <div class="recent-item" style="align-items:center;gap:8px;cursor:pointer;${matches.length ? 'border-top:1px dashed var(--border)' : ''}" onclick="addNewMarathonMember('${escJsAttr(raw)}')">
+                    <div style="flex:1;min-width:0;font-weight:600;color:var(--text-light)">➕ הוספת "${escHtml(raw)}" כאדם חדש למרתון</div>
+                </div>`;
+
+            results.innerHTML = matchesHtml + noMatchMsg + newPersonHtml;
+        }
+
+        async function addNewMarathonMember(name) {
+            name = name.trim();
+            if (!name) return;
+            const id = generateId();
+            const member = { id, name, marathonSlots: 1, balance: 0, createdAt: new Date().toISOString() };
+            try {
+                await db.collection('members').doc(id).set(member);
+                _marathonMembers.push(member);
+                document.getElementById('marathon-search').value = '';
+                document.getElementById('marathon-search-results').innerHTML = '';
+                renderMarathonAddedList();
+                showToast(`✓ ${name} נוסף כחדש למרתון`);
+            } catch (e) {
+                showToast('שגיאה בהוספה — נסה שוב');
+            }
         }
 
         async function setMemberMarathonSlots(id, n) {
