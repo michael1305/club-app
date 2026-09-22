@@ -434,10 +434,13 @@
 
             list.innerHTML = filtered.map(m => {
                 const current = m.marathonSlots || 0;
-                const btn = n => `<button type="button" class="slot-option ${current === n ? 'selected' : ''}" style="flex:none;width:36px;padding:8px 4px;font-size:0.85rem" onclick="toggleMarathonSlots('${escJsAttr(m.id)}',${n})">${n}</button>`;
+                const btn = n => `<button type="button" class="slot-option ${current === n ? 'selected' : ''}" style="flex:none;width:34px;padding:8px 4px;font-size:0.85rem" onclick="toggleMarathonSlots('${escJsAttr(m.id)}',${n})">${n}</button>`;
                 return `<div class="recent-item" style="align-items:center;gap:8px">
                     <div style="flex:1;min-width:0;font-weight:600">${escHtml(m.name)}</div>
-                    <div style="display:flex;gap:6px">${btn(1)}${btn(2)}${btn(3)}</div>
+                    <div style="display:flex;gap:5px;align-items:center">
+                        ${btn(1)}${btn(2)}${btn(3)}
+                        <button type="button" onclick="removeMarathonMember('${escJsAttr(m.id)}')" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--danger);padding:4px">✕</button>
+                    </div>
                 </div>`;
             }).join('');
         }
@@ -449,6 +452,18 @@
             try {
                 await db.collection('members').doc(id).update({ marathonSlots: next });
                 member.marathonSlots = next;
+                renderMarathonPicker();
+            } catch (e) {
+                showToast('שגיאה בשמירה — נסה שוב');
+            }
+        }
+
+        async function removeMarathonMember(id) {
+            const member = _marathonMembers.find(m => m.id === id);
+            if (!member || !(member.marathonSlots > 0)) return;
+            try {
+                await db.collection('members').doc(id).update({ marathonSlots: 0 });
+                member.marathonSlots = 0;
                 renderMarathonPicker();
             } catch (e) {
                 showToast('שגיאה בשמירה — נסה שוב');
