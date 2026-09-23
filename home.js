@@ -170,7 +170,9 @@
         try {
             camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         } catch (e) {
-            status('אין הרשאה למצלמה. אשרו גישה ונסו שוב.', true);
+            // Informational only: never asks the user to reconsider a denied permission
+            // (App Store guideline 5.1.1(iv)) — just offers the other identification paths.
+            status('לא ניתן להפעיל את המצלמה כרגע. אפשר להשתמש בהצמדת כרטיס NFC, או להירשם כחבר חדש.', true);
             return;
         }
         const video = $('qr-video');

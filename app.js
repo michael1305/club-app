@@ -373,7 +373,9 @@ function startCameraStream() {
             video.srcObject = stream;
         })
         .catch(() => {
-            if (errorEl) errorEl.textContent = 'לא ניתן לגשת למצלמה. ודא שניתנה הרשאת מצלמה לאתר.';
+            // Informational only — never asks the admin to reconsider a denied permission
+            // (App Store guideline 5.1.1(iv)); the gallery-upload button remains available.
+            if (errorEl) errorEl.textContent = 'לא ניתן לגשת למצלמה כרגע. אפשר לבחור תמונה מהגלריה במקום.';
         });
 }
 
