@@ -18,7 +18,17 @@
         window.scrollTo(0, 0);
     }
     document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
-    $('btn-enter').addEventListener('click', () => show('menu'));
+    // A device where an admin already signed in goes straight to the back office
+    // (admin.html shows the login again if the session expired). "?member=1" skips this
+    // so an admin can still view the member side on the same device.
+    function isAdminDevice() {
+        try { return localStorage.getItem('club_admin_device') === '1' && !/[?&]member=1(&|$)/.test(location.search); }
+        catch (e) { return false; }
+    }
+    $('btn-enter').addEventListener('click', () => {
+        if (isAdminDevice()) { location.href = 'admin.html'; return; }
+        show('menu');
+    });
     $('btn-dances').addEventListener('click', () => show('dances'));
     $('btn-contact').addEventListener('click', () => $('contact').classList.add('open'));
     $('btn-close-contact').addEventListener('click', () => $('contact').classList.remove('open'));

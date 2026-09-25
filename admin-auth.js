@@ -31,7 +31,16 @@ const _ADMIN_LANDING = {
     '0528588408@club-admin.local': 'guest.html'   // guest entry
 };
 
+// Routing hint only (NOT a permission): once an admin has signed in on this device, the
+// front-office "כניסה" button (home.js) sends straight to admin.html. Real protection is
+// still the Firebase login + firestore.rules; if the session expired admin.html shows the login.
+const _ADMIN_DEVICE_KEY = 'club_admin_device';
+function _setAdminDevice(on) {
+    try { on ? localStorage.setItem(_ADMIN_DEVICE_KEY, '1') : localStorage.removeItem(_ADMIN_DEVICE_KEY); } catch (e) { /* private mode */ }
+}
+
 function adminSignOut() {
+    _setAdminDevice(false);
     _adminApp().auth().signOut().then(() => location.reload());
 }
 
@@ -76,6 +85,7 @@ function requireAdmin(onReady) {
     let started = false;
     auth.onAuthStateChanged(user => {
         if (user && !user.isAnonymous) {
+            _setAdminDevice(true);
             const landing = _ADMIN_LANDING[(user.email || '').toLowerCase()];
             const skipLanding = /[?&]full=1(&|$)/.test(location.search);
             if (landing && !skipLanding && /admin\.html$/.test(location.pathname)) { location.replace(landing); return; }

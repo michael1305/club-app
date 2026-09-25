@@ -207,6 +207,7 @@
             <div class="settings-container">
                 <h2>⚙️ הגדרות</h2>
                 <button class="btn" style="margin-bottom:14px" onclick="adminSignOut()">🔒 התנתק</button>
+                <button class="btn" style="margin-bottom:14px" onclick="location.href='index.html?member=1'">👤 מעבר לצד הלקוח</button>
                 <div class="setting-group" id="deletion-requests-section" style="display:none">
                     <h3>🗑 בקשות מחיקה ממתינות</h3>
                     <p style="font-size:0.85rem;color:var(--text-light);margin-bottom:8px">חברים עם יתרה שביקשו למחוק את הכרטיסיה. הסדר איתם את היתרה, ואז אשר.</p>
@@ -326,7 +327,7 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
-    <script src="admin-auth.js?v=4"></script>
+    <script src="admin-auth.js?v=5"></script>
     <script src="app.js?v=131"></script>
     <script src="admin-promos.js?v=1"></script>
     <script src="admin-requests.js?v=1"></script>
