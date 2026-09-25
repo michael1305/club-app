@@ -1415,7 +1415,7 @@ function renderGuestList() {
     updateGuestTabVisibility();
 
     const vipMembers = getMembers().filter(m => (m.vipSlots || 0) > 0 && _validToday(m) && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
-    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && _validToday(g) && g.name.toLowerCase().includes(search));
+    const activeGuests = getGuests().filter(g => new Date(g.expiresAt) > now && _validToday(g) && g.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     const marathonMembers = getMembers().filter(m => (m.marathonSlots || 0) > 0 && m.name.toLowerCase().includes(search)).sort((a, b) => a.name.localeCompare(b.name, 'he'));
 
     const vipHtml = vipMembers.length === 0
