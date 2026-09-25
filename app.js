@@ -1555,7 +1555,7 @@ function markTempArrival(guestId, count) {
 }
 
 function showAddTempGuest() {
-    openModal('הוספת אורח זמני (48 שעות)', `
+    openModal('הוספת אורח זמני (עד ב׳/ד׳/ו׳ 06:00)', `
         <div class="form-group">
             <label>שם האורח</label>
             <input type="text" id="temp-guest-name" placeholder="שם מלא">
@@ -1583,6 +1583,16 @@ function showAddTempGuest() {
     setTimeout(() => document.getElementById('temp-guest-name')?.focus(), 200);
 }
 
+// Temporary guests are removed from the list at the next Monday / Wednesday / Friday 06:00
+// (local time) — i.e. the morning after each Sun / Tue / Thu event.
+function nextGuestExpiry(from) {
+    const d = new Date(from);
+    for (let i = 0; i <= 7; i++) {
+        const c = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i, 6, 0, 0, 0);
+        if ([1, 3, 5].includes(c.getDay()) && c > d) return c;
+    }
+}
+
 function addTempGuest() {
     const name = document.getElementById('temp-guest-name').value.trim();
     const slots = parseInt(document.querySelector('input[name="temp-slots"]:checked')?.value || '1');
@@ -1596,10 +1606,10 @@ function addTempGuest() {
         slots,
         days,
         createdAt: now.toISOString(),
-        expiresAt: new Date(now.getTime() + 48 * 3600000).toISOString()
+        expiresAt: nextGuestExpiry(now).toISOString()
     });
     closeModal();
-    showToast(`${name} נוסף לרשימה ל-48 שעות ✓`);
+    showToast(`${name} נוסף לרשימה עד הבוקר ✓`);
 }
 
 function deleteTempGuest(id) {
