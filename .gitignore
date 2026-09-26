@@ -3,3 +3,6 @@ node_modules/
 package-lock.json
 
 firebase-debug.log
+
+club-backup-*.json
+_firestore-backups/
