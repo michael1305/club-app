@@ -469,11 +469,33 @@
                 }
                 const balance = num(_member.balance);
                 const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
+                const vip = num(_member.vipSlots);   // free-entry (VIP) members have no paid balance to show
+                const dayNames = { 0: 'ראשון', 1: 'שני', 2: 'שלישי', 3: 'רביעי', 4: 'חמישי', 5: 'שישי', 6: 'שבת' };
+                const vipDays = (Array.isArray(_member.days) && _member.days.length)
+                    ? 'בימי ' + _member.days.slice().sort().map(d => dayNames[d] || '').filter(Boolean).join(', ')
+                    : 'בכל ימי ההרקדות';
+                const entryLabel = t => t === 'couple' ? 'כניסה זוגית (-2)'
+                    : t === 'vip-triple' ? '⭐ כניסה חופשית (3)'
+                    : t === 'vip-couple' ? '⭐ כניסה חופשית (2)'
+                    : t === 'vip-single' ? '⭐ כניסה חופשית (1)'
+                    : t === 'birthday' ? '🎂 כניסת יום הולדת (חינם)'
+                    : 'כניסה בודדת (-1)';
+                const balanceHtml = vip > 0
+                    ? `<div class="balance-card">
+                            <div class="balance-number">⭐</div>
+                            <div class="balance-label" style="font-weight:700">כניסה חופשית</div>
+                            <div style="color:#636e72;margin-top:6px;font-size:0.95rem">עד ${vip} ${vip > 1 ? 'אנשים' : 'אדם'} · ${vipDays}</div>
+                        </div>`
+                    : `<div class="balance-card ${balanceClass}">
+                            <div class="balance-number">${balance}</div>
+                            <div class="balance-label">כניסות נותרו</div>
+                            ${balance <= 0 ? '<div class="empty-msg">אין יתרת כניסות. כדי לקבל כרטיסיה, פנו לצוות בהרקדה.</div>' : ''}
+                        </div>`;
                 const sorted = _checkins.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                 const historyHtml = sorted.slice(0, 15).map(c => `
                     <div class="recent-item">
                         <span>${fmtDateTime(new Date(c.timestamp))}</span>
-                        <span>${c.entryType === 'couple' ? 'כניסה זוגית (-2)' : 'כניסה בודדת (-1)'}</span>
+                        <span>${entryLabel(c.entryType)}</span>
                     </div>
                 `).join('') || '<p style="color:#b2bec3;text-align:center;padding:20px">אין כניסות עדיין</p>';
 
@@ -493,11 +515,7 @@
                         </div>
                         <button id="btn-qr" style="display:block;width:100%;background:var(--primary);color:white;border:none;border-radius:16px;padding:14px;font-size:1.05rem;font-weight:700;cursor:pointer;margin-bottom:16px">📷 הצג קוד לכניסה</button>
                         ${uCanInstall() ? `<button id="btn-install" style="display:block;width:100%;background:#00b894;color:white;border:none;border-radius:16px;padding:12px;font-size:0.95rem;font-weight:700;cursor:pointer;margin-bottom:16px">📲 הוסף למסך הבית</button>` : ''}
-                        <div class="balance-card ${balanceClass}">
-                            <div class="balance-number">${balance}</div>
-                            <div class="balance-label">כניסות נותרו</div>
-                            ${balance <= 0 ? '<div class="empty-msg">אין יתרת כניסות. כדי לקבל כרטיסיה, פנו לצוות בהרקדה.</div>' : ''}
-                        </div>
+                        ${balanceHtml}
                         <div class="section-title">היסטוריית כניסות</div>
                         <div class="recent-list">${historyHtml}</div>
                         <div style="margin-top:28px;text-align:center">
