@@ -1237,6 +1237,13 @@ function stopNfc() {
     if (statusEl) statusEl.textContent = '';
 }
 
+let _assignNfcAbort = null;
+
+function cancelAssignNfc() {
+    if (_assignNfcAbort) _assignNfcAbort.abort();
+    closeModal();
+}
+
 function assignNfc(memberId) {
     if (!('NDEFReader' in window)) {
         showToast('NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד)');
@@ -1247,16 +1254,46 @@ function assignNfc(memberId) {
     if (!member) return;
 
     closeModal();
-    showToast('קרב כרטיס NFC ריק וניתן לכתיבה למכשיר...');
+
+    // A running check-in scan would grab the card instead of the write (and could even
+    // register an entry for the member already stored on it) — pause it while writing.
+    const wasScanning = !!nfcAbortController;
+    stopNfc();
+
+    const ac = new AbortController();
+    _assignNfcAbort = ac;
+    let timedOut = false;
+    const timer = setTimeout(() => { timedOut = true; ac.abort(); }, 20000);
+    const finish = () => {
+        clearTimeout(timer);
+        _assignNfcAbort = null;
+        if (wasScanning) setTimeout(startNfc, 500);
+    };
+
+    openModal('שיוך כרטיס NFC - ' + member.name, `
+        <div style="text-align:center">
+            <p style="font-size:2.4rem;margin:0 0 8px">📱</p>
+            <p style="font-weight:700;margin-bottom:6px">הצמד את הכרטיס לגב הטלפון והחזק</p>
+            <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:16px">ממתין לכרטיס (עד 20 שניות). כרטיס שכבר שויך יידרס.</p>
+            <button class="btn btn-secondary btn-block" onclick="cancelAssignNfc()">ביטול</button>
+        </div>`);
 
     const ndef = new NDEFReader();
     const url = getUserUrl(memberId);
 
-    ndef.write({ records: [{ recordType: 'url', data: url }] }).then(() => {
+    ndef.write({ records: [{ recordType: 'url', data: url }] }, { signal: ac.signal, overwrite: true }).then(() => {
+        finish();
+        closeModal();
         _updateMember(memberId, { nfcTag: url });
         _logMemberAction(memberId, '📱 שיוך כרטיס NFC');
         showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
     }).catch(err => {
+        finish();
+        closeModal();
+        if (err.name === 'AbortError') {
+            if (timedOut) showToast('לא זוהה כרטיס תוך 20 שניות. ודא ש-NFC פעיל, הצמד את הכרטיס לגב הטלפון ונסה שוב.');
+            return;
+        }
         showToast('שגיאה בכתיבה לכרטיס: ' + (err.message || 'ודא שהכרטיס ניתן לכתיבה'));
     });
 }
