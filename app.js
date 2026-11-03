@@ -1244,9 +1244,87 @@ function cancelAssignNfc() {
     closeModal();
 }
 
+// ---- Native NFC inside the iOS app (Capacitor plugin @capgo/capacitor-nfc) ----
+// Only active when the app runs natively AND the plugin was added to the iOS project;
+// in Chrome / the Android app / any browser this returns null and the Web NFC path is used.
+function _nativeNfc() {
+    const cap = window.Capacitor;
+    if (cap && typeof cap.isNativePlatform === 'function' && cap.isNativePlatform() && cap.Plugins && cap.Plugins.CapacitorNfc) {
+        return cap.Plugins.CapacitorNfc;
+    }
+    return null;
+}
+
+// NFC Forum URI record (well-known type 'U'); prefix byte 0x04 = "https://", 0x03 = "http://"
+function _uriRecord(url) {
+    let code = 0x00, rest = url;
+    if (url.startsWith('https://')) { code = 0x04; rest = url.slice(8); }
+    else if (url.startsWith('http://')) { code = 0x03; rest = url.slice(7); }
+    return { tnf: 0x01, type: [0x55], id: [], payload: [code, ...Array.from(new TextEncoder().encode(rest))] };
+}
+
+function _assignNfcNative(nfc, memberId, member, url) {
+    const ac = new AbortController();
+    _assignNfcAbort = ac;
+    let listener = null, writing = false, ended = false, timedOut = false, timer = null;
+    const end = async () => {
+        if (ended) return;
+        ended = true;
+        clearTimeout(timer);
+        _assignNfcAbort = null;
+        try { if (listener) await listener.remove(); } catch (e) { /* ignore */ }
+        try { await nfc.stopScanning(); } catch (e) { /* ignore */ }
+    };
+    timer = setTimeout(() => { timedOut = true; ac.abort(); }, 30000);
+    ac.signal.addEventListener('abort', async () => {
+        await end();
+        closeModal();
+        if (timedOut) showToast('לא זוהה כרטיס תוך 30 שניות. הצמד את הכרטיס לחלק העליון של גב הטלפון ונסה שוב.');
+    });
+
+    openModal('שיוך כרטיס NFC - ' + member.name, `
+        <div style="text-align:center">
+            <p style="font-size:2.4rem;margin:0 0 8px">📱</p>
+            <p style="font-weight:700;margin-bottom:6px">הצמד את הכרטיס לחלק העליון של גב האייפון</p>
+            <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:16px">ממתין לכרטיס (עד 30 שניות). כרטיס שכבר שויך יידרס.</p>
+            <button class="btn btn-secondary btn-block" onclick="cancelAssignNfc()">ביטול</button>
+        </div>`);
+
+    (async () => {
+        try {
+            await nfc.startScanning({
+                iosSessionType: 'ndef',
+                invalidateAfterFirstRead: false,   // keep the session open so we can write
+                alertMessage: 'הצמד את הכרטיס לחלק העליון של גב הטלפון'
+            });
+            listener = await nfc.addListener('nfcEvent', async () => {
+                if (writing || ended) return;
+                writing = true;
+                try {
+                    await nfc.write({ allowFormat: true, records: [_uriRecord(url)] });
+                    await end();
+                    closeModal();
+                    _updateMember(memberId, { nfcTag: url });
+                    _logMemberAction(memberId, '📱 שיוך כרטיס NFC');
+                    showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
+                } catch (err) {
+                    await end();
+                    closeModal();
+                    showToast('שגיאה בכתיבה לכרטיס: ' + ((err && err.message) || 'ודא שהכרטיס ניתן לכתיבה'));
+                }
+            });
+        } catch (err) {
+            await end();
+            closeModal();
+            showToast('לא ניתן להפעיל NFC: ' + ((err && err.message) || 'נסה שוב'));
+        }
+    })();
+}
+
 function assignNfc(memberId) {
-    if (!('NDEFReader' in window)) {
-        showToast('NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד)');
+    const nativeNfc = _nativeNfc();
+    if (!nativeNfc && !('NDEFReader' in window)) {
+        showToast('NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד או אפליקציית האייפון)');
         return;
     }
 
@@ -1254,6 +1332,11 @@ function assignNfc(memberId) {
     if (!member) return;
 
     closeModal();
+
+    if (nativeNfc) {
+        _assignNfcNative(nativeNfc, memberId, member, getUserUrl(memberId));
+        return;
+    }
 
     // A running check-in scan would grab the card instead of the write (and could even
     // register an entry for the member already stored on it) — pause it while writing.
