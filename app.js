@@ -985,6 +985,9 @@ function doCheckin(memberId) {
     document.getElementById('co-balance').innerHTML = balance <= 0
         ? `<span style="color:var(--danger);font-weight:700">אין יתרת כניסות</span>`
         : `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
+    if (typeof _delRequests !== 'undefined' && _delRequests.some(r => r.memberId === memberId)) {
+        document.getElementById('co-balance').innerHTML += `<div style="color:var(--danger);font-weight:700;margin-top:6px">⚠ המשתתף ביקש למחוק את הכרטיס (ממתין לטיפול בהגדרות)</div>`;
+    }
 
     document.getElementById('co-actions').innerHTML = `
         ${!member.nfcTag ? `<button class="btn btn-warning btn-block" style="padding:18px;font-size:1.2rem" onclick="hideCheckinOverlay();showPunchCardSwap('${memberId}')">🎟️ החלפת כרטיסייה לכרטיס NFC</button>` : ''}

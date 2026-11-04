@@ -138,7 +138,10 @@ service cloud.firestore {
         && request.resource.data.memberId is string && request.resource.data.memberId == reqId
         && isDateishBounded(request.resource.data.createdAt, 40)
         && exists(/databases/$(database)/documents/members/$(reqId));
-      allow read, delete: if isAdmin();
+      // get: the member's own card page checks for a pending request so the card is
+      // hidden from them right away (doc holds only memberId + createdAt; ids are unguessable).
+      allow get: if signedIn();
+      allow list, delete: if isAdmin();
     }
 
     // Duplicate-phone index used by register.html: anyone can check whether a phone is

@@ -359,6 +359,7 @@
             db.enablePersistence().catch(() => {});
 
             let _member = null;
+            let _deletionPending = false;
             let _memberLoaded = false; // false until the member document has answered once
             let _checkins = [];
             let _authReady = false;
@@ -467,6 +468,13 @@
                     content.innerHTML = '<div class="not-found"><h2>משתתף לא נמצא</h2><p>ודא שסרקת את ה-QR האישי שלך</p></div>';
                     return;
                 }
+                // Deletion requested (card still had a balance): hidden from the member right
+                // away; the team settles the balance and deletes it for good.
+                if (_deletionPending) {
+                    try { if (localStorage.getItem('club_member_id') === id) localStorage.removeItem('club_member_id'); } catch (e) {}
+                    content.innerHTML = '<div class="not-found"><h2>הכרטיס נמחק</h2><p>המחיקה הסופית של הפרטים תתבצע לאחר טיפול הצוות.</p></div>';
+                    return;
+                }
                 const balance = num(_member.balance);
                 const balanceClass = balance <= 0 ? 'empty' : (balance <= 2 ? 'low' : '');
                 const vip = num(_member.vipSlots);   // free-entry (VIP) members have no paid balance to show
@@ -547,10 +555,10 @@
             // A card that still holds paid entries cannot be deleted on the spot (the rules
             // enforce this too): the member sends a deletion request for the team to handle.
             async function uRequestDeletion(bal) {
-                if (!confirm('נשארו לכרטיס שלך ' + bal + ' כניסות.\n\nכדי להגן על הכסף ששולם, לא ניתן למחוק כרטיס עם יתרה באופן מיידי. אפשר לשלוח בקשת מחיקה, והצוות יטפל בה (למשל ינצל או יחזיר את היתרה) ויאשר את המחיקה.\n\nלשלוח בקשת מחיקה?')) return;
+                if (!confirm('למחוק את הכרטיס שלך?\n\nנשארו בו ' + bal + ' כניסות. הכרטיס ייעלם ממך מיד, והמחיקה הסופית של הפרטים תתבצע לאחר טיפול הצוות ביתרה (ניצול או החזר).')) return;
                 try {
                     await db.collection('deletionRequests').doc(id).set({ memberId: id, createdAt: new Date().toISOString() });
-                    alert('בקשת המחיקה נשלחה. הצוות ייצור איתך קשר בהקדם.');
+                    alert('הכרטיס נמחק. הצוות ייצור איתך קשר לגבי היתרה.');
                 } catch (e) {
                     alert('לא הצלחנו לשלוח את הבקשה כרגע. נסו שוב מאוחר יותר או פנו לצוות בהרקדה.');
                 }
@@ -611,6 +619,11 @@
                 }, () => {
                     content.innerHTML = '<div class="not-found"><h2>שגיאת חיבור</h2><p>נסה שוב מאוחר יותר</p></div>';
                 });
+
+                db.collection('deletionRequests').doc(id).onSnapshot(doc => {
+                    _deletionPending = doc.exists;
+                    render();
+                }, () => {});
 
                 db.collection('members').doc(id).collection('checkins').onSnapshot(snap => {
                     _checkins = snap.docs.map(d => d.data());
