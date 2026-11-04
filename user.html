@@ -528,6 +528,13 @@
                 document.getElementById('btn-qr')?.addEventListener('click', uShowQr);
                 document.getElementById('btn-install')?.addEventListener('click', uInstall);
                 document.getElementById('btn-delete-account')?.addEventListener('click', uDeleteAccount);
+                // Just registered (punch-card swap at the door): open the entry QR right away
+                // so staff can scan it. Only once — render runs again on every data update.
+                if (params.get('qr') === '1' && !window._uAutoQrShown) {
+                    window._uAutoQrShown = true;
+                    history.replaceState(null, '', 'user.html?id=' + encodeURIComponent(id));
+                    uShowQr();
+                }
             }
 
             // In-app account deletion (App Store guideline 5.1.1(v)): removes the member's

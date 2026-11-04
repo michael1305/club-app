@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>שלט הרשמה - החלפת כרטיסייה</title>
+    <script src="qrcode.min.js"></script>
+    <style>
+        @page { size: A4; margin: 12mm; }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, 'Segoe UI', sans-serif; background: #fff; color: #2d3436; }
+        .poster { max-width: 180mm; margin: 0 auto; padding: 10mm 0; text-align: center; }
+        .poster img.logo { max-width: 60mm; max-height: 40mm; margin-bottom: 6mm; }
+        h1 { font-size: 34pt; margin: 0 0 4mm; }
+        .sub { font-size: 18pt; margin: 0 0 8mm; }
+        #qr { display: flex; justify-content: center; margin: 0 auto 8mm; }
+        #qr img, #qr canvas { width: 110mm !important; height: 110mm !important; }
+        ol { text-align: right; font-size: 16pt; line-height: 1.7; display: inline-block; margin: 0 0 6mm; padding-right: 8mm; }
+        .url { font-size: 11pt; color: #636e72; direction: ltr; }
+        .print-btn { margin: 16px; padding: 12px 28px; font-size: 1.1rem; border: none; border-radius: 12px; background: #6c5ce7; color: #fff; cursor: pointer; }
+        @media print { .print-btn { display: none; } .poster { padding: 0; } }
+    </style>
+</head>
+<body>
+    <div style="text-align:center"><button class="print-btn" onclick="window.print()">🖨️ הדפס</button></div>
+    <div class="poster">
+        <img class="logo" src="LOGO BIG.jpg" alt="">
+        <h1>🎟️ מחליפים כרטיסייה?</h1>
+        <p class="sub">סרקו את הקוד ומלאו את הפרטים בזמן ההמתנה בתור</p>
+        <div id="qr"></div>
+        <ol>
+            <li>סורקים את הקוד עם מצלמת הטלפון</li>
+            <li>ממלאים שם, טלפון ותאריך לידה</li>
+            <li>מגיעים לקופה עם הקוד שעל המסך והכרטיסייה הישנה</li>
+        </ol>
+        <div class="url" id="url"></div>
+    </div>
+    <script>
+        const url = new URL('register.html', location.href).href;
+        document.getElementById('url').textContent = url;
+        new QRCode(document.getElementById('qr'), { text: url, width: 600, height: 600, correctLevel: QRCode.CorrectLevel.M });
+    </script>
+</body>
+</html>

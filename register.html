@@ -380,7 +380,7 @@
                     return db.collection('members').doc(id).set(data).then(() =>
                         normPhone ? db.collection('phones').doc(normPhone).set({ createdAt: data.createdAt }) : null);
                 }).then(() => {
-                    location.href = 'user.html?id=' + id;
+                    location.href = 'user.html?id=' + id + '&qr=1';
                 }).catch(err => {
                     btn.disabled = false;
                     btn.textContent = 'הרשמה';

@@ -530,6 +530,7 @@ function showMemberDetails(id) {
                 <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
                 <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
                 <button class="btn btn-secondary" onclick="sendMemberLink('${id}')">💬 שלח קישור בוואטסאפ</button>
+                ${!member.nfcTag ? `<button class="btn btn-warning" onclick="showPunchCardSwap('${id}')">🎟️ החלפת כרטיסייה</button>` : ''}
                 <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
                 ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
                 <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
@@ -986,6 +987,7 @@ function doCheckin(memberId) {
         : `<span style="color:var(--text-light)">יתרה: </span><strong>${balance} כניסות</strong>`;
 
     document.getElementById('co-actions').innerHTML = `
+        ${!member.nfcTag ? `<button class="btn btn-warning btn-block" style="padding:18px;font-size:1.2rem" onclick="hideCheckinOverlay();showPunchCardSwap('${memberId}')">🎟️ החלפת כרטיסייה לכרטיס NFC</button>` : ''}
         ${birthdayAvailable ? `<button class="btn btn-warning btn-block" style="padding:18px;font-size:1.2rem" onclick="performBirthdayCheckin('${memberId}')">🎂 כניסת יום הולדת (חינם)</button>` : ''}
         ${balance > 0 ? `
         <button class="btn btn-primary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('single')">כניסה בודדת (−1)</button>
@@ -1379,6 +1381,44 @@ function assignNfc(memberId) {
         }
         showToast('שגיאה בכתיבה לכרטיס: ' + (err.message || 'ודא שהכרטיס ניתן לכתיבה'));
     });
+}
+
+// ===== PUNCH-CARD SWAP =====
+// Moving a member from the old paper punch card to an NFC card: staff types the entries
+// left on the paper card, they're credited (not as a payment), then the NFC write starts.
+// No entry is deducted here — the member taps the new card for a normal check-in after.
+function showPunchCardSwap(memberId) {
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    const cur = member.balance || 0;
+    const warn = member.punchCardMigrated != null
+        ? `<p style="color:var(--danger);font-weight:700;margin-bottom:12px">⚠ למשתתף זה כבר הועברה כרטיסייה (${num(member.punchCardMigrated)} כניסות)</p>` : '';
+    openModal('🎟️ החלפת כרטיסייה - ' + member.name, `
+        ${warn}
+        ${cur > 0 ? `<p style="color:var(--text-light);margin-bottom:12px">יתרה נוכחית: <strong>${num(cur)}</strong> (הכניסות יתווספו אליה)</p>` : ''}
+        <div class="form-group">
+            <label>כמה כניסות נשארו בכרטיסייה הישנה?</label>
+            <input type="number" id="swap-entries" inputmode="numeric" min="0" max="100" style="font-size:1.6rem;text-align:center">
+        </div>
+        <button class="btn btn-primary btn-block" style="padding:16px;font-size:1.1rem" onclick="savePunchCardSwap('${memberId}')">💾 שמור והצמד כרטיס NFC</button>
+    `);
+    setTimeout(() => document.getElementById('swap-entries')?.focus(), 300);
+}
+
+function savePunchCardSwap(memberId) {
+    const raw = document.getElementById('swap-entries').value.trim();
+    const n = parseInt(raw, 10);
+    if (raw === '' || isNaN(n) || n < 0 || n > 100) { showToast('נא להזין מספר כניסות (0–100)'); return; }
+    const member = getMembers().find(m => m.id === memberId);
+    if (!member) return;
+    _updateMember(memberId, {
+        balance: (member.balance || 0) + n,
+        punchCardMigrated: n,
+        punchCardMigratedAt: new Date().toISOString()
+    });
+    _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${n} כניסות`);
+    showToast(`נוספו ${n} כניסות ✓ הצמד כרטיס NFC`);
+    assignNfc(memberId);
 }
 
 function removeNfc(memberId) {
