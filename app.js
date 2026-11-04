@@ -1265,7 +1265,7 @@ function _uriRecord(url) {
     return { tnf: 0x01, type: [0x55], id: [], payload: [code, ...Array.from(new TextEncoder().encode(rest))] };
 }
 
-function _assignNfcNative(nfc, memberId, member, url) {
+function _assignNfcNative(nfc, memberId, member, url, onDone) {
     const ac = new AbortController();
     _assignNfcAbort = ac;
     let listener = null, writing = false, ended = false, timedOut = false, timer = null;
@@ -1309,6 +1309,7 @@ function _assignNfcNative(nfc, memberId, member, url) {
                     _updateMember(memberId, { nfcTag: url });
                     _logMemberAction(memberId, '📱 שיוך כרטיס NFC');
                     showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
+                    if (onDone) onDone();
                 } catch (err) {
                     await end();
                     closeModal();
@@ -1323,7 +1324,8 @@ function _assignNfcNative(nfc, memberId, member, url) {
     })();
 }
 
-function assignNfc(memberId) {
+// onDone (optional): called after the card was written successfully.
+function assignNfc(memberId, onDone) {
     const nativeNfc = _nativeNfc();
     if (!nativeNfc && !('NDEFReader' in window)) {
         showToast('NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד או אפליקציית האייפון)');
@@ -1336,7 +1338,7 @@ function assignNfc(memberId) {
     closeModal();
 
     if (nativeNfc) {
-        _assignNfcNative(nativeNfc, memberId, member, getUserUrl(memberId));
+        _assignNfcNative(nativeNfc, memberId, member, getUserUrl(memberId), onDone);
         return;
     }
 
@@ -1372,6 +1374,7 @@ function assignNfc(memberId) {
         _updateMember(memberId, { nfcTag: url });
         _logMemberAction(memberId, '📱 שיוך כרטיס NFC');
         showToast('כרטיס NFC נכתב ושויך בהצלחה ✓');
+        if (onDone) onDone();
     }).catch(err => {
         finish();
         closeModal();
@@ -1386,7 +1389,7 @@ function assignNfc(memberId) {
 // ===== PUNCH-CARD SWAP =====
 // Moving a member from the old paper punch card to an NFC card: staff types the entries
 // left on the paper card, they're credited (not as a payment), then the NFC write starts.
-// No entry is deducted here — the member taps the new card for a normal check-in after.
+// No entry is deducted automatically — after the write the check-in screen opens so staff picks single / couple.
 function showPunchCardSwap(memberId) {
     const member = getMembers().find(m => m.id === memberId);
     if (!member) return;
@@ -1417,8 +1420,15 @@ function savePunchCardSwap(memberId) {
         punchCardMigratedAt: new Date().toISOString()
     });
     _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${n} כניסות`);
+    // Reflect locally right away so the check-in screen below shows the new balance.
+    Object.assign(member, { balance: (member.balance || 0) + n, punchCardMigrated: n });
     showToast(`נוספו ${n} כניסות ✓ הצמד כרטיס NFC`);
-    assignNfc(memberId);
+    assignNfc(memberId, () => {
+        // Card written — go straight to today's entry (single / couple) without a second tap.
+        Object.assign(member, { nfcTag: getUserUrl(memberId) });
+        _lastCheckinMemberId = null;
+        doCheckin(memberId);
+    });
 }
 
 function removeNfc(memberId) {
