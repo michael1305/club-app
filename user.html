@@ -519,7 +519,7 @@
                         <div class="section-title">היסטוריית כניסות</div>
                         <div class="recent-list">${historyHtml}</div>
                         <div style="margin-top:28px;text-align:center">
-                            <button id="btn-delete-account" style="background:none;border:none;color:#d63031;font-size:0.9rem;text-decoration:underline;cursor:pointer;padding:10px">🗑️ מחיקת הכרטיסיה שלי</button>
+                            <button id="btn-delete-account" style="background:none;border:none;color:#d63031;font-size:0.9rem;text-decoration:underline;cursor:pointer;padding:10px">🗑️ מחיקת הכרטיס שלי</button>
                         </div>
                     </div>
                 `;
@@ -547,7 +547,7 @@
             // A card that still holds paid entries cannot be deleted on the spot (the rules
             // enforce this too): the member sends a deletion request for the team to handle.
             async function uRequestDeletion(bal) {
-                if (!confirm('נשארו לכרטיסיה שלך ' + bal + ' כניסות.\n\nכדי להגן על הכסף ששולם, לא ניתן למחוק כרטיסיה עם יתרה באופן מיידי. אפשר לשלוח בקשת מחיקה, והצוות יטפל בה (למשל ינצל או יחזיר את היתרה) ויאשר את המחיקה.\n\nלשלוח בקשת מחיקה?')) return;
+                if (!confirm('נשארו לכרטיס שלך ' + bal + ' כניסות.\n\nכדי להגן על הכסף ששולם, לא ניתן למחוק כרטיס עם יתרה באופן מיידי. אפשר לשלוח בקשת מחיקה, והצוות יטפל בה (למשל ינצל או יחזיר את היתרה) ויאשר את המחיקה.\n\nלשלוח בקשת מחיקה?')) return;
                 try {
                     await db.collection('deletionRequests').doc(id).set({ memberId: id, createdAt: new Date().toISOString() });
                     alert('בקשת המחיקה נשלחה. הצוות ייצור איתך קשר בהקדם.');
@@ -560,7 +560,7 @@
                 const bal = Number(_member.balance) || 0;
                 if (bal > 0) { await uRequestDeletion(bal); return; }
                 const btn = document.getElementById('btn-delete-account');
-                if (!confirm('למחוק את הכרטיסיה שלך?\n\nיימחקו השם, הטלפון, המייל, תאריך הלידה, התמונה והיסטוריית הכניסות, ויתרת הכניסות תאבד. הפעולה אינה הפיכה.')) return;
+                if (!confirm('למחוק את הכרטיס שלך?\n\nיימחקו השם, הטלפון, המייל, תאריך הלידה, התמונה והיסטוריית הכניסות, ויתרת הכניסות תאבד. הפעולה אינה הפיכה.')) return;
                 const typed = prompt('לאישור סופי, כתבו: מחק');
                 if (typed === null || typed.trim() !== 'מחק') { alert('המחיקה בוטלה.'); return; }
                 if (btn) btn.disabled = true;
@@ -578,7 +578,7 @@
                     try {
                         localStorage.removeItem('club_member_id');
                     } catch (e) { /* ignore */ }
-                    alert('הכרטיסיה נמחקה.');
+                    alert('הכרטיס נמחק.');
                     location.href = 'index.html';
                 } catch (e) {
                     if (btn) btn.disabled = false;
