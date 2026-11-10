@@ -13,11 +13,33 @@
     function clearStored() { try { localStorage.removeItem(STORE_KEY); } catch (e) { /* ignore */ } }
 
     // ---------- navigation ----------
-    function show(name) {
+    // Every screen is a history entry, so the phone's Back button / swipe steps back to the
+    // previous screen (menu, welcome) instead of leaving the app, and "index.html#menu" lets
+    // other pages (e.g. the card) return straight to the menu.
+    const SCREENS = ['welcome', 'menu', 'promos', 'dances'];
+    function screenFromHash() {
+        const h = location.hash.replace('#', '');
+        return SCREENS.indexOf(h) >= 0 ? h : 'welcome';
+    }
+    function show(name, fromHistory) {
+        if (SCREENS.indexOf(name) < 0) name = 'welcome';
         document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'screen-' + name));
         window.scrollTo(0, 0);
+        if (!fromHistory) {
+            try { history.pushState({ screen: name }, '', name === 'welcome' ? location.pathname + location.search : '#' + name); } catch (e) { /* ignore */ }
+        }
     }
-    document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => show(b.dataset.go)));
+    // The "back" buttons: step back in history when we got here from another screen of this page
+    document.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => {
+        if (history.state && history.state.screen && history.length > 1) history.back();
+        else show(b.dataset.go);
+    }));
+    window.addEventListener('popstate', e => {
+        $('contact').classList.remove('open');
+        closeIdentify();
+        show((e.state && e.state.screen) || screenFromHash(), true);
+    });
+    show((history.state && history.state.screen) || screenFromHash(), true);
     // A device where an admin already signed in goes straight to the back office
     // (admin.html shows the login again if the session expired). "?member=1" skips this
     // so an admin can still view the member side on the same device.
