@@ -1331,7 +1331,9 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
 function assignNfc(memberId, onDone) {
     const nativeNfc = _nativeNfc();
     if (!nativeNfc && !('NDEFReader' in window)) {
-        showToast('NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד או אפליקציית האייפון)');
+        showToast(/iPhone|iPad|iPod/i.test(navigator.userAgent)
+            ? 'שיוך כרטיסים באייפון יהיה זמין בגרסה הבאה. כרגע שייכו מטלפון אנדרואיד.'
+            : 'NFC לא נתמך בדפדפן זה (נדרש Chrome באנדרואיד)');
         return;
     }
 
