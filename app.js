@@ -1146,6 +1146,7 @@ function restartQrScannerIfActive() {
 let nfcAbortController = null;
 let _lastNfcSerial = null;
 let _lastNfcSerialTs = 0;
+let _lastNfcDupToast = 0;
 
 function parseNfcMessage(message) {
     for (const record of message.records) {
@@ -1199,7 +1200,11 @@ function startNfc() {
         ndef.onreading = event => {
             const serial = event.serialNumber;
             const now = Date.now();
-            if (serial != null && serial === _lastNfcSerial && now - _lastNfcSerialTs < 8000) return;
+            if (serial != null && serial === _lastNfcSerial && now - _lastNfcSerialTs < 8000) {
+                // Same card again within 8 s: not counted twice - but say so instead of looking frozen
+                if (now - (_lastNfcDupToast || 0) > 2500) { _lastNfcDupToast = now; showToast('הכרטיס הזה נסרק לפני רגע - המתן כמה שניות לסריקה חוזרת'); }
+                return;
+            }
             _lastNfcSerial = serial;
             _lastNfcSerialTs = now;
 
