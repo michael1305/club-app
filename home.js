@@ -152,8 +152,60 @@
         return true;
     }
 
-    function stopNfc() { if (nfcAbort) { nfcAbort.abort(); nfcAbort = null; } }
+    // ---- Native NFC read inside the iOS app (Capacitor plugin @capgo/capacitor-nfc, present from build 1.1) ----
+    function nativeNfcPlugin() {
+        const c = window.Capacitor;
+        return (c && typeof c.isNativePlatform === 'function' && c.isNativePlatform() && c.Plugins && c.Plugins.CapacitorNfc) || null;
+    }
+    // Text of an NDEF record (URI 'U' with its prefix byte, or text 'T'), from the plugin's byte arrays
+    function recordText(r) {
+        const bytes = Array.from((r && r.payload) || []);
+        const dec = a => new TextDecoder('utf-8').decode(new Uint8Array(a));
+        const t = Array.isArray(r && r.type) ? r.type[0] : (typeof (r && r.type) === 'string' ? r.type.charCodeAt(0) : null);
+        if (t === 0x55) {
+            const prefixes = ['', 'http://www.', 'https://www.', 'http://', 'https://'];
+            return (prefixes[bytes[0]] || '') + dec(bytes.slice(1));
+        }
+        if (t === 0x54) return dec(bytes.slice(1 + (bytes[0] & 0x3f)));
+        return dec(bytes);
+    }
+    let nativeNfcOn = false, nativeNfcListener = null;
+    async function stopNativeNfc() {
+        const n = nativeNfcPlugin();
+        if (!nativeNfcOn || !n) return;
+        nativeNfcOn = false;
+        try { if (nativeNfcListener) await nativeNfcListener.remove(); } catch (e) { /* ignore */ }
+        nativeNfcListener = null;
+        try { await n.stopScanning(); } catch (e) { /* ignore */ }
+    }
+    async function readNativeNfc(n) {
+        stopCamera(); stopNfc();
+        try {
+            nativeNfcOn = true;
+            await n.startScanning({
+                iosSessionType: 'ndef',
+                invalidateAfterFirstRead: true,
+                alertMessage: 'הצמידו את הכרטיס לחלק העליון של גב הטלפון'
+            });
+            nativeNfcListener = await n.addListener('nfcEvent', async ev => {
+                const recs = (ev && ev.tag && ev.tag.ndefMessage) || [];
+                let id = null;
+                for (const r of recs) { id = idFromText(recordText(r)); if (id) break; }
+                await stopNativeNfc();
+                if (id) acceptId(id);
+                else status('הכרטיס לא משויך לכרטיסיה. פנו אלינו לשיוך.', true);
+            });
+            status('הצמידו את הכרטיס לחלק העליון של גב הטלפון...');
+        } catch (e) {
+            nativeNfcOn = false;
+            status('לא ניתן להפעיל NFC כרגע. אפשר לסרוק QR אישי.', true);
+        }
+    }
+
+    function stopNfc() { if (nfcAbort) { nfcAbort.abort(); nfcAbort = null; } stopNativeNfc(); }
     $('btn-nfc').addEventListener('click', async () => {
+        const nativeNfc = nativeNfcPlugin();
+        if (nativeNfc) { await readNativeNfc(nativeNfc); return; }
         if (!('NDEFReader' in window)) {
             // iOS never exposes NFC to web pages. iPhone XS and later still read a card natively:
             // tap it to the top back of the phone (screen on, outside this screen) and the card page opens.
