@@ -158,6 +158,17 @@
         return true;
     }
 
+    // iPhone XS+: tapping the card on the home screen / in the app makes iOS open the app with the
+    // card's link. With the Capacitor "App" plugin (build 1.1) we get that link and open the card.
+    (function () {
+        const c = window.Capacitor;
+        const app = c && c.Plugins && c.Plugins.App;
+        if (!app || typeof app.addListener !== 'function') return;
+        const handle = u => { const id = idFromText(u); if (id) acceptId(id); };
+        try { app.addListener('appUrlOpen', e => handle(e && e.url)); } catch (e) { /* ignore */ }
+        try { if (app.getLaunchUrl) app.getLaunchUrl().then(r => r && handle(r.url)).catch(() => {}); } catch (e) { /* ignore */ }
+    })();
+
     // ---- Native NFC read inside the iOS app (Capacitor plugin @capgo/capacitor-nfc, present from build 1.1) ----
     function nativeNfcPlugin() {
         const c = window.Capacitor;
