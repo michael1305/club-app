@@ -133,7 +133,13 @@
     function stopNfc() { if (nfcAbort) { nfcAbort.abort(); nfcAbort = null; } }
     $('btn-nfc').addEventListener('click', async () => {
         if (!('NDEFReader' in window)) {
-            status('NFC לא נתמך במכשיר זה. אפשר לסרוק QR אישי.', true);
+            // iOS never exposes NFC to web pages. iPhone XS and later still read a card natively:
+            // tap it to the top back of the phone (screen on, outside this screen) and the card page opens.
+            if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                status('באייפון מצמידים את הכרטיס לחלק העליון של גב הטלפון (בזמן שהמסך דלוק, מחוץ למסך הזה) והכרטיסיה נפתחת. אפשר גם לסרוק QR אישי.', false);
+            } else {
+                status('NFC לא נתמך במכשיר זה. אפשר לסרוק QR אישי.', true);
+            }
             return;
         }
         stopCamera(); stopNfc();
