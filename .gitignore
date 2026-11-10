@@ -6,3 +6,5 @@ firebase-debug.log
 
 club-backup-*.json
 _firestore-backups/
+
+private-notes/
