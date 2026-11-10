@@ -47,6 +47,12 @@
         try { return localStorage.getItem('club_admin_device') === '1' && !/[?&]member=1(&|$)/.test(location.search); }
         catch (e) { return false; }
     }
+    // On an admin device, offer the member side too (card, NFC button) - e.g. for demos and tests.
+    if (isAdminDevice()) {
+        const mv = $('btn-member-view');
+        mv.style.display = 'block';
+        mv.addEventListener('click', () => show('menu'));
+    }
     $('btn-enter').addEventListener('click', () => {
         if (isAdminDevice()) { location.href = 'admin.html'; return; }
         show('menu');
