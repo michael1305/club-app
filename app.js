@@ -768,12 +768,15 @@ function showAddPayment() {
         </div>
         <div class="form-group">
             <label>אמצעי תשלום</label>
-            <div style="display:flex;gap:12px;margin-top:6px">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
                     <input type="radio" name="pay-method" value="cash" checked onchange="updatePayCalc()"> 💵 מזומן
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
                     <input type="radio" name="pay-method" value="credit" onchange="updatePayCalc()"> 💳 אשראי
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
+                    <input type="checkbox" id="pay-invoice"> 🧾 מעוניין בחשבונית
                 </label>
             </div>
         </div>
@@ -783,11 +786,6 @@ function showAddPayment() {
         <div class="form-group">
             <label>הערה (אופציונלי)</label>
             <input type="text" id="pay-note" placeholder="לדוגמה: הועבר בבנק דיסקונט">
-        </div>
-        <div class="form-group">
-            <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
-                <input type="checkbox" id="pay-invoice" style="width:20px;height:20px"> 🧾 מעוניין בחשבונית
-            </label>
         </div>
         <button class="btn btn-success btn-block" onclick="addPayment()">אישור והוספת כניסות</button>
     `);
@@ -1541,7 +1539,7 @@ function doVipCheckin(member) {
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
             ${okToday ? buttons : '<button class="btn btn-secondary btn-block" onclick="closeModal()">סגור</button>'}
-            <button class="btn btn-secondary btn-block" onclick="showMemberDetails('${member.id}')">👤 כרטיס המשתמש</button>
+            <button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="showMemberDetails('${member.id}')">👤 כרטיס המשתמש</button>
         </div>
     `);
 }
