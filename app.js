@@ -850,8 +850,10 @@ function addPayment() {
             punchCardMigratedAt: new Date().toISOString()
         });
         _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${quantity} כניסות`);
-        closeModal();
+        // Reflect locally right away, then open the member's card (NFC assign is there; X returns to the main screen).
+        Object.assign(m, { balance: (m.balance || 0) + quantity, punchCardMigrated: quantity });
         showToast(`הועברו ${quantity} כניסות מכרטיסייה ישנה ✓`);
+        showMemberDetails(memberId);
         return;
     }
 
