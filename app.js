@@ -514,6 +514,7 @@ function showMemberDetails(id) {
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
                 ${avatarHtml(member, 64)}
                 <div>
+                    <div style="font-size:1.25rem;font-weight:700;margin-bottom:4px">${escHtml(member.name)}</div>
                     <div style="margin-bottom:4px">יתרה: ${balanceBadge}</div>
                     <div style="font-size:0.85rem;color:var(--text-light)">📱 NFC: ${member.nfcTag ? 'משויך ✓' : 'לא משויך'}</div>
                 </div>
@@ -522,17 +523,16 @@ function showMemberDetails(id) {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
                 <button class="btn btn-primary" style="padding:14px" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
                 <button class="btn btn-primary" style="padding:14px" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
-                ${!member.nfcTag ? `<button class="btn btn-warning" onclick="showPunchCardSwap('${id}')">🎟️ החלפת כרטיסייה</button>` : ''}
                 <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
+                ${member.nfcTag
+                    ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך</button>`
+                    : `<button class="btn btn-warning" onclick="showPunchCardSwap('${id}')">🎟️ החלפת כרטיסייה</button>`}
                 <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
+                <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכת פרטים</button>
                 <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
                 <button class="btn btn-secondary" onclick="sendMemberLink('${id}')">💬 וואטסאפ</button>
-                <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכת פרטים</button>
-                ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
-                <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
             </div>
+            <button class="btn btn-danger btn-block" style="margin-bottom:18px" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
             <div style="border-top:1px solid #eee;padding-top:12px;line-height:1.9">
                 <p>📞 ${escHtml(member.phone)}</p>
                 ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
