@@ -780,13 +780,13 @@ function showAddPayment() {
             <label>אמצעי תשלום</label>
             <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:6px">
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-                    <input type="radio" name="pay-method" value="cash" checked onchange="updatePayCalc()"> 💵 מזומן
+                    <input type="radio" name="pay-method" value="cash" checked onchange="onPayMethodChange()"> 💵 מזומן
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-                    <input type="radio" name="pay-method" value="credit" onchange="updatePayCalc()"> 💳 אשראי
+                    <input type="radio" name="pay-method" value="credit" onchange="onPayMethodChange()"> 💳 אשראי
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-                    <input type="radio" name="pay-method" value="punchcard" onchange="updatePayCalc()"> 🎟️ מכרטיסייה ישנה
+                    <input type="radio" name="pay-method" value="punchcard" onchange="onPayMethodChange()"> 🎟️ מכרטיסייה ישנה
                 </label>
             </div>
             <label id="pay-invoice-row" style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:10px">
@@ -802,6 +802,18 @@ function showAddPayment() {
         </div>
         <button class="btn btn-success btn-block" onclick="addPayment()">אישור והוספת כניסות</button>
     `);
+}
+
+// Old punch card: clear the quantity so staff types what's left on the paper card;
+// back to cash/credit: refill the usual 11 if the field was left empty.
+function onPayMethodChange() {
+    const isPunch = document.querySelector('input[name="pay-method"]:checked')?.value === 'punchcard';
+    const q = document.getElementById('pay-quantity');
+    if (q) {
+        if (isPunch) { q.value = ''; q.focus(); }
+        else if (!q.value) q.value = '11';
+    }
+    updatePayCalc();
 }
 
 function updatePayCalc() {
