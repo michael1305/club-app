@@ -526,7 +526,7 @@ function showMemberDetails(id) {
             <button class="btn btn-success btn-block" style="padding:16px;font-size:1.1rem;margin-bottom:10px" onclick="closeModal();doCheckin('${id}')">✓ בצע כניסה (אין כרטיס ביד)</button>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
                 <button class="btn btn-primary" style="padding:14px" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
-                <button class="btn btn-primary" style="padding:14px" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
+                <button class="btn btn-primary" style="padding:14px" onclick="assignNfc('${id}', () => showMemberDetails('${id}'))">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
                 <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
                 ${member.nfcTag
                     ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך</button>`
