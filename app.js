@@ -1524,24 +1524,31 @@ function doVipCheckin(member) {
     const today = new Date().toISOString().split('T')[0];
     const existing = getGuestCheckins().find(gc => gc.refId === member.id && gc.date === today);
     const okToday = _validToday(member);
-    const labels = { 1: '✓ כניסה בודדת (1)', 2: '✓ כניסה זוגית (2)', 3: '✓ שלושה אנשים (3)' };
+    const labels = { 1: 'כניסה בודדת (1)', 2: 'כניסה זוגית (2)', 3: 'שלושה אנשים (3)' };
     let buttons = '';
     for (let n = 1; n <= 3; n++) {
-        if (n === 1 || member.vipSlots >= n) buttons += `<button class="btn ${n === 1 ? 'btn-success' : 'btn-primary'} btn-block" onclick="performVipCheckin('${member.id}',${n})">${labels[n]}</button>`;
+        if (n === 1 || member.vipSlots >= n) buttons += `<button class="btn ${n === 1 ? 'btn-primary' : 'btn-secondary'} btn-block" style="padding:18px;font-size:1.2rem" onclick="performVipCheckin('${member.id}',${n})">${labels[n]}</button>`;
     }
-    openModal('כניסה חופשית — ' + member.name, `
-        <div style="text-align:center;margin-bottom:16px">
-            ${avatarHtml(member, 80)}
-            <p style="margin-top:8px;font-size:1.1rem;font-weight:700">${escHtml(member.name)}</p>
-            <p style="color:var(--success);font-weight:600">⭐ כניסה חופשית (עד ${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'})${_daysLabel(member)}</p>
-            ${okToday ? '' : '<p style="color:var(--danger);font-weight:700">⚠️ הכניסה החופשית אינה בתוקף ביום זה</p>'}
-            ${existing ? `<p style="color:var(--warning);font-size:0.9rem">כבר בוצעה כניסה היום (${num(existing.count)} ${existing.count>1?'אנשים':'אדם'})</p>` : ''}
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-            ${okToday ? buttons : '<button class="btn btn-secondary btn-block" onclick="closeModal()">סגור</button>'}
-            <button class="btn btn-secondary btn-block" style="margin-top:14px" onclick="showMemberDetails('${member.id}')">👤 כרטיס המשתמש</button>
-        </div>
-    `);
+    const cardBtn = `<button class="btn btn-secondary btn-block" style="padding:14px;font-size:1rem" onclick="hideCheckinOverlay();showMemberDetails('${member.id}')">👤 כרטיס המשתמש</button>`;
+    const statusHtml = `
+        <div style="color:var(--success);font-weight:700">⭐ כניסה חופשית (עד ${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'})${_daysLabel(member)}</div>
+        ${okToday ? '' : '<div style="color:var(--danger);font-weight:700;margin-top:6px">⚠️ הכניסה החופשית אינה בתוקף ביום זה</div>'}
+        ${existing ? `<div style="color:var(--warning);font-size:0.9rem;margin-top:6px">כבר בוצעה כניסה היום (${num(existing.count)} ${existing.count>1?'אנשים':'אדם'})</div>` : ''}`;
+
+    const overlay = document.getElementById('checkin-overlay');
+    if (!overlay) {
+        // fallback for cached old admin.html
+        openModal('כניסה חופשית — ' + member.name, `<div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 80)}<p style="font-weight:700">${escHtml(member.name)}</p>${statusHtml}</div>
+            <div style="display:flex;flex-direction:column;gap:10px">${okToday ? buttons : ''}</div>`);
+        return;
+    }
+    _checkinOverlayMemberId = member.id;
+    document.getElementById('co-avatar').innerHTML = avatarHtml(member, 120);
+    document.getElementById('co-name').textContent = member.name;
+    document.getElementById('co-birthday').style.display = 'none';
+    document.getElementById('co-balance').innerHTML = statusHtml;
+    document.getElementById('co-actions').innerHTML = (okToday ? buttons : '') + cardBtn;
+    overlay.style.display = 'block';
 }
 
 function performVipCheckin(memberId, count) {
@@ -1567,6 +1574,7 @@ function performVipCheckin(memberId, count) {
         timestamp: new Date().toISOString()
     });
     closeModal();
+    if (document.getElementById('checkin-overlay')) hideCheckinOverlay();
     showCheckinResult(`✓ ${member.name} — כניסה חופשית (${count} ${count>1?'אנשים':'אדם'})`, true);
     if ('NDEFReader' in window) setTimeout(startNfc, 300);
     restartQrScannerIfActive();
