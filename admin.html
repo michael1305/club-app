@@ -106,9 +106,6 @@
                 <input type="text" id="search-payments" placeholder="🔍 חיפוש..." oninput="filterPayments()">
                 <button class="btn btn-primary" onclick="showAddPayment()">+ כניסות</button>
             </div>
-            <label style="display:flex;align-items:center;gap:8px;margin:0 0 12px;font-weight:600;cursor:pointer">
-                <input type="checkbox" id="payments-invoice-only" onchange="filterPayments()"> 🧾 רק מי שמעוניין בחשבונית <span id="payments-invoice-count" class="badge badge-warning"></span>
-            </label>
             <div id="payments-list" class="card-list"></div>
         </main>
 
@@ -166,6 +163,11 @@
                         <div class="stat">
                             <span class="stat-value" id="stat-guests-today">0</span>
                             <span class="stat-label">אורחים</span>
+                        </div>
+                        <div class="stat" style="cursor:pointer" onclick="showInvoiceRequests()">
+                            <span class="stat-value" id="stat-invoices">0</span>
+                            <span class="stat-label">🧾 מבקשי חשבונית</span>
+                            <span style="font-size:0.7rem;color:var(--text-light);margin-top:2px;display:block">לחץ לפרטים</span>
                         </div>
                     </div>
                 </div>
@@ -331,7 +333,7 @@
     <script src="jsQR.js"></script>
     <script src="qrcode.min.js"></script>
     <script src="admin-auth.js?v=5"></script>
-    <script src="app.js?v=145"></script>
+    <script src="app.js?v=146"></script>
     <script src="admin-promos.js?v=1"></script>
     <script src="admin-requests.js?v=1"></script>
 </body>

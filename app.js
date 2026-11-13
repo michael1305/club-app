@@ -722,11 +722,6 @@ function renderPayments() {
     if (search) {
         filtered = filtered.filter(p => p.memberName.toLowerCase().includes(search));
     }
-    const invCountEl = document.getElementById('payments-invoice-count');
-    if (invCountEl) invCountEl.textContent = payments.filter(p => p.wantsInvoice).length;
-    if (document.getElementById('payments-invoice-only')?.checked) {
-        filtered = filtered.filter(p => p.wantsInvoice);
-    }
 
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1871,6 +1866,30 @@ function renderReports() {
     showReport();
 }
 
+// Invoice requests in the period/filters currently shown in the report summary.
+let _reportInvoicePayments = [];
+
+function showInvoiceRequests() {
+    const members = getMembers();
+    const rows = _reportInvoicePayments.map(p => {
+        const m = members.find(x => x.id === p.memberId);
+        const name = m ? m.name : 'לא ידוע';
+        const phone = m?.phone || '';
+        return `
+        <div class="card" style="cursor:pointer;margin-bottom:10px" ${m ? `onclick="showMemberDetails('${escHtml(m.id)}')"` : ''}>
+            <div class="card-info">
+                <h4>${escHtml(name)}</h4>
+                ${phone ? `<p>📞 <a href="tel:${escHtml(phone)}" onclick="event.stopPropagation()">${escHtml(phone)}</a></p>` : ''}
+                ${m?.email ? `<p>✉️ ${escHtml(m.email)}</p>` : ''}
+                <p>${formatDateTime(new Date(p.date))} · ${num(p.quantity)} כניסות · ${p.paymentMethod === 'credit' ? '💳 אשראי' : '💵 מזומן'}</p>
+                ${p.note ? `<p>📝 ${escHtml(p.note)}</p>` : ''}
+            </div>
+            <div class="card-actions"><span style="font-weight:700;color:var(--success)">₪${num(p.amount)}</span></div>
+        </div>`;
+    }).join('');
+    openModal('🧾 מבקשי חשבונית', rows || '<div style="text-align:center;padding:30px;color:#b2bec3">אין בקשות לחשבונית בתקופה שנבחרה</div>');
+}
+
 function showReport() {
     const startDate = _getReportRange();
 
@@ -1930,6 +1949,9 @@ function showReport() {
     const entriesDetail = document.getElementById('stat-entries-detail');
     if (entriesDetail) entriesDetail.textContent = (entriesUsed + birthdayCount) > 0 ? `🚪 ${entriesUsed} | 🎂 ${birthdayCount}` : '';
     document.getElementById('stat-guests-today').textContent = todayGuestsCount;
+    _reportInvoicePayments = payments.filter(p => p.wantsInvoice).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const invEl = document.getElementById('stat-invoices');
+    if (invEl) invEl.textContent = _reportInvoicePayments.length;
 
     // Unified activity list
     const allActivity = [];
