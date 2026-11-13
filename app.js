@@ -549,7 +549,7 @@ function showMemberDetails(id) {
                     <div class="recent-item">
                         <span>${formatDate(new Date(p.date))}</span>
                         <span>${p.quantity ? num(p.quantity) + ' כניסות' : ''}</span>
-                        <span>₪${num(p.amount)}</span>
+                        <span>₪${num(p.amount)}${p.wantsInvoice ? ' 🧾' : ''}</span>
                     </div>
                 `).join('')}` : ''}
                 ${allCheckins.length > 0 ? `
@@ -735,7 +735,7 @@ function renderPayments() {
         <div class="card">
             <div class="card-info">
                 <h4>${escHtml(p.memberName)}</h4>
-                <p>${formatDate(new Date(p.date))} · ${num(p.quantity)} כניסות</p>
+                <p>${formatDate(new Date(p.date))} · ${num(p.quantity)} כניסות${p.wantsInvoice ? ' · <span class="badge badge-warning">🧾 חשבונית</span>' : ''}</p>
             </div>
             <div class="card-actions">
                 <span style="font-weight:700;font-size:1.1rem;color:var(--success)">₪${num(p.amount)}</span>
@@ -784,6 +784,11 @@ function showAddPayment() {
             <label>הערה (אופציונלי)</label>
             <input type="text" id="pay-note" placeholder="לדוגמה: הועבר בבנק דיסקונט">
         </div>
+        <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
+                <input type="checkbox" id="pay-invoice" style="width:20px;height:20px"> 🧾 מעוניין בחשבונית
+            </label>
+        </div>
         <button class="btn btn-success btn-block" onclick="addPayment()">אישור והוספת כניסות</button>
     `);
 }
@@ -815,6 +820,7 @@ function addPayment() {
     const quantity = parseInt(document.getElementById('pay-quantity').value, 10);
     const note = document.getElementById('pay-note').value.trim();
     const paymentMethod = document.querySelector('input[name="pay-method"]:checked')?.value || 'cash';
+    const wantsInvoice = !!document.getElementById('pay-invoice')?.checked;
 
     if (!memberId) { showToast('בחר משתתף'); return; }
     if (!quantity || quantity <= 0) { showToast('הזן כמות כניסות תקינה'); return; }
@@ -832,6 +838,7 @@ function addPayment() {
         terminal: DB.getSetting('terminalName', 'ראשי'),
         date: new Date().toISOString()
     };
+    if (wantsInvoice) payment.wantsInvoice = true;
     _savePayment(payment);
 
     const member = getMembers().find(m => m.id === memberId);
@@ -997,6 +1004,7 @@ function doCheckin(memberId) {
         <button class="btn btn-secondary btn-block" style="padding:18px;font-size:1.2rem" onclick="performCheckinFromOverlay('couple')" ${balance < 2 ? 'disabled' : ''}>כניסה זוגית (−2)</button>
         ` : ''}
         <button class="btn btn-success btn-block" style="padding:14px;font-size:1rem" onclick="hideCheckinOverlay();showAddEntriesFor('${memberId}')">➕ הוספת כניסות</button>
+        <button class="btn btn-secondary btn-block" style="padding:14px;font-size:1rem" onclick="hideCheckinOverlay();showMemberDetails('${memberId}')">👤 כרטיס המשתמש</button>
     `;
 
     overlay.style.display = 'block';
@@ -1533,6 +1541,7 @@ function doVipCheckin(member) {
         </div>
         <div style="display:flex;flex-direction:column;gap:10px">
             ${okToday ? buttons : '<button class="btn btn-secondary btn-block" onclick="closeModal()">סגור</button>'}
+            <button class="btn btn-secondary btn-block" onclick="showMemberDetails('${member.id}')">👤 כרטיס המשתמש</button>
         </div>
     `);
 }
@@ -2004,13 +2013,14 @@ function exportExcel(share = false) {
         'סכום':        num(p.amount),
         'אמצעי תשלום': p.paymentMethod === 'credit' ? 'אשראי' : 'מזומן',
         'מסוף':        sheetSafe(p.terminal || 'ראשי'),
-        'הערה':        sheetSafe(p.note || '')
+        'הערה':        sheetSafe(p.note || ''),
+        'חשבונית':     p.wantsInvoice ? 'כן' : ''
     }));
     const totalAmount = payments.reduce((s, p) => s + (p.amount || 0), 0);
     const totalQty = payments.reduce((s, p) => s + (p.quantity || 0), 0);
-    const sepPayment = { 'תאריך ושעה': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' };
+    const sepPayment = { 'תאריך ושעה': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '', 'חשבונית': '' };
     paymentRows.push(sepPayment);
-    paymentRows.push({ 'תאריך ושעה': 'סה"כ', 'שם משתתף': '', 'כמות כניסות': totalQty, 'סכום': totalAmount, 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '' });
+    paymentRows.push({ 'תאריך ושעה': 'סה"כ', 'שם משתתף': '', 'כמות כניסות': totalQty, 'סכום': totalAmount, 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '', 'חשבונית': '' });
     XLSX.utils.book_append_sheet(wb, rtl(XLSX.utils.json_to_sheet(paymentRows)), 'רכישות');
 
     const vipCount = members.filter(m => m.vipSlots > 0).length;

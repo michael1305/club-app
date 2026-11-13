@@ -157,7 +157,7 @@ service cloud.firestore {
 
     // ---------------- payments ----------------
     function paymentCreateOk(d, paymentId) {
-      return d.keys().hasOnly(['id','memberId','quantity','amount','paymentMethod','note','terminal','date'])
+      return d.keys().hasOnly(['id','memberId','quantity','amount','paymentMethod','note','terminal','date','wantsInvoice'])
         && d.id is string && d.id == paymentId
         && d.memberId is string
         && d.quantity is number && d.quantity > 0 && d.quantity <= 1000
@@ -165,6 +165,7 @@ service cloud.firestore {
         && (!('paymentMethod' in d) || d.paymentMethod in ['cash','credit'])
         && (!('note' in d) || (d.note is string && d.note.size() < 500))
         && (!('terminal' in d) || (d.terminal is string && d.terminal.size() < 100))
+        && (!('wantsInvoice' in d) || d.wantsInvoice is bool)
         && isDateish(d.date);
     }
 
