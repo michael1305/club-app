@@ -180,6 +180,10 @@ function _updateMember(id, fields) {
         if (old && old.phone !== fields.phone) _clearPhoneIndex(old.phone, id);
         _setPhoneIndex(fields.phone, id);
     }
+    // Apply to the local cache right away: screens opened right after (e.g. check-in after
+    // writing an NFC card) must not show the old values while the snapshot is still on its way.
+    const local = _members.find(m => m.id === id);
+    if (local) Object.assign(local, fields);
 }
 function _deleteMemberDoc(id) {
     if (!_db) return;
@@ -851,8 +855,7 @@ function addPayment() {
             punchCardMigratedAt: new Date().toISOString()
         });
         _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${quantity} כניסות`);
-        // Reflect locally right away, then open the member's card (NFC assign is there; X returns to the main screen).
-        Object.assign(m, { balance: (m.balance || 0) + quantity, punchCardMigrated: quantity });
+        // Open the member's card (NFC assign is there; X returns to the main screen).
         showToast(`הועברו ${quantity} כניסות מכרטיסייה ישנה ✓`);
         showMemberDetails(memberId);
         return;
@@ -1471,8 +1474,6 @@ function savePunchCardSwap(memberId) {
         punchCardMigratedAt: new Date().toISOString()
     });
     _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${n} כניסות`);
-    // Reflect locally right away so the check-in screen below shows the new balance.
-    Object.assign(member, { balance: (member.balance || 0) + n, punchCardMigrated: n });
     showToast(`נוספו ${n} כניסות ✓ הצמד כרטיס NFC`);
     assignNfc(memberId, () => {
         // Card written — go straight to today's entry (single / couple) without a second tap.
