@@ -1898,9 +1898,10 @@ function showReport() {
         payments = payments.filter(p => new Date(p.date).getDay() === +dayFilter);
     }
 
-    const revenue       = payments.reduce((s, p) => s + (p.amount || 0), 0);
-    const cashRevenue   = payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0);
-    const creditRevenue = payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0);
+    // Round sums to agorot: adding decimal amounts leaves float noise like 581.8199999999
+    const revenue       = Math.round(payments.reduce((s, p) => s + (p.amount || 0), 0) * 100) / 100;
+    const cashRevenue   = Math.round(payments.filter(p => p.paymentMethod !== 'credit').reduce((s, p) => s + (p.amount || 0), 0) * 100) / 100;
+    const creditRevenue = Math.round(payments.filter(p => p.paymentMethod === 'credit').reduce((s, p) => s + (p.amount || 0), 0) * 100) / 100;
     const entriesUsed   = checkins.filter(c => c.entryType !== 'vip-single' && c.entryType !== 'vip-couple' && c.entryType !== 'vip-triple' && c.entryType !== 'birthday').reduce((s, c) => s + (c.entryType === 'couple' ? 2 : 1), 0);
     const birthdayCount = checkins.filter(c => c.entryType === 'birthday').length;
     const withBalanceCount = members.filter(m => !(m.vipSlots > 0) && (m.balance || 0) > 0).length;
@@ -2056,7 +2057,7 @@ function exportExcel(share = false) {
         'הערה':        sheetSafe(p.note || ''),
         'חשבונית':     p.wantsInvoice ? 'כן' : ''
     }));
-    const totalAmount = payments.reduce((s, p) => s + (p.amount || 0), 0);
+    const totalAmount = Math.round(payments.reduce((s, p) => s + (p.amount || 0), 0) * 100) / 100;
     const totalQty = payments.reduce((s, p) => s + (p.quantity || 0), 0);
     const sepPayment = { 'תאריך ושעה': '', 'שם משתתף': '', 'כמות כניסות': '', 'סכום': '', 'אמצעי תשלום': '', 'מסוף': '', 'הערה': '', 'חשבונית': '' };
     paymentRows.push(sepPayment);
