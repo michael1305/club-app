@@ -802,7 +802,7 @@ function showAddPayment() {
 function updatePayCalc() {
     const qty = parseInt(document.getElementById('pay-quantity')?.value || '11', 10);
     const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
-    const amount = bookletPrice > 0 ? Math.round((qty / 11) * bookletPrice * 100) / 100 : 0;
+    const amount = bookletPrice; // fixed card price, whatever the number of entries
     const display = document.getElementById('pay-calc-display');
     const isPunch = document.querySelector('input[name="pay-method"]:checked')?.value === 'punchcard';
     const invRow = document.getElementById('pay-invoice-row');
@@ -858,7 +858,7 @@ function addPayment() {
     }
 
     const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
-    const amount = bookletPrice > 0 ? Math.round((quantity / 11) * bookletPrice * 100) / 100 : 0;
+    const amount = bookletPrice; // fixed card price, whatever the number of entries
 
     const payment = {
         id: generateId(),
