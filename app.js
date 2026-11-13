@@ -722,6 +722,11 @@ function renderPayments() {
     if (search) {
         filtered = filtered.filter(p => p.memberName.toLowerCase().includes(search));
     }
+    const invCountEl = document.getElementById('payments-invoice-count');
+    if (invCountEl) invCountEl.textContent = payments.filter(p => p.wantsInvoice).length;
+    if (document.getElementById('payments-invoice-only')?.checked) {
+        filtered = filtered.filter(p => p.wantsInvoice);
+    }
 
     filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -757,7 +762,7 @@ function showAddPayment() {
     openModal('הוספת כניסות', `
         <div class="form-group">
             <label>משתתף</label>
-            <select id="pay-member">
+            <select id="pay-member" onchange="updatePayCalc()">
                 <option value="">בחר משתתף</option>
                 ${members.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.name)} (${num(m.balance)} כניסות)</option>`).join('')}
             </select>
@@ -776,9 +781,12 @@ function showAddPayment() {
                     <input type="radio" name="pay-method" value="credit" onchange="updatePayCalc()"> 💳 אשראי
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer">
-                    <input type="checkbox" id="pay-invoice"> 🧾 מעוניין בחשבונית
+                    <input type="radio" name="pay-method" value="punchcard" onchange="updatePayCalc()"> 🎟️ מכרטיסייה ישנה
                 </label>
             </div>
+            <label id="pay-invoice-row" style="display:flex;align-items:center;gap:6px;font-weight:400;cursor:pointer;margin-top:10px">
+                <input type="checkbox" id="pay-invoice"> 🧾 מעוניין בחשבונית
+            </label>
         </div>
         <div id="pay-calc-display" style="background:#f0eeff;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:600;color:var(--primary)">
             ${bookletPrice > 0 ? `סה"כ לתשלום: ₪${bookletPrice}` : 'הגדר מחיר כרטיסיה בהגדרות'}
@@ -796,7 +804,14 @@ function updatePayCalc() {
     const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
     const amount = bookletPrice > 0 ? Math.round((qty / 11) * bookletPrice * 100) / 100 : 0;
     const display = document.getElementById('pay-calc-display');
-    if (display) {
+    const isPunch = document.querySelector('input[name="pay-method"]:checked')?.value === 'punchcard';
+    const invRow = document.getElementById('pay-invoice-row');
+    if (invRow) invRow.style.display = isPunch ? 'none' : 'flex';
+    if (display && isPunch) {
+        const m = getMembers().find(x => x.id === document.getElementById('pay-member')?.value);
+        display.textContent = '🎟️ העברה מכרטיסייה ישנה — ללא תשלום (הזן כמה כניסות נשארו בכרטיסייה)'
+            + (m && m.punchCardMigrated != null ? ` ⚠ למשתתף זה כבר הועברה כרטיסייה (${num(m.punchCardMigrated)} כניסות)` : '');
+    } else if (display) {
         display.textContent = bookletPrice > 0
             ? `סה"כ לתשלום: ₪${amount}`
             : 'הגדר מחיר כרטיסיה בהגדרות';
@@ -822,6 +837,23 @@ function addPayment() {
 
     if (!memberId) { showToast('בחר משתתף'); return; }
     if (!quantity || quantity <= 0) { showToast('הזן כמות כניסות תקינה'); return; }
+
+    if (paymentMethod === 'punchcard') {
+        // Transfer from an old paper punch card: no payment, same record as the scan-screen swap.
+        if (quantity > 100) { showToast('נא להזין מספר כניסות (1–100)'); return; }
+        const m = getMembers().find(x => x.id === memberId);
+        if (!m) return;
+        if (m.punchCardMigrated != null && !confirm(`למשתתף זה כבר הועברה כרטיסייה (${num(m.punchCardMigrated)} כניסות). להוסיף שוב?`)) return;
+        _updateMember(memberId, {
+            balance: (m.balance || 0) + quantity,
+            punchCardMigrated: quantity,
+            punchCardMigratedAt: new Date().toISOString()
+        });
+        _logMemberAction(memberId, `🎟️ העברה מכרטיסייה: ${quantity} כניסות`);
+        closeModal();
+        showToast(`הועברו ${quantity} כניסות מכרטיסייה ישנה ✓`);
+        return;
+    }
 
     const bookletPrice = parseFloat(DB.getSetting('singlePrice', '0')) || 0;
     const amount = bookletPrice > 0 ? Math.round((quantity / 11) * bookletPrice * 100) / 100 : 0;
