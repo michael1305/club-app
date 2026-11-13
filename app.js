@@ -490,7 +490,7 @@ function showMemberDetails(id) {
         ...checkins.map(c => ({ ts: c.timestamp, label: c.entryType === 'birthday' ? '🎂 כניסת יום הולדת (חינם)' : c.entryType === 'couple' ? 'זוגית (-2)' : 'בודדת (-1)' })),
         ...vipCheckins.map(c => ({ ts: c.timestamp, label: `⭐ כניסה חופשית (${num(c.count)})` }))
     ].sort((a, b) => new Date(a.ts) - new Date(b.ts));
-    const totalPaid = payments.reduce((sum, p) => sum + num(p.amount), 0);
+    const totalPaid = Math.round(payments.reduce((sum, p) => sum + num(p.amount), 0) * 100) / 100;
     const balance = num(member.balance);
     const memberLog = getMemberLog().filter(e => e.memberId === id);
 
@@ -511,30 +511,36 @@ function showMemberDetails(id) {
             <button class="tab-btn" id="md-tab-history" onclick="switchMemberDetailsTab('history')">כניסות ורכישות</button>
         </div>
         <div id="md-panel-info" class="checkin-tab-content active">
-            <div style="text-align:center;margin-bottom:16px">${avatarHtml(member, 90)}</div>
-            <div style="margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+                ${avatarHtml(member, 64)}
+                <div>
+                    <div style="margin-bottom:4px">יתרה: ${balanceBadge}</div>
+                    <div style="font-size:0.85rem;color:var(--text-light)">📱 NFC: ${member.nfcTag ? 'משויך ✓' : 'לא משויך'}</div>
+                </div>
+            </div>
+            <button class="btn btn-success btn-block" style="padding:16px;font-size:1.1rem;margin-bottom:10px" onclick="closeModal();doCheckin('${id}')">✓ בצע כניסה (אין כרטיס ביד)</button>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+                <button class="btn btn-primary" style="padding:14px" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
+                <button class="btn btn-primary" style="padding:14px" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px">
+                ${!member.nfcTag ? `<button class="btn btn-warning" onclick="showPunchCardSwap('${id}')">🎟️ החלפת כרטיסייה</button>` : ''}
+                <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
+                <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
+                <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
+                <button class="btn btn-secondary" onclick="sendMemberLink('${id}')">💬 וואטסאפ</button>
+                <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכת פרטים</button>
+                ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
+                <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
+            </div>
+            <div style="border-top:1px solid #eee;padding-top:12px;line-height:1.9">
                 <p>📞 ${escHtml(member.phone)}</p>
                 ${member.email ? `<p>📧 ${escHtml(member.email)}</p>` : ''}
                 ${member.birthDate ? `<p>🎂 תאריך לידה: ${formatDate(new Date(member.birthDate + 'T00:00:00'))}</p>` : ''}
                 <p>📅 הצטרף: ${formatDate(new Date(member.createdAt))}</p>
-                <p>יתרת כניסות: ${balanceBadge}</p>
                 <p>💰 שילם סה"כ: ₪${totalPaid}</p>
                 <p>🚪 כניסות בפועל: ${allCheckins.length}</p>
-                <p>📱 כרטיס NFC: ${member.nfcTag ? '<span class="badge badge-success">משויך ✓</span>' : '<span class="badge badge-info">לא משויך</span>'}</p>
                 <p>⭐ כניסה חופשית: ${num(member.vipSlots) > 0 ? `<span class="badge badge-warning">${num(member.vipSlots)} ${member.vipSlots>1?'אנשים':'אדם'}</span>` : 'לא'}</p>
-            </div>
-            <button class="btn btn-success btn-block" style="margin-bottom:12px" onclick="closeModal();doCheckin('${id}')">✓ בצע כניסה (אין כרטיס ביד)</button>
-            <div style="display:flex;gap:8px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="closeModal();showAddEntriesFor('${id}')">➕ הוספת כניסות</button>
-                <button class="btn btn-secondary" onclick="showEditBalance('${id}')">✏️ עריכת יתרה</button>
-                <button class="btn btn-secondary" onclick="showVipSettings('${id}')">⭐ כניסה חופשית</button>
-                <button class="btn btn-secondary" onclick="showMemberQR('${id}')">🔳 QR</button>
-                <button class="btn btn-secondary" onclick="sendMemberLink('${id}')">💬 שלח קישור בוואטסאפ</button>
-                ${!member.nfcTag ? `<button class="btn btn-warning" onclick="showPunchCardSwap('${id}')">🎟️ החלפת כרטיסייה</button>` : ''}
-                <button class="btn btn-secondary" onclick="assignNfc('${id}')">📱 ${member.nfcTag ? 'שיוך כרטיס חדש' : 'שיוך NFC'}</button>
-                ${member.nfcTag ? `<button class="btn btn-secondary" onclick="removeNfc('${id}')">🚫 ביטול שיוך NFC</button>` : ''}
-                <button class="btn btn-secondary" onclick="closeModal();showEditMember('${id}')">✏️ עריכה</button>
-                <button class="btn btn-danger" onclick="deleteMember('${id}')">🗑️ מחיקה</button>
             </div>
         </div>
         <div id="md-panel-history" class="checkin-tab-content">
