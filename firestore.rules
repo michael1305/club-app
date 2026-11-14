@@ -300,6 +300,36 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ---------------- dance-site landing pages (site-admin.html) ----------------
+    // Public content of dance.gadibitton.co.il/beginners.html and harkadot.html: anyone may read
+    // (the pages fetch it anonymously over REST); only club admins may change it, never the
+    // temporary store-review account.
+    function siteEditor() {
+      return isAdmin() && request.auth.token.email != 'google-review@club-admin.local';
+    }
+
+    match /sitePages/{pageId} {
+      allow read: if true;
+      allow write: if siteEditor()
+        && pageId in ['beginners', 'harkadot']
+        && request.resource.data.keys().hasOnly(['data', 'updatedAt', 'updatedBy'])
+        && request.resource.data.data is string && request.resource.data.data.size() < 300000
+        && isDateishBounded(request.resource.data.updatedAt, 40)
+        && (!('updatedBy' in request.resource.data) || (request.resource.data.updatedBy is string && request.resource.data.updatedBy.size() < 200));
+    }
+
+    // Pictures uploaded from site-admin.html, referenced from page content as "img:<id>".
+    match /siteImages/{imgId} {
+      allow read: if true;
+      allow create, update: if siteEditor()
+        && imgId.size() < 80
+        && request.resource.data.keys().hasOnly(['src', 'updatedAt'])
+        && request.resource.data.src is string && request.resource.data.src.size() < 900000
+        && request.resource.data.src.matches('^data:image/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$')
+        && isDateishBounded(request.resource.data.updatedAt, 40);
+      allow delete: if siteEditor();
+    }
+
     // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------
     function settingsWriteOk(d) {
       return d.keys().hasOnly(['eventName','singlePrice','couplePrice','activeDays','knownTerminals'])

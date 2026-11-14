@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>עריכת עמודי נחיתה | גדי ביטון</title>
+<link rel="icon" href="LOGO.jpg">
+<style>
+  :root { --p: #2d1b4e; --gold: #e2a53c; --line: #dfe6e9; --soft: #636e72; --bg: #f5f3ef; --ok: #1fa855; --bad: #d63031; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #222; }
+  header {
+    position: sticky; top: 0; z-index: 10; background: var(--p); color: #fff;
+    padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  header h1 { font-size: 17px; margin: 0; flex: 1 1 100%; }
+  header select, header button, header a {
+    font: inherit; font-size: 15px; border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer;
+  }
+  header select { background: #fff; color: var(--p); font-weight: bold; }
+  #save { background: var(--gold); color: var(--p); font-weight: bold; }
+  #save:disabled { opacity: .5; cursor: default; }
+  header a, #logout { background: rgba(255,255,255,.15); color: #fff; text-decoration: none; }
+  #status { flex: 1 1 100%; font-size: 13px; min-height: 16px; color: #ffe8b8; }
+  main { max-width: 760px; margin: 0 auto; padding: 14px 12px 80px; }
+  .sec { background: #fff; border-radius: 12px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .sec > summary { padding: 14px; font-weight: bold; font-size: 16px; cursor: pointer; color: var(--p); }
+  .sec > .body { padding: 0 14px 14px; }
+  label.f { display: block; margin: 10px 0 0; font-size: 13px; color: var(--soft); }
+  label.f input, label.f textarea, label.f select {
+    display: block; width: 100%; margin-top: 4px; padding: 10px; font: inherit; font-size: 16px; color: #222;
+    border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  }
+  label.f textarea { min-height: 70px; resize: vertical; }
+  .hint { font-size: 12px; color: var(--soft); margin-top: 3px; }
+  .ltr { direction: ltr; text-align: left; }
+  .item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 12px; margin-top: 10px; background: #fcfbf8; }
+  .item .item { background: #fff; }
+  .item-head { display: flex; align-items: center; gap: 6px; }
+  .item-head b { flex: 1; color: var(--p); }
+  .mini { font: inherit; font-size: 13px; border: 1px solid var(--line); background: #fff; border-radius: 7px; padding: 5px 9px; cursor: pointer; }
+  .mini.del { color: var(--bad); }
+  .add { font: inherit; margin-top: 10px; border: 1px dashed var(--p); color: var(--p); background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+  .slots .slot { display: grid; grid-template-columns: 64px 1fr auto; gap: 6px; align-items: center; margin-top: 6px; }
+  .slot .btns { display: flex; gap: 3px; }
+  .slot .btns .mini { padding: 5px 7px; }
+  .slots input { padding: 8px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 7px; min-width: 0; }
+  .img-field { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .img-field img { width: 120px; height: 70px; object-fit: cover; border-radius: 8px; background: #eee; }
+  .img-field label.btn { font-size: 14px; border: 1px solid var(--p); color: var(--p); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .img-field input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>עריכת עמודי נחיתה</h1>
+  <select id="page">
+    <option value="beginners">חוג מתחילים</option>
+    <option value="harkadot">הרקדות</option>
+  </select>
+  <button id="save" disabled>💾 שמור ופרסם</button>
+  <a id="view" target="_blank" rel="noopener">👁️ צפייה בעמוד</a>
+  <button id="logout">יציאה</button>
+  <div id="status"></div>
+</header>
+
+<main id="editor"></main>
+
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
+<script src="admin-auth.js?v=5"></script>
+<script src="https://dance.gadibitton.co.il/js/landing-defaults.js"></script>
+<script>
+// Back office for the dance-site landing pages (dance.gadibitton.co.il/beginners.html, harkadot.html).
+// Content is saved as one JSON string in sitePages/<page>; uploaded pictures go to siteImages/<id>
+// and are referenced from the content as "img:<id>". The public pages read both and re-render.
+const SITE = 'https://dance.gadibitton.co.il/';
+const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+let db, pageId = 'beginners', data = null, dirty = false;
+
+const $ = id => document.getElementById(id);
+const clone = o => JSON.parse(JSON.stringify(o));
+const h = (tag, attrs = {}, ...kids) => {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (k === 'class') el.className = v;
+    else if (v !== undefined && v !== null && v !== false) el.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null) el.append(c.nodeType ? c : document.createTextNode(c));
+  return el;
+};
+function status(msg, bad) { $('status').textContent = msg; $('status').style.color = bad ? '#ffb3b3' : '#ffe8b8'; }
+function markDirty() { dirty = true; $('save').disabled = false; status('יש שינויים שלא נשמרו'); }
+
+// ---- field builders (each edits obj[key] in place) ----
+function field(obj, key, label, opts = {}) {
+  const tag = opts.area ? 'textarea' : 'input';
+  const input = h(tag, { type: opts.type || (opts.area ? null : 'text'), class: opts.ltr ? 'ltr' : '', placeholder: opts.ph || '' });
+  input.value = obj[key] ?? '';
+  input.addEventListener('input', () => { obj[key] = opts.type === 'number' ? Number(input.value) || 0 : input.value; markDirty(); });
+  return h('label', { class: 'f' }, label, input, opts.hint ? h('div', { class: 'hint' }, opts.hint) : null);
+}
+function daySelect(obj, key, label) {
+  const sel = h('select', {}, DAYS.map(d => h('option', { value: d }, d)));
+  sel.value = obj[key] || 'ראשון';
+  sel.addEventListener('change', () => { obj[key] = sel.value; markDirty(); render(); });
+  return h('label', { class: 'f' }, label, sel);
+}
+function imageField(obj, key, label) {
+  const img = h('img', { alt: '' });
+  const showPreview = () => {
+    const v = obj[key] || '';
+    if (v.startsWith('img:')) db.collection('siteImages').doc(v.slice(4)).get().then(d => { img.src = d.exists ? d.data().src : ''; });
+    else img.src = v ? SITE + v : '';
+  };
+  showPreview();
+  const file = h('input', { type: 'file', accept: 'image/*' });
+  file.addEventListener('change', async () => {
+    const f = file.files[0]; if (!f) return;
+    status('מעלה תמונה...');
+    try {
+      const src = await shrink(f);
+      const id = pageId + '-' + Date.now().toString(36);
+      await db.collection('siteImages').doc(id).set({ src, updatedAt: new Date().toISOString() });
+      obj[key] = 'img:' + id; showPreview(); markDirty();
+      status('התמונה הועלתה — לחצו "שמור ופרסם" כדי שתופיע באתר');
+    } catch (e) { status('העלאת התמונה נכשלה: ' + (e.message || e), true); }
+    file.value = '';
+  });
+  return h('div', { class: 'f' }, h('label', { class: 'f' }, label),
+    h('div', { class: 'img-field' }, img, h('label', { class: 'btn' }, '📷 החלפת תמונה', file)));
+}
+// Resize to max 1600px wide and re-encode as JPEG until it fits a Firestore document.
+function shrink(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onerror = () => rej(new Error('לא ניתן לקרוא את הקובץ'));
+    r.onload = () => {
+      const im = new Image();
+      im.onerror = () => rej(new Error('הקובץ אינו תמונה'));
+      im.onload = () => {
+        let w = Math.min(1600, im.width), q = 0.82, out;
+        for (let i = 0; i < 8; i++) {
+          const c = document.createElement('canvas');
+          c.width = w; c.height = Math.round(im.height * w / im.width);
+          c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+          out = c.toDataURL('image/jpeg', q);
+          if (out.length < 800000) return res(out);
+          if (q > 0.6) q -= 0.08; else w = Math.round(w * 0.8);
+        }
+        rej(new Error('התמונה גדולה מדי'));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
+// A list of items with add / remove / move buttons.
+function list(arr, label, makeItem, buildItem, title) {
+  const wrap = h('div');
+  arr.forEach((it, i) => {
+    const move = d => { const j = i + d; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; markDirty(); render(); };
+    wrap.append(h('div', { class: 'item' },
+      h('div', { class: 'item-head' }, h('b', {}, title(it, i)),
+        h('button', { class: 'mini', type: 'button', title: 'למעלה', onclick: () => move(-1) }, '▲'),
+        h('button', { class: 'mini', type: 'button', title: 'למטה', onclick: () => move(1) }, '▼'),
+        h('button', { class: 'mini del', type: 'button', onclick: () => { if (confirm('למחוק?')) { arr.splice(i, 1); markDirty(); render(); } } }, 'מחיקה')),
+      buildItem(it, i)));
+  });
+  wrap.append(h('button', { class: 'add', type: 'button', onclick: () => { arr.push(makeItem()); markDirty(); render(); } }, '+ ' + label));
+  return wrap;
+}
+function slotsEditor(hall) {
+  hall.slots = hall.slots || [];
+  const box = h('div', { class: 'slots' });
+  hall.slots.forEach((s, i) => {
+    const t = h('input', { class: 'ltr', placeholder: '20:00' }); t.value = s.time || '';
+    t.addEventListener('input', () => { s.time = t.value; markDirty(); });
+    const w = h('input', { placeholder: 'מעגלים / זוגות... (ריק = —)' }); w.value = s.what || '';
+    w.addEventListener('input', () => { s.what = w.value; markDirty(); });
+    const mv = d => { const j = i + d; if (j < 0 || j >= hall.slots.length) return; [hall.slots[i], hall.slots[j]] = [hall.slots[j], hall.slots[i]]; markDirty(); render(); };
+    box.append(h('div', { class: 'slot' }, t, w, h('div', { class: 'btns' },
+      h('button', { class: 'mini', type: 'button', onclick: () => mv(-1) }, '▲'),
+      h('button', { class: 'mini', type: 'button', onclick: () => mv(1) }, '▼'),
+      h('button', { class: 'mini del', type: 'button', onclick: () => { hall.slots.splice(i, 1); markDirty(); render(); } }, '✕'))));
+  });
+  box.append(h('button', { class: 'add', type: 'button', onclick: () => { const last = hall.slots[hall.slots.length - 1]; hall.slots.push({ time: last ? last.time : '', what: '' }); markDirty(); render(); } }, '+ שורה בלוח הזמנים'));
+  return box;
+}
+const sec = (title, open, ...kids) => h('details', { class: 'sec', open }, h('summary', {}, title), h('div', { class: 'body' }, ...kids));
+
+// ---- the form ----
+function render() {
+  const d = data, ed = $('editor');
+  const openState = [...ed.querySelectorAll('details')].map(x => x.open);
+  ed.innerHTML = '';
+  d.hero = d.hero || {}; d.texts = d.texts || {}; d.groups = d.groups || [];
+  d.about = d.about || { title: '', paragraphs: [] }; d.instructor = d.instructor || {};
+  d.perks = d.perks || { title: '', items: [] }; d.ask = d.ask || {}; d.footer = d.footer || {};
+
+  ed.append(
+    sec('🗓️ ימים, מקומות ולוח זמנים', true,
+      list(d.groups, 'יום / קבוצה חדשה',
+        () => ({ day: 'ראשון', place: '', start: '', time: '20:00', durationMin: 120, where: '', parking: '', price: '40 ₪', waze: '', whatsapp: '', image: '', team: '', halls: [] }),
+        g => {
+          g.halls = g.halls || [];
+          return h('div', {},
+            daySelect(g, 'day', 'יום בשבוע'),
+            field(g, 'place', 'שם קצר בלשונית', { ph: 'רעננה' }),
+            field(g, 'time', 'שעת התחלה', { ltr: true, ph: '20:00' }),
+            field(g, 'start', 'תאריך פתיחה (לא חובה)', { type: 'date', hint: 'אם התאריך עוד לא עבר יופיע "החל מ-…". ריק = פעיל כל שבוע.' }),
+            field(g, 'durationMin', 'אורך המפגש בדקות (ליומן)', { type: 'number' }),
+            field(g, 'where', 'כתובת / מקום'),
+            field(g, 'parking', 'חניה'),
+            field(g, 'price', 'מחיר', { ph: '40 ₪ למפגש' }),
+            field(g, 'waze', 'קישור ניווט בוויז', { ltr: true, ph: 'https://waze.com/ul?...' }),
+            field(g, 'whatsapp', 'קישור לקבוצת הווטסאפ', { ltr: true, ph: 'https://chat.whatsapp.com/...', hint: 'ריק = הכפתור לא יופיע' }),
+            imageField(g, 'image', 'תמונת רקע'),
+            field(g, 'team', 'מרקידים (לא חובה)', { ph: 'גדי ביטון · ...' }),
+            h('label', { class: 'f' }, 'לוח זמנים לפי אולמות (ריק = לא יוצג)'),
+            list(g.halls, 'אולם / סטודיו',
+              () => ({ name: '', who: '', slots: [] }),
+              hall => h('div', {},
+                field(hall, 'name', 'שם האולם', { ph: 'אולם מרכזי' }),
+                field(hall, 'who', 'עם מי (לא חובה)', { ph: 'עם הילה בר' }),
+                slotsEditor(hall)),
+              hall => hall.name || 'אולם'));
+        },
+        g => `יום ${g.day}${g.place ? ' · ' + g.place : ''}`)),
+
+    sec('✨ כותרת העמוד', false,
+      field(d.hero, 'brand', 'שורת המותג'),
+      field(d.hero, 'l1', 'כותרת – שורה 1'),
+      field(d.hero, 'l2', 'כותרת – שורה 2 (בזהב)'),
+      field(d.hero, 'tag', 'תגית ורודה', { hint: 'ריק = לא תוצג' }),
+      field(d.hero, 'lead', 'משפט פתיחה', { area: true })),
+
+    sec('📝 טקסטים בכרטיס הפרטים', false,
+      field(d.texts, 'detailsTitle', 'כותרת הכרטיס'),
+      field(d.texts, 'whenTemplate', 'שורת "מתי"', { hint: '{day} = היום, {time} = השעה' }),
+      field(d.texts, 'activeNote', 'מה כתוב מתחת כשאין תאריך פתיחה עתידי'),
+      field(d.texts, 'priceLabel', 'כותרת המחיר', { ph: 'עלות / כניסה' }),
+      field(d.texts, 'priceNote', 'הערה מתחת למחיר'),
+      field(d.texts, 'joinText', 'טקסט כפתור הווטסאפ'),
+      field(d.texts, 'scheduleTitle', 'כותרת לוח הזמנים'),
+      field(d.texts, 'calendarTitle', 'שם האירוע ביומן', { hint: '{day} = היום' })),
+
+    sec('📖 קצת על החוג', false,
+      field(d.about, 'title', 'כותרת'),
+      list(d.about.paragraphs, 'פסקה', () => '',
+        (p, i) => { const o = { v: p }; const f = field(o, 'v', 'טקסט', { area: true }); f.querySelector('textarea').addEventListener('input', () => { d.about.paragraphs[i] = o.v; }); return f; },
+        (p, i) => 'פסקה ' + (i + 1)),
+      h('div', { class: 'hint' }, 'בלי פסקאות = הכרטיס לא יוצג')),
+
+    sec('👤 המרקיד', false,
+      field(d.instructor, 'name', 'שם'),
+      field(d.instructor, 'bio', 'תיאור', { area: true }),
+      imageField(d.instructor, 'photo', 'תמונה')),
+
+    sec('💡 טוב לדעת', false,
+      field(d.perks, 'title', 'כותרת'),
+      list(d.perks.items, 'שורה', () => ({ icon: '⭐', text: '' }),
+        it => h('div', {}, field(it, 'icon', 'אימוג׳י'), field(it, 'text', 'טקסט')),
+        it => (it.icon || '') + ' ' + (it.text || 'שורה'))),
+
+    sec('💬 שאלות בווטסאפ ותחתית', false,
+      field(d.ask, 'text', 'טקסט הכפתור'),
+      field(d.ask, 'phone', 'מספר ווטסאפ', { ltr: true, ph: '972524444700', hint: 'בפורמט בינלאומי בלי + (972...). ריק = הכפתור לא יופיע' }),
+      field(d.ask, 'message', 'הודעה מוכנה מראש', { hint: '{day} = היום שנבחר' }),
+      field(d.footer, 'line1', 'תחתית – שורה 1'),
+      field(d.footer, 'line2', 'תחתית – שורה 2 (מודגש)')),
+
+    h('p', { class: 'hint' }, 'הכותרת והתיאור שמופיעים בתצוגה המקדימה של הקישור בווטסאפ לא משתנים מכאן — יש לבקש את זה ב-Claude.')
+  );
+  [...ed.querySelectorAll('details')].forEach((x, i) => { if (openState[i] !== undefined) x.open = openState[i]; });
+}
+
+async function load(id) {
+  pageId = id;
+  $('view').href = SITE + id + '.html';
+  status('טוען...');
+  const snap = await db.collection('sitePages').doc(id).get();
+  let saved = null;
+  if (snap.exists) { try { saved = JSON.parse(snap.data().data); } catch (e) { saved = null; } }
+  data = saved || clone(window.LANDING_DEFAULTS[id]);
+  dirty = false; $('save').disabled = true;
+  $('editor').innerHTML = '';
+  render();
+  status(snap.exists ? 'נטען מהגרסה השמורה' + (snap.data().updatedAt ? ' · עודכן ' + new Date(snap.data().updatedAt).toLocaleString('he-IL') : '') : 'עדיין לא נשמר — מוצג התוכן הנוכחי של העמוד');
+}
+
+async function save() {
+  const bad = data.groups.find(g => !/^\d{1,2}:\d{2}$/.test(g.time || ''));
+  if (bad) return status(`שעת ההתחלה של יום ${bad.day} לא תקינה (לדוגמה 20:00)`, true);
+  $('save').disabled = true;
+  status('שומר...');
+  try {
+    await db.collection('sitePages').doc(pageId).set({
+      data: JSON.stringify(data),
+      updatedAt: new Date().toISOString(),
+      updatedBy: (firebase.app('admin').auth().currentUser || {}).email || ''
+    });
+    dirty = false;
+    status('✅ נשמר ופורסם — העמוד באתר מתעדכן מיד');
+  } catch (e) {
+    $('save').disabled = false;
+    status('השמירה נכשלה: ' + (e.code === 'permission-denied' ? 'אין הרשאה למשתמש הזה' : (e.message || e)), true);
+  }
+}
+
+$('page').addEventListener('change', e => {
+  if (dirty && !confirm('יש שינויים שלא נשמרו. לעבור בכל זאת?')) { e.target.value = pageId; return; }
+  load(e.target.value);
+});
+$('save').addEventListener('click', save);
+$('logout').addEventListener('click', adminSignOut);
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+requireAdmin(firestore => {
+  db = firestore;
+  const p = new URLSearchParams(location.search).get('page');
+  if (p && window.LANDING_DEFAULTS[p]) $('page').value = p;
+  load($('page').value).catch(e => status('שגיאה בטעינה: ' + (e.code === 'permission-denied' ? 'אין הרשאה' : e.message), true));
+});
+</script>
+</body>
+</html>
