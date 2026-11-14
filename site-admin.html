@@ -56,6 +56,7 @@
   .login p { margin: 0 0 16px; color: var(--soft); font-size: 14px; }
   .login input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 16px; direction: ltr; text-align: right; }
   .login button { width: 100%; padding: 12px; border: 0; border-radius: 8px; background: var(--p); color: #fff; font-size: 16px; cursor: pointer; }
+  .login button.link { background: none; color: var(--p); margin-top: 10px; text-decoration: underline; font-size: 14px; }
   #login-err { color: var(--bad); font-size: 14px; min-height: 20px; margin-bottom: 6px; }
   body.locked header, body.locked main { visibility: hidden; }
 </style>
@@ -70,6 +71,7 @@
     <input id="login-pass" type="password" autocomplete="current-password" placeholder="סיסמה" required>
     <div id="login-err"></div>
     <button id="login-btn" type="submit">כניסה</button>
+    <button id="first-btn" type="button" class="link">כניסה ראשונה? יצירת סיסמה</button>
   </form>
 </div>
 
@@ -95,6 +97,8 @@
 // <phone>@site-editor.local; the same address is used when creating the user in Firebase.
 const SITE_FB = { apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo", projectId: "club-app-8f954", appId: "1:181296970595:web:6cd7578d10d563f3c73156" };
 const siteApp = (() => { try { return firebase.app('site'); } catch (e) { return firebase.initializeApp(SITE_FB, 'site'); } })();
+// Must match firestore.rules siteEditor().
+const SITE_EDITORS = ['0528114026@site-editor.local', '0547448240@site-editor.local'];
 function editorEmail(input) {
   let d = String(input || '').replace(/\D/g, '');
   if (d.startsWith('972')) d = '0' + d.slice(3);
@@ -111,6 +115,19 @@ function requireEditor(onReady) {
         err.textContent = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(e2.code)
           ? 'טלפון או סיסמה שגויים' : e2.code === 'auth/too-many-requests' ? 'יותר מדי ניסיונות, נסו שוב מאוחר יותר' : 'שגיאת התחברות — נסו שוב';
       }).finally(() => { btn.disabled = false; });
+  });
+  // First sign-in: an allowlisted editor sets their own password (creates the Auth user).
+  document.getElementById('first-btn').addEventListener('click', () => {
+    const email = editorEmail(document.getElementById('login-phone').value);
+    const pass = document.getElementById('login-pass').value;
+    err.textContent = '';
+    if (!SITE_EDITORS.includes(email)) { err.textContent = 'המספר הזה לא מורשה לערוך את העמודים'; return; }
+    if (pass.length < 6) { err.textContent = 'כתבו בשדה הסיסמה סיסמה חדשה (לפחות 6 תווים)'; return; }
+    if (!confirm('ליצור סיסמה חדשה למספר הזה?')) return;
+    siteApp.auth().createUserWithEmailAndPassword(email, pass).catch(e2 => {
+      err.textContent = e2.code === 'auth/email-already-in-use' ? 'למספר הזה כבר יש סיסמה — השתמשו בכפתור כניסה'
+        : e2.code === 'auth/weak-password' ? 'הסיסמה חלשה מדי (לפחות 6 תווים)' : 'יצירת הסיסמה נכשלה — נסו שוב';
+    });
   });
   let started = false;
   siteApp.auth().onAuthStateChanged(user => {
