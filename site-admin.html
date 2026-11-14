@@ -50,12 +50,30 @@
   .img-field img { width: 120px; height: 70px; object-fit: cover; border-radius: 8px; background: #eee; }
   .img-field label.btn { font-size: 14px; border: 1px solid var(--p); color: var(--p); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
   .img-field input[type=file] { display: none; }
+  .login { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .login form { background: #fff; padding: 28px 22px; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.1); width: 100%; max-width: 340px; text-align: center; }
+  .login h2 { margin: 0 0 4px; color: var(--p); }
+  .login p { margin: 0 0 16px; color: var(--soft); font-size: 14px; }
+  .login input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 16px; direction: ltr; text-align: right; }
+  .login button { width: 100%; padding: 12px; border: 0; border-radius: 8px; background: var(--p); color: #fff; font-size: 16px; cursor: pointer; }
+  #login-err { color: var(--bad); font-size: 14px; min-height: 20px; margin-bottom: 6px; }
+  body.locked header, body.locked main { visibility: hidden; }
 </style>
 </head>
-<body>
+<body class="locked">
 
-<header>
-  <h1>עריכת עמודי נחיתה</h1>
+<div id="login" class="login" hidden>
+  <form id="login-form">
+    <h2>עריכת עמודי האתר</h2>
+    <p>כניסה לעורכים בלבד</p>
+    <input id="login-phone" type="tel" inputmode="tel" autocomplete="username" placeholder="מספר טלפון" required>
+    <input id="login-pass" type="password" autocomplete="current-password" placeholder="סיסמה" required>
+    <div id="login-err"></div>
+    <button id="login-btn" type="submit">כניסה</button>
+  </form>
+</div>
+
+<header>  <h1>עריכת עמודי נחיתה</h1>
   <select id="page">
     <option value="beginners">חוג מתחילים</option>
     <option value="harkadot">הרקדות</option>
@@ -71,7 +89,39 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
-<script src="admin-auth.js?v=5"></script>
+<script>
+// Separate login for site editors (NOT the club admin login): its own Firebase app instance
+// and its own allowlist in firestore.rules siteEditor(). A phone number is mapped to
+// <phone>@site-editor.local; the same address is used when creating the user in Firebase.
+const SITE_FB = { apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo", projectId: "club-app-8f954", appId: "1:181296970595:web:6cd7578d10d563f3c73156" };
+const siteApp = (() => { try { return firebase.app('site'); } catch (e) { return firebase.initializeApp(SITE_FB, 'site'); } })();
+function editorEmail(input) {
+  let d = String(input || '').replace(/\D/g, '');
+  if (d.startsWith('972')) d = '0' + d.slice(3);
+  return d ? d + '@site-editor.local' : '';
+}
+function requireEditor(onReady) {
+  const box = document.getElementById('login');
+  const err = document.getElementById('login-err');
+  const btn = document.getElementById('login-btn');
+  document.getElementById('login-form').addEventListener('submit', e => {
+    e.preventDefault(); err.textContent = ''; btn.disabled = true;
+    siteApp.auth().signInWithEmailAndPassword(editorEmail(document.getElementById('login-phone').value), document.getElementById('login-pass').value)
+      .catch(e2 => {
+        err.textContent = ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(e2.code)
+          ? 'טלפון או סיסמה שגויים' : e2.code === 'auth/too-many-requests' ? 'יותר מדי ניסיונות, נסו שוב מאוחר יותר' : 'שגיאת התחברות — נסו שוב';
+      }).finally(() => { btn.disabled = false; });
+  });
+  let started = false;
+  siteApp.auth().onAuthStateChanged(user => {
+    const ok = user && !user.isAnonymous && /@site-editor\.local$/.test(user.email || '');
+    if (user && !ok) { siteApp.auth().signOut(); err.textContent = 'למשתמש הזה אין הרשאה לעריכת העמודים'; }
+    box.hidden = !!ok;
+    document.body.classList.toggle('locked', !ok);
+    if (ok && !started) { started = true; onReady(siteApp.firestore()); }
+  });
+}
+</script>
 <script src="https://dance.gadibitton.co.il/js/landing-defaults.js"></script>
 <script>
 // Back office for the dance-site landing pages (dance.gadibitton.co.il/beginners.html, harkadot.html).
@@ -302,7 +352,7 @@ async function save() {
     await db.collection('sitePages').doc(pageId).set({
       data: JSON.stringify(data),
       updatedAt: new Date().toISOString(),
-      updatedBy: (firebase.app('admin').auth().currentUser || {}).email || ''
+      updatedBy: (siteApp.auth().currentUser || {}).email || ''
     });
     dirty = false;
     status('✅ נשמר ופורסם — העמוד באתר מתעדכן מיד');
@@ -317,10 +367,10 @@ $('page').addEventListener('change', e => {
   load(e.target.value);
 });
 $('save').addEventListener('click', save);
-$('logout').addEventListener('click', adminSignOut);
+$('logout').addEventListener('click', () => siteApp.auth().signOut().then(() => location.reload()));
 window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-requireAdmin(firestore => {
+requireEditor(firestore => {
   db = firestore;
   const p = new URLSearchParams(location.search).get('page');
   if (p && window.LANDING_DEFAULTS[p]) $('page').value = p;

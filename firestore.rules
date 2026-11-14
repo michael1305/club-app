@@ -302,10 +302,18 @@ service cloud.firestore {
 
     // ---------------- dance-site landing pages (site-admin.html) ----------------
     // Public content of dance.gadibitton.co.il/beginners.html and harkadot.html: anyone may read
-    // (the pages fetch it anonymously over REST); only club admins may change it, never the
-    // temporary store-review account.
+    // (the pages fetch it anonymously over REST). Editing is a SEPARATE login from the club:
+    // only these site editors, and club admins are deliberately NOT included. Editors sign in
+    // with a phone number mapped to <phone>@site-editor.local (see site-admin.html).
+    // To add an editor: add the address here, deploy rules, then create the user in
+    // Firebase console -> Authentication -> Users (create the user BEFORE relying on it).
     function siteEditor() {
-      return isAdmin() && request.auth.token.email != 'google-review@club-admin.local';
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email in [
+          '0528114026@site-editor.local',
+          '0547448240@site-editor.local'
+        ];
     }
 
     match /sitePages/{pageId} {
