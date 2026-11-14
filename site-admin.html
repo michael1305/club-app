@@ -99,7 +99,7 @@
 const SITE_FB = { apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo", projectId: "club-app-8f954", appId: "1:181296970595:web:6cd7578d10d563f3c73156" };
 const siteApp = (() => { try { return firebase.app('site'); } catch (e) { return firebase.initializeApp(SITE_FB, 'site'); } })();
 // Must match firestore.rules siteEditor().
-const SITE_EDITORS = ['0528114026@site-editor.local', '0547448240@site-editor.local'];
+const SITE_EDITORS = ['0528114026@site-editor.local', '0547448240@site-editor.local', '0524444500@site-editor.local'];
 function editorEmail(input) {
   let d = String(input || '').replace(/\D/g, '');
   if (d.startsWith('972')) d = '0' + d.slice(3);
