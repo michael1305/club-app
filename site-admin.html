@@ -46,6 +46,9 @@
   .slot .btns { display: flex; gap: 3px; }
   .slot .btns .mini { padding: 5px 7px; }
   .slots input { padding: 8px; font: inherit; font-size: 15px; border: 1px solid var(--line); border-radius: 7px; min-width: 0; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+  .color-pick { width: 44px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
   .img-field { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
   .img-field img { width: 120px; height: 70px; object-fit: cover; border-radius: 8px; background: #eee; }
   .img-field label.btn { font-size: 14px; border: 1px solid var(--p); color: var(--p); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
@@ -178,6 +181,20 @@ function daySelect(obj, key, label) {
   sel.addEventListener('change', () => { obj[key] = sel.value; markDirty(); render(); });
   return h('label', { class: 'f' }, label, sel);
 }
+// Day colour: a colour picker plus quick swatches; empty = the site's default purple.
+const SWATCHES = [['#1e8e3e', 'ירוק'], ['#f2b705', 'צהוב'], ['#1565c0', 'כחול'], ['#c1436e', 'ורוד'], ['#e65100', 'כתום'], ['#6a1b9a', 'סגול'], ['#00838f', 'טורקיז'], ['#b71c1c', 'אדום']];
+function colorField(obj, key, label) {
+  const pick = h('input', { type: 'color', class: 'color-pick' });
+  const note = h('span', { class: 'hint' });
+  const sync = () => { pick.value = obj[key] || '#2d1b4e'; note.textContent = obj[key] ? '' : 'ברירת מחדל (סגול)'; };
+  const set = v => { obj[key] = v; sync(); markDirty(); };
+  pick.addEventListener('input', () => set(pick.value));
+  sync();
+  return h('div', { class: 'f' }, h('label', { class: 'f' }, label),
+    h('div', { class: 'swatches' }, pick,
+      SWATCHES.map(([c, name]) => h('button', { type: 'button', class: 'sw', title: name, style: 'background:' + c, onclick: () => set(c) })),
+      h('button', { type: 'button', class: 'mini', onclick: () => set('') }, 'ללא צבע'), note));
+}
 function imageField(obj, key, label) {
   const img = h('img', { alt: '' });
   const showPreview = () => {
@@ -273,7 +290,7 @@ function render() {
   ed.append(
     sec('🗓️ ימים, מקומות ולוח זמנים', true,
       list(d.groups, 'יום / קבוצה חדשה',
-        () => ({ day: 'ראשון', place: '', start: '', time: '20:00', durationMin: 120, where: '', parking: '', price: '40 ₪', waze: '', whatsapp: '', image: '', team: '', halls: [] }),
+        () => ({ day: 'ראשון', color: '', place: '', start: '', time: '20:00', durationMin: 120, where: '', parking: '', price: '40 ₪', waze: '', whatsapp: '', image: '', team: '', halls: [] }),
         g => {
           g.halls = g.halls || [];
           return h('div', {},
@@ -287,6 +304,7 @@ function render() {
             field(g, 'price', 'מחיר', { ph: '40 ₪ למפגש' }),
             field(g, 'waze', 'קישור ניווט בוויז', { ltr: true, ph: 'https://waze.com/ul?...' }),
             field(g, 'whatsapp', 'קישור לקבוצת הווטסאפ', { ltr: true, ph: 'https://chat.whatsapp.com/...', hint: 'ריק = הכפתור לא יופיע' }),
+            colorField(g, 'color', 'צבע היום'),
             imageField(g, 'image', 'תמונת רקע'),
             field(g, 'team', 'מרקידים (לא חובה)', { ph: 'גדי ביטון · ...' }),
             h('label', { class: 'f' }, 'לוח זמנים לפי אולמות (ריק = לא יוצג)'),
