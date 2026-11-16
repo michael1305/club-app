@@ -349,15 +349,26 @@ service cloud.firestore {
         && request.auth.token.email == 'contest-bot@club-contest.local';
     }
 
+    // Who may use contest-admin.html: every club admin, plus contest-only admins who get NO
+    // access to members/payments/etc. They log in through the same club admin login
+    // (<phone>@club-admin.local). Keep in sync with CONTEST_ADMINS in contest-admin.html.
+    function contestAdmin() {
+      return isAdmin() || (request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email in [
+          '0528114026@club-admin.local'   // גיל (added 2026-11-16)
+        ]);
+    }
+
     // Allowlist of instructors who may log in. Doc id = phone (05XXXXXXXX). Holds names + phones,
     // so never public.
     match /contestInstructors/{phone} {
-      allow read: if contestBot() || isAdmin();
-      allow write: if (contestBot() || isAdmin())
+      allow read: if contestBot() || contestAdmin();
+      allow write: if (contestBot() || contestAdmin())
         && phone.matches('^05[0-9]{8}$')
         && request.resource.data.keys().hasOnly(['name', 'type'])
         && request.resource.data.name is string && request.resource.data.name.size() < 120;
-      allow delete: if isAdmin();
+      allow delete: if contestAdmin();
     }
 
     // One-time SMS codes (hashed). Bot only.
@@ -367,20 +378,20 @@ service cloud.firestore {
 
     // An instructor's picks. Doc id = phone. Written by the bot; the admin reads them.
     match /contestPicks/{phone} {
-      allow read: if contestBot() || isAdmin();
+      allow read: if contestBot() || contestAdmin();
       allow write: if contestBot()
         && phone.matches('^05[0-9]{8}$')
         && request.resource.data.keys().hasOnly(['name', 'picks', 'updatedAt'])
         && request.resource.data.picks is list && request.resource.data.picks.size() <= 200
         && isDateishBounded(request.resource.data.updatedAt, 40);
-      allow delete: if isAdmin();
+      allow delete: if contestAdmin();
     }
 
     // Contest settings, public so contest.html / the stage-2 voting page can read them:
     // stage1Open (bool), finalists (dance ids chosen by the admin for stage 2).
     match /contestConfig/{docId} {
       allow read: if true;
-      allow write: if isAdmin() && docId == 'main'
+      allow write: if contestAdmin() && docId == 'main'
         && request.resource.data.keys().hasOnly(['stage1Open', 'finalists', 'updatedAt'])
         && (!('stage1Open' in request.resource.data) || request.resource.data.stage1Open is bool)
         && (!('finalists' in request.resource.data) || (request.resource.data.finalists is list && request.resource.data.finalists.size() <= 200))
