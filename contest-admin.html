@@ -44,7 +44,7 @@
 <header>
   <h1>🏆 מצעד הריקודים השנתי 2026 — ניהול</h1>
   <button id="save" disabled>💾 שמור רשימה לתחרות</button>
-  <button id="csv">⬇ ייצוא לאקסל</button>
+  <button id="csv">📊 הורדה לאקסל</button>
   <button onclick="adminSignOut()">יציאה</button>
   <div id="status"></div>
 </header>
@@ -167,16 +167,45 @@ $('open-btn').onclick = async () => {
   render();
 };
 
-$('csv').onclick = () => {
-  const lines = [['עולה לתחרות', 'בחירות', 'ריקוד', 'יוצר', 'מבצע', 'צורה', 'מי בחר']];
-  CONTEST_DANCES.map(d => ({ d, who: votesFor(d.id) }))
-    .sort((a, b) => b.who.length - a.who.length)
-    .forEach(({ d, who }) => lines.push([finalists.has(d.id) ? 'כן' : '', who.length, d.name, d.by, d.singer, d.style, who.join(', ')]));
-  const csv = '﻿' + lines.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = 'מצעד-הריקודים-2026-תוצאות.csv';
-  a.click();
+// Real .xlsx (SheetJS, loaded only when the button is pressed; used for WRITING only).
+function loadXlsx() {
+  if (window.XLSX) return Promise.resolve();
+  return new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ok; s.onerror = () => fail(new Error('טעינת רכיב האקסל נכשלה'));
+    document.head.appendChild(s);
+  });
+}
+$('csv').onclick = async () => {
+  status('מכין קובץ אקסל…');
+  try {
+    await loadXlsx();
+    const results = [['עולה לתחרות', 'בחירות', 'ריקוד', 'יוצר', 'מבצע', 'צורה', 'מי בחר']];
+    CONTEST_DANCES.map(d => ({ d, who: votesFor(d.id) }))
+      .sort((a, b) => b.who.length - a.who.length || a.d.name.localeCompare(b.d.name, 'he'))
+      .forEach(({ d, who }) => results.push([finalists.has(d.id) ? 'כן' : '', who.length, d.name, d.by, d.singer, d.style, who.join(', ')]));
+
+    const byInst = [['מרקיד', 'כמה בחר', 'ריקוד', 'יוצר', 'מבצע', 'צורה']];
+    instructors.forEach(i => {
+      const ids = picksBy[i.phone]?.picks || [];
+      const ds = CONTEST_DANCES.filter(d => ids.includes(d.id));
+      if (!ds.length) byInst.push([i.name, 0, '— לא בחר —', '', '', '']);
+      ds.forEach((d, k) => byInst.push([k ? '' : i.name, k ? '' : ds.length, d.name, d.by, d.singer, d.style]));
+    });
+
+    const wb = XLSX.utils.book_new();
+    wb.Workbook = { Views: [{ RTL: true }] };
+    const s1 = XLSX.utils.aoa_to_sheet(results);
+    s1['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 8 }, { wch: 60 }];
+    s1['!autofilter'] = { ref: 'A1:G' + results.length };
+    const s2 = XLSX.utils.aoa_to_sheet(byInst);
+    s2['!cols'] = [{ wch: 18 }, { wch: 9 }, { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, s1, 'תוצאות לפי ריקוד');
+    XLSX.utils.book_append_sheet(wb, s2, 'בחירות לפי מרקיד');
+    XLSX.writeFile(wb, 'מצעד-הריקודים-2026-תוצאות.xlsx');
+    status('');
+  } catch (e) { status('שגיאה: ' + e.message); }
 };
 addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 

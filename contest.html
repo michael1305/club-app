@@ -63,7 +63,7 @@
 <body>
 
 <div class="hero">
-  <img src="LOGO.jpg" alt="">
+  <img id="logo" src="LOGO.jpg" alt="">
   <h1>מצעד הריקודים השנתי 2026</h1>
   <p>שלב א׳ — המרקידים בוחרים את הריקודים לתחרות</p>
 </div>
@@ -237,6 +237,8 @@ async function save() {
 }
 addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
+// Hidden shortcut: double-click / double-tap the round logo → back office (contest-admin.html).
+(() => { let last = 0; $("logo").style.touchAction = "manipulation"; $("logo").addEventListener("click", () => { const now = Date.now(); if (now - last < 450) location.href = "contest-admin.html"; last = now; }); })();
 // ---- start ----
 token = lsGet(TOKEN_KEY);
 if (token) loadPicks().catch(() => show('step-phone'));
