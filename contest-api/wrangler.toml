@@ -1,0 +1,6 @@
+# Cloudflare Worker for the dance contest (מצעד הריקודים). Deploy: npx wrangler deploy
+# Secrets: MICROPAY_TOKEN, MICROPAY_FROM, CONTEST_BOT_PASSWORD, SESSION_SECRET (npx wrangler secret put NAME)
+name = "club-contest-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true

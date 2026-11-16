@@ -1,0 +1,248 @@
+// Dance-contest API (מצעד הריקודים) — Cloudflare Worker.
+//
+// Why a server at all: SMS goes through Micropay, whose token must stay secret, and the
+// club's Firebase project is on the free plan (no Cloud Functions). So this small API:
+//   POST /api/send-otp   {phone}        → 4-digit SMS code via Micropay (allowlisted phones only)
+//   POST /api/verify-otp {phone, code}  → {token, name}  (signed session token, 30 days)
+//   GET  /api/picks      (Bearer token) → {name, picks, open}
+//   POST /api/picks      (Bearer token) {picks:[ids]} → saves contestPicks/{phone}
+// It talks to Firestore over REST, signed in as a dedicated Firebase Auth user
+// (CONTEST_BOT_EMAIL). firestore.rules contestBot() lets only that user write
+// contestOtps / contestPicks and read contestInstructors.
+//
+// Secrets (wrangler secret put, never in git):
+//   MICROPAY_TOKEN, MICROPAY_FROM  — same Micropay account as camp2026 / dance-lock (sender must be pre-approved)
+//   CONTEST_BOT_PASSWORD           — password of the bot Firebase user
+//   SESSION_SECRET                 — HMAC key for session tokens + OTP hashes
+
+const FB_API_KEY = 'AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo';
+const FB_PROJECT = 'club-app-8f954';
+const CONTEST_BOT_EMAIL = 'contest-bot@club-contest.local';
+const SITE_ORIGIN = 'https://club.gadibitton.co.il';
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB_PROJECT}/databases/(default)/documents`;
+const ALLOWED_ORIGINS = [SITE_ORIGIN, 'http://localhost:8080', 'http://127.0.0.1:8080'];
+const SESSION_DAYS = 30;
+const ID_RE = /^d\d{2,3}$/;
+const MAX_PICKS = 200;
+
+class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
+
+export default {
+  async fetch(req, env) {
+    const origin = req.headers.get('Origin');
+    const cors = {
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Cache-Control': 'no-store',
+      Vary: 'Origin'
+    };
+    if (ALLOWED_ORIGINS.includes(origin)) cors['Access-Control-Allow-Origin'] = origin;
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' } });
+    const path = new URL(req.url).pathname.replace(/\/+$/, '');
+    try {
+      const ctx = new Ctx(env);
+      if (path === '/api/send-otp' && req.method === 'POST') return json(200, await sendOtp(ctx, await body(req)));
+      if (path === '/api/verify-otp' && req.method === 'POST') return json(200, await verifyOtp(ctx, await body(req)));
+      if (path === '/api/picks' && req.method === 'GET') return json(200, await getPicks(ctx, req));
+      if (path === '/api/picks' && req.method === 'POST') return json(200, await savePicks(ctx, req, await body(req)));
+      return json(404, { error: 'not found' });
+    } catch (e) {
+      if (e instanceof HttpError) return json(e.status, { error: e.message });
+      console.error(e && e.stack || e);
+      return json(500, { error: 'שגיאת מערכת' });
+    }
+  }
+};
+
+async function body(req) { try { return await req.json(); } catch (e) { return {}; } }
+
+function normalizePhone(p) {
+  let d = String(p || '').replace(/\D/g, '');
+  if (d.startsWith('972')) d = '0' + d.slice(3);
+  return /^05\d{8}$/.test(d) ? d : '';
+}
+
+// ---------------- handlers ----------------
+
+async function sendOtp(ctx, b) {
+  const phone = normalizePhone(b.phone);
+  if (!phone) throw new HttpError(400, 'מספר טלפון לא תקין');
+  if (!(await ctx.fsGet('contestInstructors/' + phone))) throw new HttpError(403, 'המספר הזה לא מופיע ברשימת המרקידים');
+  if (!(await ctx.stage1Open())) throw new HttpError(403, 'הבחירה נסגרה');
+
+  // Rate limit per phone: 60s between codes, 5 codes per hour.
+  const now = Date.now();
+  const prev = (await ctx.fsGet('contestOtps/' + phone)) || {};
+  if (prev.sentAt && now - prev.sentAt < 60e3) throw new HttpError(429, 'קוד נשלח לפני רגע — אפשר לבקש חדש בעוד דקה');
+  const inWindow = prev.windowStart && now - prev.windowStart < 3600e3;
+  const sendCount = inWindow ? (prev.sendCount || 0) : 0;
+  if (sendCount >= 5) throw new HttpError(429, 'יותר מדי בקשות קוד — נסו שוב בעוד שעה');
+
+  const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
+  await ctx.fsSet('contestOtps/' + phone, {
+    codeHash: await ctx.hmac('o:' + phone + ':' + code),
+    expiresAt: now + 10 * 60e3, attempts: 0, sentAt: now,
+    sendCount: sendCount + 1, windowStart: inWindow ? prev.windowStart : now
+  });
+
+  // Last line is the WebOTP format, so Chrome on Android can fill the code automatically.
+  const msg = `מצעד הריקודים\nקוד הכניסה שלך: ${code}\nתקף ל-10 דקות\n\n@club.gadibitton.co.il #${code}`;
+  const url = 'https://www.micropay.co.il/extApi/scheduleSms.php?get=1'
+    + '&token=' + encodeURIComponent(ctx.env.MICROPAY_TOKEN || '')
+    + '&msg=' + encodeURIComponent(msg)
+    + '&list=' + phone
+    + '&from=' + encodeURIComponent(ctx.env.MICROPAY_FROM || '');
+  const txt = await (await fetch(url)).text();
+  if (!txt.startsWith('OK')) {
+    console.error('micropay', txt);
+    throw new HttpError(502, 'שליחת ה-SMS נכשלה, נסו שוב');
+  }
+  return { ok: true };
+}
+
+async function verifyOtp(ctx, b) {
+  const phone = normalizePhone(b.phone);
+  const code = String(b.code || '').replace(/\D/g, '');
+  if (!phone || code.length !== 4) throw new HttpError(400, 'קוד לא תקין');
+
+  const otp = await ctx.fsGet('contestOtps/' + phone);
+  if (!otp || !otp.codeHash || otp.expiresAt < Date.now() || (otp.attempts || 0) >= 5) {
+    throw new HttpError(400, 'הקוד פג תוקף — בקשו קוד חדש');
+  }
+  if (!safeEqual(otp.codeHash, await ctx.hmac('o:' + phone + ':' + code))) {
+    await ctx.fsSet('contestOtps/' + phone, { ...otp, attempts: (otp.attempts || 0) + 1 });
+    throw new HttpError(400, 'קוד שגוי');
+  }
+  await ctx.fsSet('contestOtps/' + phone, { ...otp, codeHash: '', attempts: 5 });   // one use only
+
+  const inst = await ctx.fsGet('contestInstructors/' + phone);
+  if (!inst) throw new HttpError(403, 'המספר הזה לא מופיע ברשימת המרקידים');
+  return { token: await ctx.makeToken(phone), name: inst.name || '' };
+}
+
+async function auth(ctx, req) {
+  const phone = await ctx.readToken(req);
+  const inst = phone && await ctx.fsGet('contestInstructors/' + phone);
+  if (!inst) throw new HttpError(401, 'יש להתחבר מחדש');
+  return { phone, inst };
+}
+
+async function getPicks(ctx, req) {
+  const { phone, inst } = await auth(ctx, req);
+  const doc = await ctx.fsGet('contestPicks/' + phone);
+  return { name: inst.name || '', picks: (doc && doc.picks) || [], open: await ctx.stage1Open(), updatedAt: (doc && doc.updatedAt) || null };
+}
+
+async function savePicks(ctx, req, b) {
+  const { phone, inst } = await auth(ctx, req);
+  if (!(await ctx.stage1Open())) throw new HttpError(403, 'הבחירה נסגרה — לא ניתן לשנות');
+  if (!Array.isArray(b.picks)) throw new HttpError(400, 'נתונים לא תקינים');
+  const picks = [...new Set(b.picks.map(String).filter(id => ID_RE.test(id)))].slice(0, MAX_PICKS);
+  const updatedAt = new Date().toISOString();
+  await ctx.fsSet('contestPicks/' + phone, { name: inst.name || '', picks, updatedAt });
+  return { ok: true, picks, updatedAt };
+}
+
+// ---------------- crypto + Firestore ----------------
+
+function b64url(bytes) {
+  let s = ''; for (const x of new Uint8Array(bytes)) s += String.fromCharCode(x);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlText(str) { return b64url(new TextEncoder().encode(str)); }
+function fromB64urlText(s) {
+  const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+  return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+}
+function safeEqual(a, b) {
+  a = String(a); b = String(b);
+  if (a.length !== b.length) return false;
+  let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return r === 0;
+}
+
+function toFs(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFs) } };
+  if (typeof v === 'object') return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k, x]) => [k, toFs(x)])) } };
+  return { stringValue: String(v) };
+}
+function fromFs(f) {
+  if (!f) return undefined;
+  if ('stringValue' in f) return f.stringValue;
+  if ('integerValue' in f) return Number(f.integerValue);
+  if ('doubleValue' in f) return f.doubleValue;
+  if ('booleanValue' in f) return f.booleanValue;
+  if ('nullValue' in f) return null;
+  if ('timestampValue' in f) return f.timestampValue;
+  if ('arrayValue' in f) return (f.arrayValue.values || []).map(fromFs);
+  if ('mapValue' in f) return docData(f.mapValue);
+  return undefined;
+}
+function docData(doc) { return Object.fromEntries(Object.entries(doc.fields || {}).map(([k, v]) => [k, fromFs(v)])); }
+
+// Bot ID token is cached per isolate (valid ~1h).
+let _bot = { token: '', exp: 0 };
+
+class Ctx {
+  constructor(env) {
+    this.env = env;
+    if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) throw new Error('SESSION_SECRET missing');
+  }
+  async key() {
+    if (!this._key) this._key = await crypto.subtle.importKey('raw', new TextEncoder().encode(this.env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return this._key;
+  }
+  async hmac(data) { return b64url(await crypto.subtle.sign('HMAC', await this.key(), new TextEncoder().encode(data))); }
+
+  // Session token: base64url(JSON{p,e}).sig
+  async makeToken(phone) {
+    const b = b64urlText(JSON.stringify({ p: phone, e: Date.now() + SESSION_DAYS * 864e5 }));
+    return b + '.' + await this.hmac('s:' + b);
+  }
+  async readToken(req) {
+    const m = /^Bearer\s+(.+)$/.exec(req.headers.get('Authorization') || '');
+    if (!m) return '';
+    const [b, sig] = m[1].split('.');
+    if (!b || !sig || !safeEqual(sig, await this.hmac('s:' + b))) return '';
+    try { const { p, e } = JSON.parse(fromB64urlText(b)); return e > Date.now() ? normalizePhone(p) : ''; }
+    catch (e) { return ''; }
+  }
+
+  async botToken() {
+    if (_bot.token && _bot.exp > Date.now() + 60e3) return _bot.token;
+    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FB_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Referer: SITE_ORIGIN + '/' },
+      body: JSON.stringify({ email: CONTEST_BOT_EMAIL, password: this.env.CONTEST_BOT_PASSWORD, returnSecureToken: true })
+    });
+    const j = await r.json();
+    if (!j.idToken) throw new Error('bot sign-in failed: ' + JSON.stringify(j.error || j));
+    _bot = { token: j.idToken, exp: Date.now() + Number(j.expiresIn || 3600) * 1000 };
+    return _bot.token;
+  }
+  async fsGet(path, { asBot = true } = {}) {
+    const headers = asBot ? { Authorization: 'Bearer ' + await this.botToken() } : {};
+    const r = await fetch(`${FS_BASE}/${path}`, { headers });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`fsGet ${path}: ${r.status} ${await r.text()}`);
+    return docData(await r.json());
+  }
+  async fsSet(path, data) {
+    const r = await fetch(`${FS_BASE}/${path}`, {
+      method: 'PATCH',
+      headers: { Authorization: 'Bearer ' + await this.botToken(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields: Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFs(v)])) })
+    });
+    if (!r.ok) throw new Error(`fsSet ${path}: ${r.status} ${await r.text()}`);
+  }
+  // Stage 1 is open unless the admin closed it in contest-admin.html (contestConfig/main.stage1Open).
+  async stage1Open() {
+    const cfg = await this.fsGet('contestConfig/main', { asBot: false });
+    return !cfg || cfg.stage1Open !== false;
+  }
+}

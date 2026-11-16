@@ -341,7 +341,7 @@ service cloud.firestore {
 
     // ---------------- annual dance contest (מצעד הריקודים) ----------------
     // Stage 1: instructors log in with SMS (Micropay) on contest.html. SMS + code checking
-    // run on a small Vercel API (contest-api/), which reads/writes these collections signed
+    // run on a small Cloudflare Worker (contest-api/), which reads/writes these collections signed
     // in as ONE dedicated bot user. Instructors themselves never touch Firestore directly.
     function contestBot() {
       return request.auth != null
