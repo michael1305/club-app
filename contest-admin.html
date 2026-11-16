@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light">
+<title>מצעד הריקודים | ניהול</title>
+<link rel="icon" href="LOGO.jpg">
+<style>
+  :root { --p: #2d1b4e; --gold: #e2a53c; --line: #e4e0d8; --soft: #6b6f73; --bg: #f5f3ef; --ok: #1fa855; --bad: #d63031; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #222; }
+  header { position: sticky; top: 0; z-index: 10; background: var(--p); color: #fff; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  header h1 { font-size: 17px; margin: 0; flex: 1 1 auto; }
+  header button { font: inherit; font-size: 14px; border: 0; border-radius: 8px; padding: 8px 12px; cursor: pointer; background: rgba(255,255,255,.15); color: #fff; }
+  header #save { background: var(--gold); color: var(--p); font-weight: bold; }
+  header #save:disabled { opacity: .5; cursor: default; }
+  #status { flex: 1 1 100%; font-size: 13px; min-height: 16px; color: #ffe8b8; }
+  main { max-width: 820px; margin: 0 auto; padding: 14px 16px 60px; }
+  .sec { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.05); }
+  .sec h2 { margin: 0 0 10px; font-size: 16px; color: var(--p); }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; margin: 3px; background: #eee; }
+  .pill.done { background: #e3f6ea; color: #126b35; }
+  .pill.none { background: #fdecec; color: #9b1c1c; }
+  .switch { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; background: #fff; }
+  .switch.on { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .switch.off { background: var(--bad); border-color: var(--bad); color: #fff; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; }
+  th { color: var(--soft); font-weight: normal; font-size: 13px; position: sticky; top: 0; background: #fff; }
+  td.n { font-weight: bold; color: var(--p); text-align: center; width: 44px; }
+  td.who { color: var(--soft); font-size: 12px; }
+  tr.fin { background: #fffaf0; }
+  .muted { color: var(--soft); font-size: 13px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tools button, .tools select { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; background: #fff; cursor: pointer; }
+  input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); }
+  @media (max-width: 560px) { td.who { display: none; } th.who { display: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏆 מצעד הריקודים 2026 — ניהול</h1>
+  <button id="save" disabled>💾 שמור רשימה לתחרות</button>
+  <button id="csv">⬇ ייצוא לאקסל</button>
+  <button onclick="adminSignOut()">יציאה</button>
+  <div id="status"></div>
+</header>
+
+<main>
+  <div class="sec">
+    <h2>שלב א׳ — בחירת המרקידים</h2>
+    <div class="row">
+      <span>מצב:</span>
+      <button id="open-btn" class="switch">…</button>
+      <span class="muted">קישור למרקידים: <a href="contest.html" target="_blank">club.gadibitton.co.il/contest.html</a></span>
+    </div>
+    <p class="muted" style="margin:10px 0 4px">מרקידים שבחרו (<span id="voted-n">0</span> מתוך <span id="inst-n">0</span>):</p>
+    <div id="voters"></div>
+  </div>
+
+  <div class="sec">
+    <h2>תוצאות — סמנו אילו ריקודים עולים לתחרות (<span id="fin-n">0</span> מסומנים)</h2>
+    <div class="tools">
+      <select id="sort"><option value="votes">מיון: הכי נבחרים</option><option value="name">מיון: שם הריקוד</option></select>
+      <button id="mark-voted">סמן את כל מה שנבחר</button>
+      <button id="mark-none">נקה סימון</button>
+    </div>
+    <table>
+      <thead><tr><th></th><th>בחירות</th><th>ריקוד</th><th>יוצר</th><th class="who">מי בחר</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
+<script src="admin-auth.js"></script>
+<script src="contest-dances.js?v=1"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let db, instructors = [], picksBy = {}, finalists = new Set(), stage1Open = true, dirty = false;
+const status = t => $('status').textContent = t;
+
+requireAdmin(async d => {
+  db = d;
+  status('טוען…');
+  try {
+    const [inst, picks, cfg] = await Promise.all([
+      db.collection('contestInstructors').get(),
+      db.collection('contestPicks').get(),
+      db.collection('contestConfig').doc('main').get()
+    ]);
+    instructors = inst.docs.map(x => ({ phone: x.id, ...x.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    picks.docs.forEach(x => picksBy[x.id] = x.data());
+    const c = cfg.exists ? cfg.data() : {};
+    stage1Open = c.stage1Open !== false;
+    finalists = new Set(c.finalists || []);
+    status('');
+    render();
+  } catch (e) { status('שגיאה בטעינה: ' + e.message); }
+});
+
+function votesFor(id) {
+  return instructors.filter(i => (picksBy[i.phone]?.picks || []).includes(id)).map(i => i.name);
+}
+
+function render() {
+  const ob = $('open-btn');
+  ob.textContent = stage1Open ? '🟢 פתוח לבחירה (לחצו לסגירה)' : '🔴 סגור (לחצו לפתיחה)';
+  ob.className = 'switch ' + (stage1Open ? 'on' : 'off');
+
+  const voted = instructors.filter(i => (picksBy[i.phone]?.picks || []).length);
+  $('voted-n').textContent = voted.length;
+  $('inst-n').textContent = instructors.length;
+  $('voters').innerHTML = instructors.map(i => {
+    const n = (picksBy[i.phone]?.picks || []).length;
+    return `<span class="pill ${n ? 'done' : 'none'}">${esc(i.name)}${n ? ' · ' + n : ''}</span>`;
+  }).join('');
+
+  const rows = CONTEST_DANCES.map(d => ({ d, who: votesFor(d.id) }));
+  if ($('sort').value === 'votes') rows.sort((a, b) => b.who.length - a.who.length || a.d.name.localeCompare(b.d.name, 'he'));
+  else rows.sort((a, b) => a.d.name.localeCompare(b.d.name, 'he'));
+  $('rows').innerHTML = rows.map(({ d, who }) => `
+    <tr class="${finalists.has(d.id) ? 'fin' : ''}">
+      <td><input type="checkbox" data-id="${d.id}" ${finalists.has(d.id) ? 'checked' : ''} aria-label="עולה לתחרות"></td>
+      <td class="n">${who.length || ''}</td>
+      <td><b>${esc(d.name)}</b><div class="muted">${esc(d.singer)} · ${esc(d.style)}</div></td>
+      <td>${esc(d.by)}</td>
+      <td class="who">${esc(who.join(', '))}</td>
+    </tr>`).join('');
+  $('fin-n').textContent = finalists.size;
+  $('save').disabled = !dirty;
+}
+
+$('rows').addEventListener('change', e => {
+  const id = e.target.dataset.id; if (!id) return;
+  e.target.checked ? finalists.add(id) : finalists.delete(id);
+  dirty = true; render();
+});
+$('sort').onchange = render;
+$('mark-voted').onclick = () => { CONTEST_DANCES.forEach(d => votesFor(d.id).length && finalists.add(d.id)); dirty = true; render(); };
+$('mark-none').onclick = () => { finalists.clear(); dirty = true; render(); };
+
+async function saveCfg(extra) {
+  await db.collection('contestConfig').doc('main').set({
+    stage1Open, finalists: CONTEST_DANCES.map(d => d.id).filter(id => finalists.has(id)),
+    updatedAt: new Date().toISOString(), ...extra
+  });
+}
+$('save').onclick = async () => {
+  $('save').disabled = true; status('שומר…');
+  try { await saveCfg(); dirty = false; status('✓ הרשימה לתחרות נשמרה (' + finalists.size + ' ריקודים)'); }
+  catch (e) { status('שגיאה בשמירה: ' + e.message); }
+  render();
+};
+$('open-btn').onclick = async () => {
+  const next = !stage1Open;
+  if (!confirm(next ? 'לפתוח מחדש את הבחירה למרקידים?' : 'לסגור את הבחירה? מרקידים לא יוכלו יותר לשנות.')) return;
+  status('שומר…');
+  try { stage1Open = next; await saveCfg(); dirty = false; status(next ? 'הבחירה פתוחה' : 'הבחירה נסגרה'); }
+  catch (e) { stage1Open = !next; status('שגיאה: ' + e.message); }
+  render();
+};
+
+$('csv').onclick = () => {
+  const lines = [['עולה לתחרות', 'בחירות', 'ריקוד', 'יוצר', 'מבצע', 'צורה', 'מי בחר']];
+  CONTEST_DANCES.map(d => ({ d, who: votesFor(d.id) }))
+    .sort((a, b) => b.who.length - a.who.length)
+    .forEach(({ d, who }) => lines.push([finalists.has(d.id) ? 'כן' : '', who.length, d.name, d.by, d.singer, d.style, who.join(', ')]));
+  const csv = '﻿' + lines.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'מצעד-הריקודים-2026-תוצאות.csv';
+  a.click();
+};
+addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+</script>
+</body>
+</html>

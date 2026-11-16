@@ -1,0 +1,6 @@
+{
+  "name": "club-contest-api",
+  "private": true,
+  "description": "SMS login + picks API for the annual dance contest (club.gadibitton.co.il/contest.html)",
+  "engines": { "node": ">=20" }
+}

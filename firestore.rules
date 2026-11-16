@@ -339,6 +339,54 @@ service cloud.firestore {
       allow delete: if siteEditor();
     }
 
+    // ---------------- annual dance contest (מצעד הריקודים) ----------------
+    // Stage 1: instructors log in with SMS (Micropay) on contest.html. SMS + code checking
+    // run on a small Vercel API (contest-api/), which reads/writes these collections signed
+    // in as ONE dedicated bot user. Instructors themselves never touch Firestore directly.
+    function contestBot() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email == 'contest-bot@club-contest.local';
+    }
+
+    // Allowlist of instructors who may log in. Doc id = phone (05XXXXXXXX). Holds names + phones,
+    // so never public.
+    match /contestInstructors/{phone} {
+      allow read: if contestBot() || isAdmin();
+      allow write: if (contestBot() || isAdmin())
+        && phone.matches('^05[0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['name', 'type'])
+        && request.resource.data.name is string && request.resource.data.name.size() < 120;
+      allow delete: if isAdmin();
+    }
+
+    // One-time SMS codes (hashed). Bot only.
+    match /contestOtps/{phone} {
+      allow read, write: if contestBot() && phone.matches('^05[0-9]{8}$');
+    }
+
+    // An instructor's picks. Doc id = phone. Written by the bot; the admin reads them.
+    match /contestPicks/{phone} {
+      allow read: if contestBot() || isAdmin();
+      allow write: if contestBot()
+        && phone.matches('^05[0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['name', 'picks', 'updatedAt'])
+        && request.resource.data.picks is list && request.resource.data.picks.size() <= 200
+        && isDateishBounded(request.resource.data.updatedAt, 40);
+      allow delete: if isAdmin();
+    }
+
+    // Contest settings, public so contest.html / the stage-2 voting page can read them:
+    // stage1Open (bool), finalists (dance ids chosen by the admin for stage 2).
+    match /contestConfig/{docId} {
+      allow read: if true;
+      allow write: if isAdmin() && docId == 'main'
+        && request.resource.data.keys().hasOnly(['stage1Open', 'finalists', 'updatedAt'])
+        && (!('stage1Open' in request.resource.data) || request.resource.data.stage1Open is bool)
+        && (!('finalists' in request.resource.data) || (request.resource.data.finalists is list && request.resource.data.finalists.size() <= 200))
+        && (!('updatedAt' in request.resource.data) || isDateishBounded(request.resource.data.updatedAt, 40));
+    }
+
     // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------
     function settingsWriteOk(d) {
       return d.keys().hasOnly(['eventName','singlePrice','couplePrice','activeDays','knownTerminals'])
