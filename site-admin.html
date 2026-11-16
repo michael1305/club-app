@@ -143,7 +143,7 @@ function requireEditor(onReady) {
   });
 }
 </script>
-<script src="https://dance.gadibitton.co.il/js/landing-defaults.js"></script>
+<script src="https://dance.gadibitton.co.il/js/landing-defaults.js?v=3"></script>
 <script>
 // Back office for the dance-site landing pages (dance.gadibitton.co.il/beginners.html, harkadot.html).
 // Content is saved as one JSON string in sitePages/<page>; uploaded pictures go to siteImages/<id>
@@ -290,7 +290,7 @@ function render() {
   ed.append(
     sec('🗓️ ימים, מקומות ולוח זמנים', true,
       list(d.groups, 'יום / קבוצה חדשה',
-        () => ({ day: 'ראשון', color: '', place: '', start: '', time: '20:00', durationMin: 120, where: '', parking: '', price: '40 ₪', waze: '', whatsapp: '', image: '', team: '', halls: [] }),
+        () => ({ day: 'ראשון', color: '', place: '', start: '', time: '20:00', durationMin: 120, where: '', parking: '', price: '40 ₪', waze: '', whatsapp: '', ytCircles: '', ytCouples: '', image: '', team: '', halls: [] }),
         g => {
           g.halls = g.halls || [];
           return h('div', {},
@@ -304,6 +304,8 @@ function render() {
             field(g, 'price', 'מחיר', { ph: '40 ₪ למפגש' }),
             field(g, 'waze', 'קישור ניווט בוויז', { ltr: true, ph: 'https://waze.com/ul?...' }),
             field(g, 'whatsapp', 'קישור לקבוצת הווטסאפ', { ltr: true, ph: 'https://chat.whatsapp.com/...', hint: 'ריק = הכפתור לא יופיע' }),
+            field(g, 'ytCircles', 'סרטוני ריקודים שנלמדו — מעגלים (יוטיוב)', { ltr: true, ph: 'https://youtube.com/playlist?list=...', hint: 'ריק = הכפתור לא יופיע' }),
+            field(g, 'ytCouples', 'סרטוני ריקודים שנלמדו — זוגות (יוטיוב)', { ltr: true, ph: 'https://youtube.com/playlist?list=...', hint: 'ריק = הכפתור לא יופיע' }),
             colorField(g, 'color', 'צבע היום'),
             imageField(g, 'image', 'תמונת רקע'),
             field(g, 'team', 'מרקידים (לא חובה)', { ph: 'גדי ביטון · ...' }),
@@ -333,6 +335,7 @@ function render() {
       field(d.texts, 'priceNote', 'הערה מתחת למחיר'),
       field(d.texts, 'joinText', 'טקסט כפתור הווטסאפ'),
       field(d.texts, 'scheduleTitle', 'כותרת לוח הזמנים'),
+      field(d.texts, 'videosTitle', 'כותרת הסרטונים', { ph: 'צפייה בריקודים שנלמדו' }),
       field(d.texts, 'calendarTitle', 'שם האירוע ביומן', { hint: '{day} = היום' })),
 
     sec('📖 קצת על החוג', false,
@@ -373,6 +376,11 @@ async function load(id) {
   let saved = null;
   if (snap.exists) { try { saved = JSON.parse(snap.data().data); } catch (e) { saved = null; } }
   data = saved || clone(window.LANDING_DEFAULTS[id]);
+  if (saved) { // fields added after this page was saved come from the site defaults (same day)
+    const def = window.LANDING_DEFAULTS[id] || {};
+    saved.texts = Object.assign({}, clone(def.texts || {}), saved.texts);
+    (saved.groups || []).forEach(g => { const d = (def.groups || []).find(x => x.day === g.day) || {}; Object.keys(d).forEach(k => { if (g[k] === undefined) g[k] = clone(d[k]); }); });
+  }
   dirty = false; $('save').disabled = true;
   $('editor').innerHTML = '';
   render();
