@@ -60,7 +60,7 @@
         { target: null, ico: '💃', title: 'ברוכים הבאים!', text: 'סיור קצר של חצי דקה באפליקציה של מועדון מחול ישראלי.' },
         { target: '#btn-card', ico: '🎫', title: 'הכרטיסיה שלי', text: 'כמה כניסות נשארו והיסטוריית ההגעה. מזדהים פעם אחת עם כרטיס ה-NFC או ה-QR האישי, והטלפון זוכר אתכם.' },
         { target: '#screen-menu .hint', ico: '📱', title: 'כניסה מהירה עם כרטיס', text: 'מצמידים את כרטיס המועדון לגב הטלפון והכרטיסיה נפתחת מיד. בכניסה להרקדה הצוות סורק את אותו כרטיס.' },
-        { target: '#btn-dances', ico: '🗓️', title: 'הרקדות', text: 'ימים, שעות ומקומות של כל ההרקדות, עם ניווט בלחיצה ב-Waze.' },
+        { target: '#btn-dances', ico: '🗓️', title: 'הרקדות', text: 'ימים, שעות ומקומות של כל ההרקדות, בעמוד ההרקדות של גדי ביטון.' },
         { target: '#btn-promos', ico: '🎁', title: 'מבצעים', text: 'ההטבות העדכניות לחברי המועדון.' },
         { target: '#btn-contact', ico: '💬', title: 'צור קשר', text: 'שאלה? כתבו לנו בוואטסאפ או במייל, ישר מכאן.' }
     ];
@@ -115,7 +115,7 @@
         show('menu');
         if (!onbSeen()) openOnb();
     });
-    $('btn-dances').addEventListener('click', () => show('dances'));
+    // "הרקדות" opens the landing page (dance.gadibitton.co.il/harkadot.html, kept up to date from site-admin)
     $('btn-contact').addEventListener('click', () => $('contact').classList.add('open'));
     $('btn-close-contact').addEventListener('click', () => $('contact').classList.remove('open'));
     $('contact').addEventListener('click', e => { if (e.target === $('contact')) $('contact').classList.remove('open'); });
