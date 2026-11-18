@@ -88,17 +88,30 @@
         .t-group { background: linear-gradient(135deg, #25d366, #0e7c6b); text-decoration: none; }
         .menu-screen .hint { animation: popIn .6s ease both; animation-delay: .7s; }
         @media (prefers-reduced-motion: reduce) { .floaters, .wiggle, .t-ico { animation: none !important; } .tile, .menu-head, .menu-screen .hint { animation: none !important; } }
-        /* First-run walkthrough */
-        .onb-bg { position: fixed; inset: 0; background: rgba(20,16,50,.55); display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; }
-        .onb-bg.open { display: flex; }
-        .onb { background: #fff; width: 100%; max-width: 400px; border-radius: 22px; padding: 26px 22px 18px; text-align: center; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
-        .onb-ico { font-size: 3.4rem; line-height: 1; margin-bottom: 12px; }
-        .onb h3 { margin: 0 0 10px; font-size: 1.35rem; color: var(--primary); }
-        .onb p { margin: 0; color: var(--text); line-height: 1.55; font-size: 1.02rem; min-height: 4.7em; }
-        .onb-dots { display: flex; gap: 7px; justify-content: center; margin: 18px 0 14px; }
-        .onb-dots span { width: 8px; height: 8px; border-radius: 50%; background: #dcd8f7; transition: all .2s; }
-        .onb-dots span.on { background: var(--primary); width: 22px; border-radius: 4px; }
-        .onb .btn-link { margin-top: 4px; }
+        /* First-run walkthrough: a spotlight on one button + a speech bubble pointing at it */
+        .coach { position: fixed; inset: 0; z-index: 20; display: none; }
+        .coach.open { display: block; }
+        .coach.no-target { background: rgba(20,16,50,.6); }
+        .coach-hole { position: fixed; border-radius: 22px; box-shadow: 0 0 0 4px rgba(255,255,255,.9), 0 0 0 9999px rgba(20,16,50,.6); transition: all .3s ease; pointer-events: none; }
+        .coach.no-target .coach-hole { display: none; }
+        .coach-bubble { position: fixed; left: 16px; right: 16px; max-width: 420px; margin: 0 auto; background: #fff; border-radius: 20px; padding: 18px 18px 12px; box-shadow: 0 12px 36px rgba(0,0,0,.3); transition: top .3s ease; animation: coach-pop .25s ease; }
+        .coach-bubble::after { content: ''; position: absolute; left: var(--ax, 50%); width: 22px; height: 22px; background: #fff; transform: translateX(-50%) rotate(45deg); border-radius: 4px; }
+        .coach-bubble.below::after { top: -9px; }
+        .coach-bubble.above::after { bottom: -9px; }
+        .coach.no-target .coach-bubble::after { display: none; }
+        @keyframes coach-pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+        .coach-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .coach-ico { font-size: 1.9rem; line-height: 1; }
+        .coach h3 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+        .coach p { margin: 0; color: var(--text); line-height: 1.5; font-size: 1rem; }
+        .coach-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+        .coach-dots { display: flex; gap: 6px; }
+        .coach-dots span { width: 7px; height: 7px; border-radius: 50%; background: #dcd8f7; transition: all .2s; }
+        .coach-dots span.on { background: var(--primary); width: 18px; border-radius: 4px; }
+        .coach-btns { display: flex; align-items: center; gap: 4px; }
+        .coach-btns .btn { width: auto; padding: 10px 20px; font-size: 1rem; border-radius: 12px; }
+        .coach-btns .btn-link { padding: 10px 8px; color: var(--muted); font-weight: 600; }
+        @media (prefers-reduced-motion: reduce) { .coach-hole, .coach-bubble { transition: none; animation: none; } }
         .hint .help-link { background: none; border: none; color: var(--primary); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
         #qr-wrap { display: none; margin-top: 12px; }
         #qr-video { width: 100%; border-radius: 12px; background: #000; }
@@ -193,14 +206,18 @@
 
     <!-- Contact sheet -->
     <!-- First-run walkthrough (shown once, reopened from "איך משתמשים באפליקציה?") -->
-    <div class="onb-bg" id="onboarding" role="dialog" aria-modal="true" aria-labelledby="onb-title">
-        <div class="onb">
-            <div class="onb-ico" id="onb-ico"></div>
-            <h3 id="onb-title"></h3>
+    <div class="coach" id="onboarding" role="dialog" aria-modal="true" aria-labelledby="onb-title">
+        <div class="coach-hole" id="coach-hole"></div>
+        <div class="coach-bubble" id="coach-bubble">
+            <div class="coach-head"><span class="coach-ico" id="onb-ico"></span><h3 id="onb-title"></h3></div>
             <p id="onb-text"></p>
-            <div class="onb-dots" id="onb-dots"></div>
-            <button class="btn" id="onb-next">הבא</button>
-            <button class="btn btn-link" id="onb-skip">דילוג</button>
+            <div class="coach-foot">
+                <div class="coach-dots" id="onb-dots"></div>
+                <div class="coach-btns">
+                    <button class="btn btn-link" id="onb-skip">דילוג</button>
+                    <button class="btn" id="onb-next">הבא</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -232,6 +249,6 @@
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
     <script src="jsQR.js"></script>
-    <script src="home.js?v=21"></script>
+    <script src="home.js?v=22"></script>
 </body>
 </html>

@@ -55,13 +55,33 @@
     }
     // ---------- first-run walkthrough ----------
     const ONB_KEY = 'club_onboarded_v1';
+    // Each step points a bubble at one menu button (target: null = centered welcome card)
     const ONB = [
-        { ico: '💃', title: 'ברוכים הבאים!', text: 'כאן תמצאו את כל מה שצריך למועדון: הכרטיסיה שלכם, הרקדות, מבצעים ודרך ליצור איתנו קשר.' },
-        { ico: '🎫', title: 'הכרטיסיה שלי', text: 'רואים כמה כניסות נשארו ואת היסטוריית ההגעה. מזדהים פעם אחת עם כרטיס ה-NFC או ה-QR האישי, והטלפון זוכר אתכם.' },
-        { ico: '📱', title: 'כניסה מהירה עם כרטיס', text: 'מצמידים את כרטיס המועדון לגב הטלפון, והכרטיסיה נפתחת מיד. בכניסה להרקדה הצוות סורק את אותו כרטיס.' },
-        { ico: '🗓️', title: 'הרקדות ומבצעים', text: 'ימים, שעות ומקומות של כל ההרקדות, וההטבות העדכניות של המועדון. לשאלות: "צור קשר" בוואטסאפ או במייל.' }
+        { target: null, ico: '💃', title: 'ברוכים הבאים!', text: 'סיור קצר של חצי דקה באפליקציה של מועדון מחול ישראלי.' },
+        { target: '#btn-card', ico: '🎫', title: 'הכרטיסיה שלי', text: 'כמה כניסות נשארו והיסטוריית ההגעה. מזדהים פעם אחת עם כרטיס ה-NFC או ה-QR האישי, והטלפון זוכר אתכם.' },
+        { target: '#screen-menu .hint', ico: '📱', title: 'כניסה מהירה עם כרטיס', text: 'מצמידים את כרטיס המועדון לגב הטלפון והכרטיסיה נפתחת מיד. בכניסה להרקדה הצוות סורק את אותו כרטיס.' },
+        { target: '#btn-dances', ico: '🗓️', title: 'הרקדות', text: 'ימים, שעות ומקומות של כל ההרקדות, עם ניווט בלחיצה ב-Waze.' },
+        { target: '#btn-promos', ico: '🎁', title: 'מבצעים', text: 'ההטבות העדכניות לחברי המועדון.' },
+        { target: '#btn-contact', ico: '💬', title: 'צור קשר', text: 'שאלה? כתבו לנו בוואטסאפ או במייל, ישר מכאן.' }
     ];
     let onbStep = 0;
+    function placeOnb() {
+        const s = ONB[onbStep];
+        const box = $('onboarding'), hole = $('coach-hole'), bub = $('coach-bubble');
+        const el = s.target && document.querySelector(s.target);
+        box.classList.toggle('no-target', !el);
+        bub.classList.remove('above', 'below');
+        if (!el) { bub.style.top = Math.max(16, (innerHeight - bub.offsetHeight) / 2) + 'px'; return; }
+        const r = el.getBoundingClientRect(), pad = 6;
+        Object.assign(hole.style, { top: (r.top - pad) + 'px', left: (r.left - pad) + 'px', width: (r.width + pad * 2) + 'px', height: (r.height + pad * 2) + 'px' });
+        const gap = 16, h = bub.offsetHeight;
+        const below = r.bottom + pad + gap + h <= innerHeight - 8 || r.top < innerHeight / 2;
+        bub.classList.add(below ? 'below' : 'above');
+        bub.style.top = Math.max(8, below ? r.bottom + pad + gap : r.top - pad - gap - h) + 'px';
+        const br = bub.getBoundingClientRect();
+        const ax = Math.min(Math.max(r.left + r.width / 2 - br.left, 28), br.width - 28);
+        bub.style.setProperty('--ax', ax + 'px');
+    }
     function renderOnb() {
         const s = ONB[onbStep];
         $('onb-ico').textContent = s.ico;
@@ -69,12 +89,20 @@
         $('onb-text').textContent = s.text;
         $('onb-dots').innerHTML = ONB.map((_, i) => '<span class="' + (i === onbStep ? 'on' : '') + '"></span>').join('');
         const last = onbStep === ONB.length - 1;
-        $('onb-next').textContent = last ? 'יאללה לרקוד! 💃' : 'הבא';
+        $('onb-next').textContent = last ? 'סיימנו! 💃' : (onbStep === 0 ? 'יאללה' : 'הבא');
         $('onb-skip').style.visibility = last ? 'hidden' : 'visible';
+        const el = s.target && document.querySelector(s.target);
+        if (el) {
+            const r = el.getBoundingClientRect();
+            if (r.top < 70 || r.bottom > innerHeight - 220) window.scrollBy(0, r.top - innerHeight / 2 + r.height / 2);
+        }
+        requestAnimationFrame(placeOnb);
     }
-    function openOnb() { onbStep = 0; renderOnb(); $('onboarding').classList.add('open'); }
+    window.addEventListener('resize', () => { if ($('onboarding').classList.contains('open')) placeOnb(); });
+    function openOnb() { onbStep = 0; $('onboarding').classList.add('open'); renderOnb(); }
     function closeOnb() {
         $('onboarding').classList.remove('open');
+        window.scrollTo(0, 0);
         try { localStorage.setItem(ONB_KEY, '1'); } catch (e) { /* private mode */ }
     }
     function onbSeen() { try { return localStorage.getItem(ONB_KEY) === '1'; } catch (e) { return true; } }
