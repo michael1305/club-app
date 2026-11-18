@@ -1427,11 +1427,14 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
     const isAndroid = !!(window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'android');
     const wasScanning = !!nfcAbortController;
     if (wasScanning) stopNfc();
-    const end = async () => {
+    // holdMs: keep the reader on a moment after a successful write on Android, so the card still
+    // held to the phone is not re-read by the system and opened in Chrome
+    const end = async (holdMs) => {
         if (ended) return;
         ended = true;
         clearTimeout(timer);
         _assignNfcAbort = null;
+        if (holdMs) await new Promise(r => setTimeout(r, holdMs));
         await _nfcQueue(async () => {
             try { if (listener) await listener.remove(); } catch (e) { /* ignore */ }
             try { await nfc.stopScanning(); } catch (e) { /* ignore */ }
@@ -1468,7 +1471,7 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
                 writing = true;
                 try {
                     await nfc.write({ allowFormat: true, records: [_uriRecord(url)] });
-                    await end();
+                    end(isAndroid ? 3000 : 0);
                     closeModal();
                     _updateMember(memberId, { nfcTag: url });
                     _logMemberAction(memberId, '📱 שיוך כרטיס NFC');

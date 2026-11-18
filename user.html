@@ -229,6 +229,14 @@
 </div>
 
     <script>
+        // Android app: the home page leaves the NFC reader on after reading this card (so the card still
+        // held to the phone isn't opened in Chrome). Turn it off once the card has been moved away.
+        setTimeout(function () {
+            try {
+                var c = window.Capacitor, n = c && c.Plugins && c.Plugins.CapacitorNfc;
+                if (n && c.isNativePlatform && c.isNativePlatform()) n.stopScanning().catch(function () {});
+            } catch (e) { /* ignore */ }
+        }, 4000);
         (function() {
             const _cfg = {
                 apiKey: "AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo",

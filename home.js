@@ -245,6 +245,7 @@
         return dec(bytes);
     }
     let nativeNfcOn = false, nativeNfcListener = null;
+    setTimeout(() => { const n = nativeNfcPlugin(); if (n && !nativeNfcOn) n.stopScanning().catch(() => {}); }, 2500);
     async function stopNativeNfc() {
         const n = nativeNfcPlugin();
         if (!nativeNfcOn || !n) return;
@@ -266,7 +267,16 @@
                 const recs = (ev && ev.tag && ev.tag.ndefMessage) || [];
                 let id = null;
                 for (const r of recs) { id = idFromText(recordText(r)); if (id) break; }
-                await stopNativeNfc();
+                // Android: stopping now would hand the card (still on the phone) to the system, which
+                // opens its link in Chrome. Keep the reader on; the card page turns it off a moment later.
+                const android = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'android';
+                if (id && android) {
+                    nativeNfcOn = false;
+                    try { if (nativeNfcListener) await nativeNfcListener.remove(); } catch (e) { /* ignore */ }
+                    nativeNfcListener = null;
+                } else {
+                    await stopNativeNfc();
+                }
                 if (id) acceptId(id);
                 else status('הכרטיס לא משויך לכרטיסיה. פנו אלינו לשיוך.', true);
             });
