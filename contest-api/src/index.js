@@ -81,11 +81,14 @@ async function sendOtp(ctx, b) {
   if (sendCount >= 5) throw new HttpError(429, 'יותר מדי בקשות קוד — נסו שוב בעוד שעה');
 
   const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
-  await ctx.fsSet('contestOtps/' + phone, {
+  const rec = {
     codeHash: await ctx.hmac('o:' + phone + ':' + code),
     expiresAt: now + 10 * 60e3, attempts: 0, sentAt: now,
     sendCount: sendCount + 1, windowStart: inWindow ? prev.windowStart : now
-  });
+  };
+  await ctx.fsSet('contestOtps/' + phone, rec);
+  // If the SMS doesn't go out, don't make the person wait 60s before trying again.
+  const unblock = () => ctx.fsSet('contestOtps/' + phone, { ...rec, sentAt: 0 }).catch(() => {});
 
   // Last line is the WebOTP format, so Chrome on Android can fill the code automatically.
   const msg = `מצעד הריקודים\nקוד הכניסה שלך: ${code}\nתקף ל-10 דקות\n\n@club.gadibitton.co.il #${code}`;
@@ -94,9 +97,13 @@ async function sendOtp(ctx, b) {
     + '&msg=' + encodeURIComponent(msg)
     + '&list=' + phone
     + '&from=' + encodeURIComponent(ctx.env.MICROPAY_FROM || '');
-  const txt = await (await fetch(url)).text();
+  let txt;
+  try { txt = await (await fetch(url, { signal: AbortSignal.timeout(12000) })).text(); }
+  catch (e) { console.error("micropay fetch", phone, e && e.name, e && e.message); await unblock(); throw new HttpError(504, "שירות ה-SMS לא ענה, נסו שוב בעוד רגע"); }
+  console.log("sms", phone, txt.slice(0, 80));
   if (!txt.startsWith('OK')) {
     console.error('micropay', txt);
+    await unblock();
     throw new HttpError(502, 'שליחת ה-SMS נכשלה, נסו שוב');
   }
   return { ok: true };

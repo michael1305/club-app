@@ -4,3 +4,7 @@ name = "club-contest-api"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 workers_dev = true
+
+# Keep request logs (dashboard → Workers → club-contest-api → Logs)
+[observability]
+enabled = true

@@ -124,8 +124,8 @@ async function call(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
   let r;
-  try { r = await fetch(API + path, { ...opts, headers }); }
-  catch (e) { throw new Error('אין חיבור לאינטרנט, נסו שוב'); }
+  try { r = await fetch(API + path, { ...opts, headers, signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined }); }
+  catch (e) { throw new Error(e && e.name === "TimeoutError" ? "השרת לא ענה, נסו שוב בעוד רגע" : "אין חיבור לאינטרנט, נסו שוב"); }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) { logout(); throw new Error(j.error || 'יש להתחבר מחדש'); }
   if (!r.ok) throw new Error(j.error || 'שגיאה, נסו שוב');
@@ -137,7 +137,7 @@ $('step-phone').addEventListener('submit', async e => {
   e.preventDefault();
   $('phone-err').textContent = '';
   phone = $('phone').value;
-  $('phone-btn').disabled = true;
+  $('phone-btn').disabled = true; $('phone-btn').textContent = 'שולח קוד…';
   try {
     await call('/send-otp', { method: 'POST', body: JSON.stringify({ phone }) });
     show('step-code'); $('code').value = ''; $('code').focus();
@@ -148,19 +148,19 @@ $('step-phone').addEventListener('submit', async e => {
       }).catch(() => {});
     }
   } catch (err) { $('phone-err').textContent = err.message; }
-  finally { $('phone-btn').disabled = false; }
+  finally { $('phone-btn').disabled = false; $('phone-btn').textContent = 'שלחו לי קוד'; }
 });
 
 $('step-code').addEventListener('submit', async e => {
   e.preventDefault();
   $('code-err').textContent = '';
-  $('code-btn').disabled = true;
+  $('code-btn').disabled = true; $('code-btn').textContent = 'בודק…';
   try {
     const j = await call('/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code: $('code').value }) });
     token = j.token; lsSet(TOKEN_KEY, token);
     await loadPicks();
   } catch (err) { $('code-err').textContent = err.message; }
-  finally { $('code-btn').disabled = false; }
+  finally { $('code-btn').disabled = false; $('code-btn').textContent = 'כניסה'; }
 });
 $('code-back').onclick = () => show('step-phone');
 
