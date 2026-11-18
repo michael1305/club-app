@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8">
+<title>Play screenshot frame</title>
+<style>
+  html,body{margin:0;width:1080px;height:1920px;overflow:hidden;font-family:Arial,Helvetica,sans-serif}
+  body{background:linear-gradient(165deg,#6c5ce7 0%,#a24bb5 55%,#e0323f 100%);position:relative}
+  .blob{position:absolute;border-radius:50%;background:rgba(255,255,255,.10)}
+  h1{position:absolute;top:110px;left:0;right:0;margin:0;text-align:center;color:#fff;font-size:84px;font-weight:800;line-height:1.15;text-shadow:0 4px 18px rgba(0,0,0,.18)}
+  h2{position:absolute;top:220px;left:0;right:0;margin:0;text-align:center;color:rgba(255,255,255,.92);font-size:44px;font-weight:400}
+  .phone{position:absolute;top:330px;left:160px;width:760px;height:1520px;border-radius:64px;background:#fff;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.35);border:14px solid #1d1b2e}
+  iframe{border:0;width:380px;height:760px;transform:scale(2);transform-origin:top right;position:absolute;top:0;right:0}
+</style></head>
+<body>
+<div class="blob" style="width:520px;height:520px;top:-200px;left:-180px"></div>
+<div class="blob" style="width:420px;height:420px;bottom:-160px;right:-140px"></div>
+<h1 id="t"></h1><h2 id="s"></h2>
+<div class="phone"><iframe id="f" scrolling="no"></iframe></div>
+<script>
+  const q = new URLSearchParams(location.search);
+  document.getElementById('t').textContent = q.get('t') || '';
+  document.getElementById('s').textContent = q.get('s') || '';
+  const f = document.getElementById('f');
+  f.addEventListener('load', () => {
+    const act = q.get('act');
+    if (!act) return;
+    setTimeout(() => { try { const d = f.contentDocument; d.getElementById(act).click(); } catch (e) {} }, 800);
+  });
+  f.src = q.get('u');
+</script>
+</body></html>

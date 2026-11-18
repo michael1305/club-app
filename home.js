@@ -53,9 +53,39 @@
         mv.style.display = 'block';
         mv.addEventListener('click', () => show('menu'));
     }
+    // ---------- first-run walkthrough ----------
+    const ONB_KEY = 'club_onboarded_v1';
+    const ONB = [
+        { ico: '💃', title: 'ברוכים הבאים!', text: 'כאן תמצאו את כל מה שצריך למועדון: הכרטיסיה שלכם, הרקדות, מבצעים ודרך ליצור איתנו קשר.' },
+        { ico: '🎫', title: 'הכרטיסיה שלי', text: 'רואים כמה כניסות נשארו ואת היסטוריית ההגעה. מזדהים פעם אחת עם כרטיס ה-NFC או ה-QR האישי, והטלפון זוכר אתכם.' },
+        { ico: '📱', title: 'כניסה מהירה עם כרטיס', text: 'מצמידים את כרטיס המועדון לגב הטלפון, והכרטיסיה נפתחת מיד. בכניסה להרקדה הצוות סורק את אותו כרטיס.' },
+        { ico: '🗓️', title: 'הרקדות ומבצעים', text: 'ימים, שעות ומקומות של כל ההרקדות, וההטבות העדכניות של המועדון. לשאלות: "צור קשר" בוואטסאפ או במייל.' }
+    ];
+    let onbStep = 0;
+    function renderOnb() {
+        const s = ONB[onbStep];
+        $('onb-ico').textContent = s.ico;
+        $('onb-title').textContent = s.title;
+        $('onb-text').textContent = s.text;
+        $('onb-dots').innerHTML = ONB.map((_, i) => '<span class="' + (i === onbStep ? 'on' : '') + '"></span>').join('');
+        const last = onbStep === ONB.length - 1;
+        $('onb-next').textContent = last ? 'יאללה לרקוד! 💃' : 'הבא';
+        $('onb-skip').style.visibility = last ? 'hidden' : 'visible';
+    }
+    function openOnb() { onbStep = 0; renderOnb(); $('onboarding').classList.add('open'); }
+    function closeOnb() {
+        $('onboarding').classList.remove('open');
+        try { localStorage.setItem(ONB_KEY, '1'); } catch (e) { /* private mode */ }
+    }
+    function onbSeen() { try { return localStorage.getItem(ONB_KEY) === '1'; } catch (e) { return true; } }
+    $('onb-next').addEventListener('click', () => { if (onbStep < ONB.length - 1) { onbStep++; renderOnb(); } else closeOnb(); });
+    $('onb-skip').addEventListener('click', closeOnb);
+    $('btn-help').addEventListener('click', openOnb);
+
     $('btn-enter').addEventListener('click', () => {
         if (isAdminDevice()) { location.href = 'admin.html'; return; }
         show('menu');
+        if (!onbSeen()) openOnb();
     });
     $('btn-dances').addEventListener('click', () => show('dances'));
     $('btn-contact').addEventListener('click', () => $('contact').classList.add('open'));

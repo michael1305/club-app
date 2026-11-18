@@ -992,7 +992,7 @@ function performBirthdayCheckin(memberId) {
         renderCheckinMembers();
     }
 
-    if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    if (_nfcAvailable()) setTimeout(startNfc, 300);
     restartQrScannerIfActive();
 }
 
@@ -1117,7 +1117,7 @@ function performCheckin(memberId, entryType) {
     }
 
     // Restart NFC automatically for the next person
-    if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    if (_nfcAvailable()) setTimeout(startNfc, 300);
     restartQrScannerIfActive();
 }
 
@@ -1241,6 +1241,9 @@ function _setNfcUi(active) {
 function startNfc() {
     const statusEl = document.getElementById('nfc-status');
 
+    const nativeCheckin = _nativeNfcCheckin();
+    if (nativeCheckin) { _startNfcNative(nativeCheckin); return; }
+
     if (!('NDEFReader' in window)) {
         showToast('NFC לא נתמך — נדרש Chrome באנדרואיד');
         return;
@@ -1321,6 +1324,94 @@ function _nativeNfc() {
     return null;
 }
 
+// Continuous check-in scanning with the native plugin: Android app only (on iOS every scan
+// would pop the system NFC sheet, so the iPhone keeps relying on the card link).
+function _nativeNfcCheckin() {
+    const nfc = _nativeNfc();
+    const cap = window.Capacitor;
+    return nfc && cap && typeof cap.getPlatform === 'function' && cap.getPlatform() === 'android' ? nfc : null;
+}
+
+function _nfcAvailable() {
+    return ('NDEFReader' in window) || !!_nativeNfcCheckin();
+}
+
+// Native start/stop calls run one after another, so a late stop never cancels a newer start.
+let _nativeNfcQueue = Promise.resolve();
+function _nfcQueue(fn) {
+    const p = _nativeNfcQueue.then(fn, fn);
+    _nativeNfcQueue = p.catch(() => {});
+    return p;
+}
+
+// Same "04:a1:b2:..." format as Web NFC's serialNumber, so cards matched by serial keep working
+function _nfcSerial(idBytes) {
+    if (!Array.isArray(idBytes) || !idBytes.length) return null;
+    return idBytes.map(b => (b & 0xff).toString(16).padStart(2, '0')).join(':');
+}
+
+function _nfcRecordText(r) {
+    const bytes = Array.from((r && r.payload) || []).map(b => b & 0xff);
+    const dec = a => new TextDecoder('utf-8').decode(new Uint8Array(a));
+    const t = Array.isArray(r && r.type) ? (r.type[0] & 0xff) : null;
+    if (t === 0x55) {
+        const prefixes = ['', 'http://www.', 'https://www.', 'http://', 'https://'];
+        return (prefixes[bytes[0]] || '') + dec(bytes.slice(1));
+    }
+    if (t === 0x54) return dec(bytes.slice(1 + (bytes[0] & 0x3f)));
+    return dec(bytes);
+}
+
+function _startNfcNative(nfc) {
+    stopNfc();
+    const ac = new AbortController();
+    nfcAbortController = ac;
+    let listener = null;
+    const teardown = () => _nfcQueue(async () => {
+        try { if (listener) await listener.remove(); } catch (e) { /* ignore */ }
+        listener = null;
+        try { await nfc.stopScanning(); } catch (e) { /* ignore */ }
+    });
+    ac.signal.addEventListener('abort', teardown);
+
+    _nfcQueue(async () => {
+        if (ac.signal.aborted) return;
+        listener = await nfc.addListener('nfcEvent', ev => {
+            if (ac.signal.aborted) return;
+            const tag = (ev && ev.tag) || {};
+            const serial = _nfcSerial(tag.id);
+            const now = Date.now();
+            if (serial != null && serial === _lastNfcSerial && now - _lastNfcSerialTs < 8000) {
+                if (now - (_lastNfcDupToast || 0) > 2500) { _lastNfcDupToast = now; showToast('הכרטיס הזה נסרק לפני רגע - המתן כמה שניות לסריקה חוזרת'); }
+                return;
+            }
+            _lastNfcSerial = serial;
+            _lastNfcSerialTs = now;
+
+            let memberId = null;
+            for (const r of (tag.ndefMessage || [])) {
+                try { memberId = extractMemberIdFromText(_nfcRecordText(r)); } catch (e) { /* ignore */ }
+                if (memberId) break;
+            }
+            if (!memberId && serial) memberId = getMembers().find(m => m.nfcTag === serial)?.id;
+            if (memberId) {
+                doCheckin(memberId);
+            } else {
+                showCheckinResult('כרטיס NFC לא מזוהה. יש לשייך אותו למשתתף תחילה.', false);
+                setTimeout(startNfc, 300);
+            }
+        });
+        await nfc.startScanning({ invalidateAfterFirstRead: false });
+    }).then(() => {
+        if (!ac.signal.aborted) _setNfcUi(true);
+    }).catch(err => {
+        if (nfcAbortController === ac) nfcAbortController = null;
+        teardown();
+        _setNfcUi(false);
+        showToast('לא ניתן להפעיל NFC: ' + ((err && err.message) || 'ודא ש-NFC פעיל בהגדרות הטלפון'));
+    });
+}
+
 // NFC Forum URI record (well-known type 'U'); prefix byte 0x04 = "https://", 0x03 = "http://"
 function _uriRecord(url) {
     let code = 0x00, rest = url;
@@ -1333,13 +1424,19 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
     const ac = new AbortController();
     _assignNfcAbort = ac;
     let listener = null, writing = false, ended = false, timedOut = false, timer = null;
+    const isAndroid = !!(window.Capacitor && typeof window.Capacitor.getPlatform === 'function' && window.Capacitor.getPlatform() === 'android');
+    const wasScanning = !!nfcAbortController;
+    if (wasScanning) stopNfc();
     const end = async () => {
         if (ended) return;
         ended = true;
         clearTimeout(timer);
         _assignNfcAbort = null;
-        try { if (listener) await listener.remove(); } catch (e) { /* ignore */ }
-        try { await nfc.stopScanning(); } catch (e) { /* ignore */ }
+        await _nfcQueue(async () => {
+            try { if (listener) await listener.remove(); } catch (e) { /* ignore */ }
+            try { await nfc.stopScanning(); } catch (e) { /* ignore */ }
+        });
+        if (wasScanning) setTimeout(startNfc, 500);
     };
     timer = setTimeout(() => { timedOut = true; ac.abort(); }, 30000);
     ac.signal.addEventListener('abort', async () => {
@@ -1351,19 +1448,22 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
     openModal('שיוך כרטיס NFC - ' + member.name, `
         <div style="text-align:center">
             <p style="font-size:2.4rem;margin:0 0 8px">📱</p>
-            <p style="font-weight:700;margin-bottom:6px">הצמד את הכרטיס לחלק העליון של גב האייפון</p>
+            <p style="font-weight:700;margin-bottom:6px">${isAndroid ? 'הצמד את הכרטיס לגב הטלפון והחזק' : 'הצמד את הכרטיס לחלק העליון של גב האייפון'}</p>
             <p style="color:var(--text-light);font-size:0.9rem;margin-bottom:16px">ממתין לכרטיס (עד 30 שניות). כרטיס שכבר שויך יידרס.</p>
             <button class="btn btn-secondary btn-block" onclick="cancelAssignNfc()">ביטול</button>
         </div>`);
 
     (async () => {
         try {
-            await nfc.startScanning({
-                iosSessionType: 'ndef',
-                invalidateAfterFirstRead: false,   // keep the session open so we can write
-                alertMessage: 'הצמד את הכרטיס לחלק העליון של גב הטלפון'
+            await _nfcQueue(async () => {
+                listener = await nfc.addListener('nfcEvent', onTag);
+                await nfc.startScanning({
+                    iosSessionType: 'ndef',
+                    invalidateAfterFirstRead: false,   // keep the session open so we can write
+                    alertMessage: 'הצמד את הכרטיס לחלק העליון של גב הטלפון'
+                });
             });
-            listener = await nfc.addListener('nfcEvent', async () => {
+            async function onTag() {
                 if (writing || ended) return;
                 writing = true;
                 try {
@@ -1379,7 +1479,7 @@ function _assignNfcNative(nfc, memberId, member, url, onDone) {
                     closeModal();
                     showToast('שגיאה בכתיבה לכרטיס: ' + ((err && err.message) || 'ודא שהכרטיס ניתן לכתיבה'));
                 }
-            });
+            }
         } catch (err) {
             await end();
             closeModal();
@@ -1624,7 +1724,7 @@ function performVipCheckin(memberId, count) {
     closeModal();
     if (document.getElementById('checkin-overlay')) hideCheckinOverlay();
     showCheckinResult(`✓ ${member.name} — כניסה חופשית (${count} ${count>1?'אנשים':'אדם'})`, true);
-    if ('NDEFReader' in window) setTimeout(startNfc, 300);
+    if (_nfcAvailable()) setTimeout(startNfc, 300);
     restartQrScannerIfActive();
 }
 
@@ -2466,7 +2566,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     _initFirebase();
 
-    if ('NDEFReader' in window) {
+    if (_nfcAvailable()) {
         const autoStart = () => {
             document.removeEventListener('click', autoStart);
             // touchstart removed — it fires before the button's onclick (toggleNfc),
