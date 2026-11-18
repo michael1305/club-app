@@ -23,7 +23,7 @@
   f.addEventListener('load', () => {
     const act = q.get('act');
     if (!act) return;
-    setTimeout(() => { try { const d = f.contentDocument; d.getElementById(act).click(); } catch (e) {} }, 800);
+    setTimeout(() => { try { const d = f.contentDocument; d.getElementById(act).click(); const n = +(q.get('next') || 0); for (let i = 0; i < n; i++) setTimeout(() => d.getElementById('onb-next').click(), 400 * (i + 1)); } catch (e) {} }, 800);
   });
   f.src = q.get('u');
 </script>
