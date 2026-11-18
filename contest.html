@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light">
 <title>מצעד ריקודי העם השנתי 2026 | בחירת מרקידים</title>
-<link rel="icon" href="contest-logo.webp">
+<link rel="icon" href="contest-logo-2026.webp">
 <style>
-  :root { --p: #5a2410; --p2: #7a3517; --gold: #d9a43a; --gold2: #f3d27b; --gold-d: #a8761c; --line: #ead9b4; --soft: #7a6448; --bg: #fbf5e8; --ok: #2e8b3a; --bad: #c0392b; --circle: #b8801f; --couple: #8e2f1b; --line-s: #6d5a3a; }
+  :root { --p: #5a2410; --p2: #7a3517; --gold: #d9a43a; --gold2: #f3d27b; --gold-d: #a8761c; --line: #ead9b4; --soft: #7a6448; --bg: #fbf5e8; --ok: #2e8b3a; --bad: #c0392b; --circle: #2563c9; --couple: #c62828; --line-s: #e3b400; }
   * { box-sizing: border-box; }
   html { color-scheme: light; }
   body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #3b2412; -webkit-tap-highlight-color: transparent; }
@@ -32,9 +32,23 @@
   .hello b { flex: 1; font-size: 16px; color: var(--p); }
   .tools { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 8px 0; }
   .tools input { width: 100%; padding: 11px 12px; font-size: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #3b2412; }
-  .chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 14px; cursor: pointer; color: var(--p); }
-  .chip.on { background: var(--p); border-color: var(--p); color: var(--gold2); }
+  .grp { margin-top: 18px; }
+  .grp-h { position: sticky; top: 58px; z-index: 4; margin: 0; padding: 9px 14px; border-radius: 10px; color: #fff; font-size: 17px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+  .grp-h small { font-weight: normal; font-size: 13px; opacity: .9; margin-inline-start: auto; }
+  .grp.מעגל .grp-h { background: var(--circle); }
+  .grp.זוגות .grp-h { background: var(--couple); }
+  .grp.שורות .grp-h { background: var(--line-s); color: #3b2a00; }
+  .grp.מעגל .dance.on { border-color: var(--circle); background: #eef4ff; }
+  .grp.זוגות .dance.on { border-color: var(--couple); background: #fdeeee; }
+  .grp.שורות .dance.on { border-color: var(--line-s); background: #fff8d6; }
+  .grp.מעגל .dance.on .box { background: var(--circle); border-color: var(--circle); color: #fff; }
+  .grp.זוגות .dance.on .box { background: var(--couple); border-color: var(--couple); color: #fff; }
+  .grp.שורות .dance.on .box { background: var(--line-s); border-color: var(--line-s); color: #3b2a00; }
+  .extra { margin-top: 10px; background: #fff; border: 2px dashed var(--line); border-radius: 12px; padding: 12px; }
+  .grp.מעגל .extra { border-color: #b9cdf0; } .grp.זוגות .extra { border-color: #efc0c0; } .grp.שורות .extra { border-color: #f0dc8a; }
+  .extra label { display: block; font-size: 14px; font-weight: bold; color: var(--p); line-height: 1.5; margin-bottom: 6px; }
+  .extra textarea { width: 100%; min-height: 64px; resize: vertical; padding: 10px; font: inherit; font-size: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fffdf7; color: #3b2412; }
+  .grp-empty { color: var(--soft); font-size: 14px; padding: 8px 4px; }
   .list { margin-top: 4px; }
   .dance { display: flex; align-items: center; gap: 12px; background: #fff; border: 2px solid transparent; border-radius: 12px; padding: 12px; margin-top: 8px; cursor: pointer; box-shadow: 0 1px 4px rgba(120,80,20,.08); user-select: none; }
   .dance.on { border-color: var(--gold); background: #fff6dc; }
@@ -68,11 +82,11 @@
 <body>
 
 <div class="hero">
-  <img id="logo" src="contest-logo.webp" alt="מצעד ריקודי העם השנתי — 30 שנה" width="1254" height="1254">
+  <img id="logo" src="contest-logo-2026.webp" alt="מצעד ריקודי העם השנתי 2026" width="1254" height="1254">
   <h1>מצעד ריקודי העם השנתי 2026</h1>
   <div class="intro">
     <p>נודה על עזרתך בסינון הריקודים שחוברו השנה, לצורך יצירת רשימה מצומצמת של הריקודים שנלמדו ונרקדים בחוגים ברחבי הארץ, אשר ישתתפו במצעד הריקודים השנתי.</p>
-    <span class="due">מילוי השאלון עד ליום 30.11, בשעה 24:00</span>
+    <span class="due">מילוי השאלון עד ליום 30.11, בשעה 23:59</span>
     <p>תודה על שיתוף הפעולה.</p>
   </div>
 </div>
@@ -104,7 +118,6 @@
     <details id="mine" class="mine" hidden><summary>הריקודים שבחרתי (<span id="mine-n">0</span>)</summary><ol id="mine-list"></ol></details>
     <div class="tools">
       <input id="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד או יוצר">
-      <div class="chips" id="chips"></div>
     </div>
     <div id="list" class="list"></div>
   </section>
@@ -119,12 +132,12 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="contest-dances.js?v=2"></script>
+<script src="contest-dances.js?v=3"></script>
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api';   // contest-api/ (Cloudflare Worker)
 const TOKEN_KEY = 'contest_token_' + CONTEST_YEAR;
 const $ = id => document.getElementById(id);
-let token = '', phone = '', picks = new Set(), open = true, filter = 'מעגל';
+let token = '', phone = '', picks = new Set(), open = true;
 
 function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
 function lsSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
@@ -175,7 +188,7 @@ $('step-code').addEventListener('submit', async e => {
 });
 $('code-back').onclick = () => show('step-phone');
 
-function logout() { token = ''; lsSet(TOKEN_KEY, ''); picks = new Set(); show('step-phone'); }
+function logout() { token = ''; lsSet(TOKEN_KEY, ''); picks = new Set(); extra = { circle: '', couple: '', line: '' }; show('step-phone'); }
 $('logout').onclick = logout;
 
 // ---- picking ----
@@ -183,6 +196,7 @@ async function loadPicks() {
   const j = await call('/picks');
   const known = new Set(CONTEST_DANCES.map(d => d.id));   // drop dances removed from the list
   picks = new Set((j.picks || []).filter(id => known.has(id)));
+  extra = { circle: '', couple: '', line: '', ...(j.extra || {}) };
   open = j.open !== false;
   $('hello').textContent = 'שלום ' + (j.name || '') + ' 👋';
   $('closed').hidden = open;
@@ -190,36 +204,67 @@ async function loadPicks() {
   render();
 }
 
-const STYLES = [['מעגל', 'מעגלים'], ['זוגות', 'זוגות'], ['שורות', 'שורות'], ['mine', '✓ שבחרתי']]
-  .filter(([k]) => k === 'mine' || CONTEST_DANCES.some(d => d.style === k));
-$('chips').innerHTML = STYLES.map(([k, t]) => `<button type="button" class="chip${k === filter ? ' on' : ''}" data-k="${k}">${t}</button>`).join('');
-$('chips').onclick = e => {
-  const b = e.target.closest('.chip'); if (!b) return;
-  filter = b.dataset.k;
-  [...$('chips').children].forEach(c => c.classList.toggle('on', c === b));
-  render();
-};
+// One long list: circles, couples, lines — each sorted A-Z, each followed by a free-text
+// field for dances the instructor taught that aren't on the list. extra[key] is saved with the picks.
+const GROUPS = [
+  { style: 'מעגל', key: 'circle', title: 'מעגלים' },
+  { style: 'זוגות', key: 'couple', title: 'זוגות' },
+  { style: 'שורות', key: 'line', title: 'שורות' }
+];
+let extra = { circle: '', couple: '', line: '' };
+const byName = (a, b) => a.name.localeCompare(b.name, 'he');
+
+$('list').innerHTML = GROUPS.map(g => `
+  <section class="grp ${g.style}" data-style="${g.style}">
+    <h3 class="grp-h">${g.title} <small></small></h3>
+    <div class="grp-items"></div>
+    <div class="extra">
+      <label for="extra-${g.key}">במידה ולימדת בחוגים שלך ריקוד ${g.title === 'מעגלים' ? 'מעגל' : g.title} שלא מופיע כאן ברשימה, נא להוסיף אותו ידנית</label>
+      <textarea id="extra-${g.key}" data-key="${g.key}" maxlength="2000" placeholder="שם הריקוד ושם היוצר — ריקוד בכל שורה"></textarea>
+    </div>
+  </section>`).join('');
+$('list').querySelectorAll('textarea').forEach(t => t.addEventListener('input', () => {
+  if (!open) return;
+  extra[t.dataset.key] = t.value;
+  renderMine();
+  queueSave();
+}));
 $('search').oninput = render;
 $('top').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
 
 function norm(s) { return String(s).replace(/["'״׳\-]/g, '').toLowerCase(); }
+function extraLines() { return GROUPS.flatMap(g => (extra[g.key] || '').split('\n').map(s => s.trim()).filter(Boolean).map(s => ({ s, g }))); }
 
 function render() {
   const q = norm($('search').value.trim());
-  const rows = CONTEST_DANCES.filter(d =>
-    (filter === 'mine' ? picks.has(d.id) : (q || d.style === filter)) &&
-    (!q || norm(d.name).includes(q) || norm(d.by).includes(q)));
-  $('list').innerHTML = rows.length ? rows.map(d => `
-    <div class="dance${picks.has(d.id) ? ' on' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${picks.has(d.id)}" tabindex="0">
-      <span class="box">${picks.has(d.id) ? '✓' : ''}</span>
-      <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}</div></span>
-      <span class="tag ${esc(d.style)}">${esc(d.style)}</span>
-    </div>`).join('') : '<div class="empty">לא נמצאו ריקודים</div>';
-  $('n').textContent = picks.size;
-  const mine = CONTEST_DANCES.filter(d => picks.has(d.id));
-  $('mine').hidden = !mine.length;
-  $('mine-n').textContent = mine.length;
-  $('mine-list').innerHTML = mine.map(d => `<li>${esc(d.name)} — ${esc(d.by)}</li>`).join('');
+  GROUPS.forEach(g => {
+    const sec = $('list').querySelector(`.grp[data-style="${g.style}"]`);
+    const all = CONTEST_DANCES.filter(d => d.style === g.style).sort(byName);
+    const rows = all.filter(d => !q || norm(d.name).includes(q) || norm(d.by).includes(q));
+    sec.querySelector('.grp-items').innerHTML = rows.length ? rows.map(d => `
+      <div class="dance${picks.has(d.id) ? ' on' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${picks.has(d.id)}" tabindex="0">
+        <span class="box">${picks.has(d.id) ? '✓' : ''}</span>
+        <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}</div></span>
+      </div>`).join('') : `<div class="grp-empty">${q ? 'אין תוצאות בחיפוש' : 'אין ריקודים ברשימה'}</div>`;
+    const n = all.filter(d => picks.has(d.id)).length;
+    sec.querySelector('.grp-h small').textContent = `נבחרו ${n} מתוך ${all.length}`;
+    sec.querySelector('.extra').hidden = !!q;   // while searching, show only matching dances
+    const ta = sec.querySelector('textarea');
+    if (document.activeElement !== ta) ta.value = extra[g.key] || '';
+    ta.disabled = !open;
+  });
+  renderMine();
+}
+
+function renderMine() {
+  const mine = CONTEST_DANCES.filter(d => picks.has(d.id)).sort((a, b) =>
+    GROUPS.findIndex(g => g.style === a.style) - GROUPS.findIndex(g => g.style === b.style) || byName(a, b));
+  const added = extraLines();
+  $('n').textContent = picks.size + added.length;
+  $('mine').hidden = !mine.length && !added.length;
+  $('mine-n').textContent = mine.length + added.length;
+  $('mine-list').innerHTML = mine.map(d => `<li>${esc(d.name)} — ${esc(d.by)} (${esc(d.style)})</li>`).join('')
+    + added.map(({ s, g }) => `<li>${esc(s)} (${g.title === 'מעגלים' ? 'מעגל' : g.title}, נוסף ידנית)</li>`).join('');
 }
 
 function toggle(id) {
@@ -242,7 +287,7 @@ async function save() {
   if (saving) { saveTimer = setTimeout(save, 500); return false; }
   saving = true; dirty = false;
   try {
-    await call('/picks', { method: 'POST', body: JSON.stringify({ picks: [...picks] }) });
+    await call('/picks', { method: 'POST', body: JSON.stringify({ picks: [...picks], extra }) });
     if (!dirty) setState('✓ נשמר', 'ok');
     return true;
   } catch (err) { dirty = true; setState('⚠ ' + err.message, 'bad'); return false; }
@@ -260,7 +305,7 @@ $('save-now').onclick = async () => {
   while (saving) await new Promise(r => setTimeout(r, 150));
   const ok = await save();
   btn.disabled = false; btn.textContent = '💾 שמירה';
-  toast(ok ? '✓ הבחירה שלך נשמרה (' + picks.size + ' ריקודים). אפשר לסגור את העמוד, או לחזור ולשנות עד סוף המועד.' : '⚠ השמירה לא הצליחה — נסו שוב');
+  toast(ok ? '✓ הבחירה שלך נשמרה (' + (picks.size + extraLines().length) + ' ריקודים). אפשר לסגור את העמוד, או לחזור ולשנות עד סוף המועד.' : '⚠ השמירה לא הצליחה — נסו שוב');
 };
 addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 

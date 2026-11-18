@@ -24,6 +24,7 @@ const ALLOWED_ORIGINS = [SITE_ORIGIN, 'http://localhost:8080', 'http://127.0.0.1
 const SESSION_DAYS = 30;
 const ID_RE = /^d\d{2,3}$/;
 const MAX_PICKS = 200;
+const EXTRA_KEYS = ['circle', 'couple', 'line'];
 
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
@@ -139,7 +140,7 @@ async function auth(ctx, req) {
 async function getPicks(ctx, req) {
   const { phone, inst } = await auth(ctx, req);
   const doc = await ctx.fsGet('contestPicks/' + phone);
-  return { name: inst.name || '', picks: (doc && doc.picks) || [], open: await ctx.stage1Open(), updatedAt: (doc && doc.updatedAt) || null };
+  return { name: inst.name || '', picks: (doc && doc.picks) || [], extra: (doc && doc.extra) || {}, open: await ctx.stage1Open(), updatedAt: (doc && doc.updatedAt) || null };
 }
 
 async function savePicks(ctx, req, b) {
@@ -147,9 +148,12 @@ async function savePicks(ctx, req, b) {
   if (!(await ctx.stage1Open())) throw new HttpError(403, 'הבחירה נסגרה — לא ניתן לשנות');
   if (!Array.isArray(b.picks)) throw new HttpError(400, 'נתונים לא תקינים');
   const picks = [...new Set(b.picks.map(String).filter(id => ID_RE.test(id)))].slice(0, MAX_PICKS);
+  // Dances the instructor typed in by hand (not on the list), one free-text field per style.
+  const extra = {};
+  for (const k of EXTRA_KEYS) extra[k] = String((b.extra && b.extra[k]) || '').slice(0, 2000);
   const updatedAt = new Date().toISOString();
-  await ctx.fsSet('contestPicks/' + phone, { name: inst.name || '', picks, updatedAt });
-  return { ok: true, picks, updatedAt };
+  await ctx.fsSet('contestPicks/' + phone, { name: inst.name || '', picks, extra, updatedAt });
+  return { ok: true, picks, extra, updatedAt };
 }
 
 // ---------------- crypto + Firestore ----------------

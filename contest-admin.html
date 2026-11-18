@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light">
 <title>מצעד ריקודי העם השנתי | ניהול</title>
-<link rel="icon" href="contest-logo.webp">
+<link rel="icon" href="contest-logo-2026.webp">
 <style>
   :root { --p: #5a2410; --gold: #d9a43a; --line: #e4e0d8; --soft: #6b6f73; --bg: #f5f3ef; --ok: #1fa855; --bad: #d63031; }
   * { box-sizing: border-box; }
@@ -42,7 +42,7 @@
 </head>
 <body>
 <header>
-  <h1><img src="contest-logo.webp" alt="" style="width:34px;height:34px;vertical-align:middle;margin-left:6px;background:#fff;border-radius:50%">מצעד ריקודי העם השנתי 2026 — ניהול</h1>
+  <h1><img src="contest-logo-2026.webp" alt="" style="width:34px;height:34px;vertical-align:middle;margin-left:6px;background:#fff;border-radius:50%">מצעד ריקודי העם השנתי 2026 — ניהול</h1>
   <button id="save" disabled>💾 שמור רשימה לתחרות</button>
   <button id="csv">📊 הורדה לאקסל</button>
   <button onclick="adminSignOut()">יציאה</button>
@@ -59,6 +59,12 @@
     </div>
     <p class="muted" style="margin:10px 0 4px">מרקידים שבחרו (<span id="voted-n">0</span> מתוך <span id="inst-n">0</span>):</p>
     <div id="voters"></div>
+  </div>
+
+  <div class="sec">
+    <h2>ריקודים שהמרקידים הוסיפו ידנית (<span id="extra-n">0</span>)</h2>
+    <p class="muted" style="margin:0 0 8px">ריקודים שלא היו ברשימה. אם רוצים להכניס אחד מהם לתחרות — צריך להוסיף אותו לרשימת הריקודים.</p>
+    <div id="extras"></div>
   </div>
 
   <div class="sec">
@@ -79,7 +85,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
 <script src="admin-auth.js"></script>
-<script src="contest-dances.js?v=2"></script>
+<script src="contest-dances.js?v=3"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -105,6 +111,17 @@ requireAdmin(async d => {
   } catch (e) { status('שגיאה בטעינה: ' + e.message); }
 });
 
+// Free-text dances the instructors added (contestPicks.extra.{circle,couple,line}), one per line.
+const EXTRA_STYLES = [['circle', 'מעגל'], ['couple', 'זוגות'], ['line', 'שורות']];
+function extraRows() {
+  const out = [];
+  EXTRA_STYLES.forEach(([k, style]) => instructors.forEach(i => {
+    String((picksBy[i.phone] && picksBy[i.phone].extra && picksBy[i.phone].extra[k]) || '')
+      .split('\n').map(s => s.trim()).filter(Boolean)
+      .forEach(text => out.push({ style, text, who: i.name }));
+  }));
+  return out;
+}
 function votesFor(id) {
   return instructors.filter(i => (picksBy[i.phone]?.picks || []).includes(id)).map(i => i.name);
 }
@@ -134,6 +151,13 @@ function render() {
       <td class="who">${esc(who.join(', '))}</td>
     </tr>`).join('');
   $('fin-n').textContent = finalists.size;
+  const ex = extraRows();
+  $('extra-n').textContent = ex.length;
+  $('extras').innerHTML = ex.length
+    ? '<table><thead><tr><th>צורה</th><th>ריקוד (כפי שנכתב)</th><th>מרקיד</th></tr></thead><tbody>'
+      + ex.map(r => '<tr><td>' + esc(r.style) + '</td><td>' + esc(r.text) + '</td><td>' + esc(r.who) + '</td></tr>').join('')
+      + '</tbody></table>'
+    : '<p class="muted">עדיין אין</p>';
   $('save').disabled = !dirty;
 }
 
@@ -203,6 +227,9 @@ $('csv').onclick = async () => {
     s2['!cols'] = [{ wch: 18 }, { wch: 9 }, { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 8 }];
     XLSX.utils.book_append_sheet(wb, s1, 'תוצאות לפי ריקוד');
     XLSX.utils.book_append_sheet(wb, s2, 'בחירות לפי מרקיד');
+    const s3 = XLSX.utils.aoa_to_sheet([['צורה', 'ריקוד (כפי שנכתב)', 'מרקיד'], ...extraRows().map(r => [r.style, r.text, r.who])]);
+    s3['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 18 }];
+    XLSX.utils.book_append_sheet(wb, s3, 'נוספו ידנית');
     XLSX.writeFile(wb, 'מצעד-הריקודים-2026-תוצאות.xlsx');
     status('');
   } catch (e) { status('שגיאה: ' + e.message); }

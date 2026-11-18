@@ -381,8 +381,14 @@ service cloud.firestore {
       allow read: if contestBot() || contestAdmin();
       allow write: if contestBot()
         && phone.matches('^05[0-9]{8}$')
-        && request.resource.data.keys().hasOnly(['name', 'picks', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['name', 'picks', 'extra', 'updatedAt'])
         && request.resource.data.picks is list && request.resource.data.picks.size() <= 200
+        // extra: dances typed in by hand, one text per style
+        && (!('extra' in request.resource.data) || (request.resource.data.extra is map
+            && request.resource.data.extra.keys().hasOnly(['circle', 'couple', 'line'])
+            && request.resource.data.extra.get('circle', '').size() <= 2000
+            && request.resource.data.extra.get('couple', '').size() <= 2000
+            && request.resource.data.extra.get('line', '').size() <= 2000))
         && isDateishBounded(request.resource.data.updatedAt, 40);
       allow delete: if contestAdmin();
     }
