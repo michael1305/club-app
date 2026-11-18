@@ -124,7 +124,7 @@
 const API = 'https://club-contest-api.contest-api.workers.dev/api';   // contest-api/ (Cloudflare Worker)
 const TOKEN_KEY = 'contest_token_' + CONTEST_YEAR;
 const $ = id => document.getElementById(id);
-let token = '', phone = '', picks = new Set(), open = true, filter = 'all';
+let token = '', phone = '', picks = new Set(), open = true, filter = 'מעגל';
 
 function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
 function lsSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
@@ -190,8 +190,8 @@ async function loadPicks() {
   render();
 }
 
-const STYLES = [['all', 'הכל'], ['מעגל', 'מעגלים'], ['זוגות', 'זוגות'], ['שורות', 'שורות'], ['mine', '✓ שבחרתי']]
-  .filter(([k]) => k === 'all' || k === 'mine' || CONTEST_DANCES.some(d => d.style === k));
+const STYLES = [['מעגל', 'מעגלים'], ['זוגות', 'זוגות'], ['שורות', 'שורות'], ['mine', '✓ שבחרתי']]
+  .filter(([k]) => k === 'mine' || CONTEST_DANCES.some(d => d.style === k));
 $('chips').innerHTML = STYLES.map(([k, t]) => `<button type="button" class="chip${k === filter ? ' on' : ''}" data-k="${k}">${t}</button>`).join('');
 $('chips').onclick = e => {
   const b = e.target.closest('.chip'); if (!b) return;
@@ -207,7 +207,7 @@ function norm(s) { return String(s).replace(/["'״׳\-]/g, '').toLowerCase(); }
 function render() {
   const q = norm($('search').value.trim());
   const rows = CONTEST_DANCES.filter(d =>
-    (filter === 'all' || (filter === 'mine' ? picks.has(d.id) : d.style === filter)) &&
+    (filter === 'mine' ? picks.has(d.id) : (q || d.style === filter)) &&
     (!q || norm(d.name).includes(q) || norm(d.by).includes(q)));
   $('list').innerHTML = rows.length ? rows.map(d => `
     <div class="dance${picks.has(d.id) ? ' on' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${picks.has(d.id)}" tabindex="0">
