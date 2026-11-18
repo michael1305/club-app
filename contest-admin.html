@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light">
-<title>מצעד הריקודים השנתי | ניהול</title>
-<link rel="icon" href="LOGO.jpg">
+<title>מצעד ריקודי העם השנתי | ניהול</title>
+<link rel="icon" href="contest-logo.webp">
 <style>
-  :root { --p: #2d1b4e; --gold: #e2a53c; --line: #e4e0d8; --soft: #6b6f73; --bg: #f5f3ef; --ok: #1fa855; --bad: #d63031; }
+  :root { --p: #5a2410; --gold: #d9a43a; --line: #e4e0d8; --soft: #6b6f73; --bg: #f5f3ef; --ok: #1fa855; --bad: #d63031; }
   * { box-sizing: border-box; }
   body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #222; }
   header { position: sticky; top: 0; z-index: 10; background: var(--p); color: #fff; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -42,7 +42,7 @@
 </head>
 <body>
 <header>
-  <h1>🏆 מצעד הריקודים השנתי 2026 — ניהול</h1>
+  <h1><img src="contest-logo.webp" alt="" style="width:34px;height:34px;vertical-align:middle;margin-left:6px;background:#fff;border-radius:50%">מצעד ריקודי העם השנתי 2026 — ניהול</h1>
   <button id="save" disabled>💾 שמור רשימה לתחרות</button>
   <button id="csv">📊 הורדה לאקסל</button>
   <button onclick="adminSignOut()">יציאה</button>
@@ -79,7 +79,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
 <script src="admin-auth.js"></script>
-<script src="contest-dances.js?v=1"></script>
+<script src="contest-dances.js?v=2"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
