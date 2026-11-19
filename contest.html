@@ -136,6 +136,8 @@
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api';   // contest-api/ (Cloudflare Worker)
 const TOKEN_KEY = 'contest_token_' + CONTEST_YEAR;
+// iPhone/iPad (iPadOS reports itself as a Mac with touch): gets an SMS worded so iOS suggests the code.
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const $ = id => document.getElementById(id);
 let token = '', phone = '', picks = new Set(), open = true;
 
@@ -163,7 +165,7 @@ $('step-phone').addEventListener('submit', async e => {
   phone = $('phone').value;
   $('phone-btn').disabled = true; $('phone-btn').textContent = 'שולח קוד…';
   try {
-    await call('/send-otp', { method: 'POST', body: JSON.stringify({ phone }) });
+    await call('/send-otp', { method: 'POST', body: JSON.stringify({ phone, ios: IS_IOS }) });
     show('step-code'); $('code').value = ''; $('code').focus();
     // Android Chrome: fill the code from the SMS automatically (WebOTP)
     if ('OTPCredential' in window) {

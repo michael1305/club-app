@@ -91,10 +91,12 @@ async function sendOtp(ctx, b) {
   // If the SMS doesn't go out, don't make the person wait 60s before trying again.
   const unblock = () => ctx.fsSet('contestOtps/' + phone, { ...rec, sentAt: 0 }).catch(() => {});
 
-  // iPhone suggests the code above the keyboard mainly when it sees English wording ("Your ... code is 1234"),
-  // as found in the camp app. The last line is the WebOTP / domain-bound format (Android autofill, Safari)
-  // and must stay last.
-  const msg = `מצעד הריקודים\nקוד הכניסה שלך: ${code}\nYour Dance Contest code is ${code}\n\n@club.gadibitton.co.il #${code}`;
+  // Android: last line is the WebOTP format (Chrome fills the code by itself) and must stay last.
+  // iPhone: the domain line kept the code from being suggested above the keyboard, so iPhones get the
+  // wording that worked in the camp app — English "Your ... code is 1234", no domain line.
+  const msg = b.ios
+    ? `מצעד הריקודים – קוד הכניסה שלך: ${code}\nYour Dance Contest code is ${code}`
+    : `מצעד הריקודים\nקוד הכניסה שלך: ${code}\nתקף ל-10 דקות\n\n@club.gadibitton.co.il #${code}`;
   const url = 'https://www.micropay.co.il/extApi/scheduleSms.php?get=1'
     + '&token=' + encodeURIComponent(ctx.env.MICROPAY_TOKEN || '')
     + '&msg=' + encodeURIComponent(msg)
