@@ -140,6 +140,9 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
 <script src="contest-dances.js?v=4"></script>
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api';   // contest-api/ (Cloudflare Worker)
@@ -148,6 +151,63 @@ const TOKEN_KEY = 'contest_token_' + CONTEST_YEAR;
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const $ = id => document.getElementById(id);
 let token = '', phone = '', picks = new Set(), open = true;
+
+// ---- Firebase (Google) ----
+// After the SMS login the Worker gives this browser its own Firebase user, and from then on the
+// picks load and save straight from Firestore — Google servers that every network lets through,
+// unlike *.workers.dev. A separate app name keeps this sign-in apart from the club admin login.
+let fbAuth = null, db = null, fbPhone = '';
+try {
+  const app = firebase.initializeApp({ apiKey: 'AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo', authDomain: 'club-app-8f954.firebaseapp.com', projectId: 'club-app-8f954', appId: '1:181296970595:web:6cd7578d10d563f3c73156' }, 'contest');
+  fbAuth = app.auth(); db = app.firestore();
+} catch (e) { console.warn('firebase', e); }
+const FBMAP_KEY = 'contest_fb_' + CONTEST_YEAR;   // {uid, phone, name} of the signed-in Firebase user
+function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('אין חיבור לשרת, נסו שוב')), ms))]); }
+function fbReady() { return fbAuth ? new Promise(r => { const off = fbAuth.onAuthStateChanged(u => { off(); r(u); }); }) : Promise.resolve(null); }
+async function fbIdentity() {
+  const u = fbAuth && fbAuth.currentUser;
+  if (!u) return false;
+  let m = null; try { m = JSON.parse(lsGet(FBMAP_KEY)); } catch (e) {}
+  if (!m || m.uid !== u.uid) {
+    const d = await withTimeout(db.doc('contestAuth/' + u.uid).get(), 15000);
+    if (!d.exists) return false;
+    m = { uid: u.uid, phone: d.data().phone, name: d.data().name || '' };
+    lsSet(FBMAP_KEY, JSON.stringify(m));
+  }
+  fbPhone = m.phone; myName = m.name || myName;
+  return true;
+}
+async function fbSignIn(c) {
+  if (!fbAuth || !c || !c.email) return false;
+  lsSet(FBMAP_KEY, '');
+  await withTimeout(fbAuth.signInWithEmailAndPassword(c.email, c.password), 20000);
+  return fbIdentity();
+}
+// Make sure we're on Firebase; if not linked yet, ask the Worker once (needs a network that reaches it).
+async function connect() {
+  if (!fbAuth) return;
+  const u = await fbReady();
+  if (u && await fbIdentity().catch(() => false)) return;
+  if (!token) return;
+  try { await fbSignIn(await call('/fb-login', { method: 'POST' }, 15000)); } catch (e) { console.warn('fb-login', e); }
+}
+async function serverGet(ms) {
+  if (!fbPhone) return call('/picks', {}, ms);
+  const [p, c] = await withTimeout(Promise.all([db.doc('contestPicks/' + fbPhone).get(), db.doc('contestConfig/main').get()]), ms || 25000);
+  const d = p.exists ? p.data() : {};
+  return { name: myName, picks: d.picks || [], extra: d.extra || {}, open: !(c.exists && c.data().stage1Open === false) };
+}
+async function serverSave() {
+  if (!fbPhone) return call('/picks', { method: 'POST', body: JSON.stringify({ picks: [...picks], extra }) });
+  const known = new Set(CONTEST_DANCES.map(d => d.id));
+  const ex = {}; ['circle', 'couple', 'line'].forEach(k => ex[k] = String(extra[k] || '').slice(0, 2000));
+  try {
+    await withTimeout(db.doc('contestPicks/' + fbPhone).set({ name: String(myName).slice(0, 119), picks: [...picks].filter(id => known.has(id)).slice(0, 200), extra: ex, updatedAt: new Date().toISOString() }), 15000);
+  } catch (e) {
+    if (e && e.code === 'permission-denied') { open = false; $('closed').hidden = false; render(); throw new Error('הבחירה נסגרה — לא ניתן לשנות'); }
+    throw e;
+  }
+}
 
 function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
 function lsSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
@@ -192,13 +252,15 @@ $('step-code').addEventListener('submit', async e => {
   try {
     const j = await call('/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code: $('code').value }) });
     token = j.token; lsSet(TOKEN_KEY, token);
+    if (j.name) myName = j.name;
+    await fbSignIn(j.fb).catch(e => console.warn('fb', e));
     await loadPicks();
   } catch (err) { $('code-err').textContent = err.message; }
   finally { $('code-btn').disabled = false; $('code-btn').textContent = 'כניסה'; }
 });
 $('code-back').onclick = () => show('step-phone');
 
-function logout() { token = ''; lsSet(TOKEN_KEY, ''); lsSet(CACHE_KEY, ''); dirty = false; picks = new Set(); extra = { circle: '', couple: '', line: '' }; show('step-phone'); }
+function logout() { token = ''; lsSet(TOKEN_KEY, ''); lsSet(CACHE_KEY, ''); lsSet(FBMAP_KEY, ''); fbPhone = ''; if (fbAuth) fbAuth.signOut().catch(() => {}); dirty = false; picks = new Set(); extra = { circle: '', couple: '', line: '' }; show('step-phone'); }
 $('logout').onclick = logout;
 
 // ---- picking ----
@@ -222,7 +284,7 @@ function applyState(j, keepLocal) {
   render();
 }
 async function loadPicks(ms) {
-  const j = await call('/picks', {}, ms);
+  const j = await serverGet(ms);
   applyState(j, dirty);          // unsaved changes made meanwhile win; they get saved below
   $('offline').hidden = true;
   writeCache();
@@ -312,7 +374,7 @@ async function save() {
   if (saving) { saveTimer = setTimeout(save, 500); return false; }
   saving = true; dirty = false;
   try {
-    await call('/picks', { method: 'POST', body: JSON.stringify({ picks: [...picks], extra }) });
+    await serverSave();
     if (!dirty) setState('✓ נשמר', 'ok');
     $('offline').hidden = true;
     writeCache();
@@ -320,7 +382,7 @@ async function save() {
   } catch (err) {
     dirty = true; writeCache();
     setState('⚠ לא נשמר עדיין — ננסה שוב', 'bad');
-    if (token) { $('offline').hidden = false; clearTimeout(saveTimer); saveTimer = setTimeout(save, 8000); }
+    if ((token || fbPhone) && open) { $('offline').hidden = false; clearTimeout(saveTimer); saveTimer = setTimeout(save, 8000); }
     return false;
   }
   finally { saving = false; }
@@ -348,18 +410,17 @@ function startLoad() {
   const cached = readCache();
   if (cached) { dirty = !!cached.pending; applyState(cached); }
   else { show('step-loading'); $('load-msg').textContent = 'טוען את הבחירות שלך…'; $('load-err').textContent = ''; $('load-retry').hidden = true; }
-  loadPicks(15000).catch(err => {
-    if (!token) return;                       // 401 → already back at the phone step
-    if (cached) { $('offline').hidden = false; setTimeout(() => token && loadPicks(15000).catch(() => {}), 10000); }
+  connect().then(() => loadPicks(15000)).catch(err => {
+    if (!token && !fbPhone) return;           // 401 → already back at the phone step
+    if (cached) { $('offline').hidden = false; setTimeout(() => (token || fbPhone) && loadPicks(15000).catch(() => {}), 10000); }
     else { $('load-msg').textContent = 'אין חיבור לשרת'; $('load-err').textContent = err.message + ' — כנראה הרשת חלשה. אפשר לעבור לרשת אחרת או לגלישה סלולרית.'; $('load-retry').hidden = false; }
   });
 }
 $('load-retry').onclick = startLoad;
-addEventListener('online', () => { if (token && dirty) save(); else if (token && !$('offline').hidden) loadPicks(15000).catch(() => {}); });
+addEventListener('online', () => { if ((token || fbPhone) && dirty) save(); else if ((token || fbPhone) && !$('offline').hidden) loadPicks(15000).catch(() => {}); });
 
 token = lsGet(TOKEN_KEY);
-if (token) startLoad();
-else show('step-phone');
+fbReady().then(u => { if (token || u) startLoad(); else show('step-phone'); });
 </script>
 </body>
 </html>

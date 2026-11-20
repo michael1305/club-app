@@ -6,6 +6,12 @@
 //   POST /api/verify-otp {phone, code}  → {token, name}  (signed session token, 30 days)
 //   GET  /api/picks      (Bearer token) → {name, picks, open}
 //   POST /api/picks      (Bearer token) {picks:[ids]} → saves contestPicks/{phone}
+//   POST /api/fb-login   (Bearer token) → {email, password} of the instructor's own Firebase user
+//
+// After login the page reads/writes contestPicks/{phone} straight in Firestore (Google), so it
+// works on networks that block *.workers.dev. The Worker creates one Firebase user per
+// instructor (email/password derived from SESSION_SECRET, unguessable) and records
+// contestAuth/{uid} = {phone, name}; firestore.rules contestOwner() trusts only that doc.
 // It talks to Firestore over REST, signed in as a dedicated Firebase Auth user
 // (CONTEST_BOT_EMAIL). firestore.rules contestBot() lets only that user write
 // contestOtps / contestPicks and read contestInstructors.
@@ -47,6 +53,7 @@ export default {
       if (path === '/api/send-otp' && req.method === 'POST') return json(200, await sendOtp(ctx, await body(req)));
       if (path === '/api/verify-otp' && req.method === 'POST') return json(200, await verifyOtp(ctx, await body(req)));
       if (path === '/api/picks' && req.method === 'GET') return json(200, await getPicks(ctx, req));
+      if (path === '/api/fb-login' && req.method === 'POST') return json(200, await fbLogin(ctx, req));
       if (path === '/api/picks' && req.method === 'POST') return json(200, await savePicks(ctx, req, await body(req)));
       return json(404, { error: 'not found' });
     } catch (e) {
@@ -131,7 +138,8 @@ async function verifyOtp(ctx, b) {
 
   const inst = await ctx.fsGet('contestInstructors/' + phone);
   if (!inst) throw new HttpError(403, 'המספר הזה לא מופיע ברשימת המרקידים');
-  return { token: await ctx.makeToken(phone), name: inst.name || '' };
+  const fb = await fbCreds(ctx, phone, inst.name || '').catch(e => { console.error('fbCreds', e && e.message); return null; });
+  return { token: await ctx.makeToken(phone), name: inst.name || '', fb };
 }
 
 async function auth(ctx, req) {
@@ -139,6 +147,28 @@ async function auth(ctx, req) {
   const inst = phone && await ctx.fsGet('contestInstructors/' + phone);
   if (!inst) throw new HttpError(401, 'יש להתחבר מחדש');
   return { phone, inst };
+}
+
+// The instructor's own Firebase user (created on first use) + the contestAuth mapping doc.
+async function fbCreds(ctx, phone, name) {
+  const tag = (await ctx.hmac('fe:' + phone)).replace(/[^A-Za-z0-9]/g, '').slice(0, 12).toLowerCase();
+  const email = `i${phone}-${tag}@club-contest.local`;
+  const password = (await ctx.hmac('fp:' + phone)).slice(0, 32);
+  const idt = (op, extra = {}) => fetch(`https://identitytoolkit.googleapis.com/v1/accounts:${op}?key=${FB_API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Referer: SITE_ORIGIN + '/' },
+    body: JSON.stringify({ email, password, returnSecureToken: true, ...extra })
+  }).then(r => r.json());
+  let j = await idt('signInWithPassword');
+  if (!j.localId) j = await idt('signUp');
+  if (!j.localId) throw new Error('firebase user: ' + JSON.stringify(j.error || j));
+  await ctx.fsSet('contestAuth/' + j.localId, { phone, name: String(name).slice(0, 119) });
+  return { email, password };
+}
+
+async function fbLogin(ctx, req) {
+  const { phone, inst } = await auth(ctx, req);
+  return await fbCreds(ctx, phone, inst.name || '');
 }
 
 async function getPicks(ctx, req) {

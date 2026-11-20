@@ -342,7 +342,8 @@ service cloud.firestore {
     // ---------------- annual dance contest (מצעד הריקודים) ----------------
     // Stage 1: instructors log in with SMS (Micropay) on contest.html. SMS + code checking
     // run on a small Cloudflare Worker (contest-api/), which reads/writes these collections signed
-    // in as ONE dedicated bot user. Instructors themselves never touch Firestore directly.
+    // in as ONE dedicated bot user. After login, instructors also read/write their own contestPicks
+    // doc directly (contestOwner below), so the page works on networks that block workers.dev.
     function contestBot() {
       return request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
@@ -376,11 +377,34 @@ service cloud.firestore {
       allow read, write: if contestBot() && phone.matches('^05[0-9]{8}$');
     }
 
-    // An instructor's picks. Doc id = phone. Written by the bot; the admin reads them.
-    match /contestPicks/{phone} {
-      allow read: if contestBot() || contestAdmin();
+    // Which Firebase user is which instructor. Written ONLY by the bot, after the instructor proved
+    // their phone with the SMS code; the Worker creates that user (unguessable email) and hands its
+    // password to the instructor's browser. A user someone signs up by themselves has no doc here,
+    // so it gets no access.
+    match /contestAuth/{uid} {
+      allow read: if contestBot() || (request.auth != null && request.auth.uid == uid);
       allow write: if contestBot()
+        && request.resource.data.keys().hasOnly(['phone', 'name'])
+        && request.resource.data.phone is string && request.resource.data.phone.matches('^05[0-9]{8}$')
+        && request.resource.data.name is string && request.resource.data.name.size() < 120;
+    }
+    function contestOwner(phone) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/contestAuth/$(request.auth.uid))
+        && get(/databases/$(database)/documents/contestAuth/$(request.auth.uid)).data.phone == phone;
+    }
+    function contestStage1Open() {
+      return !exists(/databases/$(database)/documents/contestConfig/main)
+        || get(/databases/$(database)/documents/contestConfig/main).data.get('stage1Open', true) != false;
+    }
+
+    // An instructor's picks. Doc id = phone. Written by the instructor directly (while stage 1 is
+    // open) or by the bot; the admin reads them.
+    match /contestPicks/{phone} {
+      allow read: if contestBot() || contestAdmin() || contestOwner(phone);
+      allow write: if (contestBot() || (contestOwner(phone) && contestStage1Open()))
         && phone.matches('^05[0-9]{8}$')
+        && (!('name' in request.resource.data) || (request.resource.data.name is string && request.resource.data.name.size() < 120))
         && request.resource.data.keys().hasOnly(['name', 'picks', 'extra', 'updatedAt'])
         && request.resource.data.picks is list && request.resource.data.picks.size() <= 200
         // extra: dances typed in by hand, one text per style
