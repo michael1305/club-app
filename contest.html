@@ -92,6 +92,13 @@
 </div>
 
 <main>
+  <!-- shown until the script decides what to show (also while the server is slow) -->
+  <div id="step-loading" class="card">
+    <h2 id="load-msg">טוען…</h2>
+    <div id="load-err" class="err"></div>
+    <button id="load-retry" class="main" type="button" hidden>נסו שוב</button>
+  </div>
+
   <!-- step 1: phone -->
   <form id="step-phone" class="card" hidden>
     <h2>כניסת מרקידים</h2>
@@ -114,6 +121,7 @@
   <!-- step 3: pick -->
   <section id="step-pick" hidden>
     <div class="hello"><b id="hello"></b><button id="logout" class="link" type="button">יציאה</button></div>
+    <div id="offline" class="closed" hidden>⚠ אין כרגע חיבור לשרת (רשת חלשה). אפשר להמשיך לבחור — הבחירות יישמרו אוטומטית כשהחיבור יחזור.</div>
     <div id="closed" class="closed" hidden>הבחירה נסגרה. אפשר לראות את מה שבחרתם, אבל אי אפשר לשנות.</div>
     <details id="mine" class="mine" hidden><summary>הריקודים שבחרתי (<span id="mine-n">0</span>)</summary><ol id="mine-list"></ol></details>
     <div class="tools">
@@ -144,13 +152,13 @@ let token = '', phone = '', picks = new Set(), open = true;
 function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
 function lsSet(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function show(step) { ['step-phone', 'step-code', 'step-pick'].forEach(s => $(s).hidden = s !== step); $('bar').hidden = step !== 'step-pick'; }
+function show(step) { ['step-loading', 'step-phone', 'step-code', 'step-pick'].forEach(s => $(s).hidden = s !== step); $('bar').hidden = step !== 'step-pick'; }
 
-async function call(path, opts = {}) {
+async function call(path, opts = {}, ms = 25000) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers.Authorization = 'Bearer ' + token;
   let r;
-  try { r = await fetch(API + path, { ...opts, headers, signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined }); }
+  try { r = await fetch(API + path, { ...opts, headers, signal: AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined }); }
   catch (e) { throw new Error(e && e.name === "TimeoutError" ? "השרת לא ענה, נסו שוב בעוד רגע" : "אין חיבור לאינטרנט, נסו שוב"); }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) { logout(); throw new Error(j.error || 'יש להתחבר מחדש'); }
@@ -190,20 +198,35 @@ $('step-code').addEventListener('submit', async e => {
 });
 $('code-back').onclick = () => show('step-phone');
 
-function logout() { token = ''; lsSet(TOKEN_KEY, ''); picks = new Set(); extra = { circle: '', couple: '', line: '' }; show('step-phone'); }
+function logout() { token = ''; lsSet(TOKEN_KEY, ''); lsSet(CACHE_KEY, ''); dirty = false; picks = new Set(); extra = { circle: '', couple: '', line: '' }; show('step-phone'); }
 $('logout').onclick = logout;
 
 // ---- picking ----
-async function loadPicks() {
-  const j = await call('/picks');
-  const known = new Set(CONTEST_DANCES.map(d => d.id));   // drop dances removed from the list
-  picks = new Set((j.picks || []).filter(id => known.has(id)));
-  extra = { circle: '', couple: '', line: '', ...(j.extra || {}) };
+// The last known state is kept on the phone, so on a weak network the list opens at once
+// from the copy and syncs with the server in the background.
+const CACHE_KEY = 'contest_cache_' + CONTEST_YEAR;
+let myName = '';
+function readCache() { try { return JSON.parse(lsGet(CACHE_KEY)) || null; } catch (e) { return null; } }
+function writeCache() { lsSet(CACHE_KEY, JSON.stringify({ name: myName, picks: [...picks], extra, open, pending: dirty })); }
+function applyState(j, keepLocal) {
+  if (!keepLocal) {
+    const known = new Set(CONTEST_DANCES.map(d => d.id));   // drop dances removed from the list
+    picks = new Set((j.picks || []).filter(id => known.has(id)));
+    extra = { circle: '', couple: '', line: '', ...(j.extra || {}) };
+  }
   open = j.open !== false;
-  $('hello').textContent = 'שלום ' + (j.name || '') + ' 👋';
+  myName = j.name || myName;
+  $('hello').textContent = 'שלום ' + myName + ' 👋';
   $('closed').hidden = open;
   show('step-pick');
   render();
+}
+async function loadPicks(ms) {
+  const j = await call('/picks', {}, ms);
+  applyState(j, dirty);          // unsaved changes made meanwhile win; they get saved below
+  $('offline').hidden = true;
+  writeCache();
+  if (dirty && open) queueSave();
 }
 
 // One long list: circles, couples, lines — each sorted A-Z, each followed by a free-text
@@ -284,15 +307,22 @@ $('list').addEventListener('keydown', e => {
 // Auto-save shortly after each change.
 let saveTimer = null, saving = false, dirty = false;
 function setState(t, cls) { const s = $('save-state'); s.textContent = t; s.className = cls || ''; }
-function queueSave() { dirty = true; setState('שומר…'); clearTimeout(saveTimer); saveTimer = setTimeout(save, 700); }
+function queueSave() { dirty = true; writeCache(); setState('שומר…'); clearTimeout(saveTimer); saveTimer = setTimeout(save, 700); }
 async function save() {
   if (saving) { saveTimer = setTimeout(save, 500); return false; }
   saving = true; dirty = false;
   try {
     await call('/picks', { method: 'POST', body: JSON.stringify({ picks: [...picks], extra }) });
     if (!dirty) setState('✓ נשמר', 'ok');
+    $('offline').hidden = true;
+    writeCache();
     return true;
-  } catch (err) { dirty = true; setState('⚠ ' + err.message, 'bad'); return false; }
+  } catch (err) {
+    dirty = true; writeCache();
+    setState('⚠ לא נשמר עדיין — ננסה שוב', 'bad');
+    if (token) { $('offline').hidden = false; clearTimeout(saveTimer); saveTimer = setTimeout(save, 8000); }
+    return false;
+  }
   finally { saving = false; }
 }
 
@@ -314,8 +344,21 @@ addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.retur
 // Hidden shortcut: double-click / double-tap the round logo → back office (contest-admin.html).
 (() => { let last = 0; $("logo").style.touchAction = "manipulation"; $("logo").addEventListener("click", () => { const now = Date.now(); if (now - last < 450) location.href = "contest-admin.html"; last = now; }); })();
 // ---- start ----
+function startLoad() {
+  const cached = readCache();
+  if (cached) { dirty = !!cached.pending; applyState(cached); }
+  else { show('step-loading'); $('load-msg').textContent = 'טוען את הבחירות שלך…'; $('load-err').textContent = ''; $('load-retry').hidden = true; }
+  loadPicks(15000).catch(err => {
+    if (!token) return;                       // 401 → already back at the phone step
+    if (cached) { $('offline').hidden = false; setTimeout(() => token && loadPicks(15000).catch(() => {}), 10000); }
+    else { $('load-msg').textContent = 'אין חיבור לשרת'; $('load-err').textContent = err.message + ' — כנראה הרשת חלשה. אפשר לעבור לרשת אחרת או לגלישה סלולרית.'; $('load-retry').hidden = false; }
+  });
+}
+$('load-retry').onclick = startLoad;
+addEventListener('online', () => { if (token && dirty) save(); else if (token && !$('offline').hidden) loadPicks(15000).catch(() => {}); });
+
 token = lsGet(TOKEN_KEY);
-if (token) loadPicks().catch(() => show('step-phone'));
+if (token) startLoad();
 else show('step-phone');
 </script>
 </body>
