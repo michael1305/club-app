@@ -289,7 +289,7 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="contest-dances.js?v=5"></script>
+<script src="contest-dances.js?v=6"></script>
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api/vote';
 const FS = 'https://firestore.googleapis.com/v1/projects/club-app-8f954/databases/(default)/documents/contestConfig/';
@@ -353,9 +353,9 @@ async function loadSettings() {
     const fin = new Set(main.finalists || []);
     if (fin.size) dances = CONTEST_DANCES.filter(d => fin.has(d.id));
     clips = vote.clips || {};
-    CONTEST_DANCES.forEach(d => { if (!clips[d.id] && d.yt) clips[d.id] = { yt: d.yt, s: d.s || 0 }; });
+    CONTEST_DANCES.forEach(d => { if (!clips[d.id] && (d.yt || d.audio)) clips[d.id] = d.audio ? { audio: d.audio } : { yt: d.yt, s: d.s || 0 }; });
     voteOpen = vote.open === true;
-  } catch (e) { console.warn(e); CONTEST_DANCES.forEach(d => { if (!clips[d.id] && d.yt) clips[d.id] = { yt: d.yt, s: d.s || 0 }; }); }
+  } catch (e) { console.warn(e); CONTEST_DANCES.forEach(d => { if (!clips[d.id] && (d.yt || d.audio)) clips[d.id] = d.audio ? { audio: d.audio } : { yt: d.yt, s: d.s || 0 }; }); }
   const known = new Set(dances.map(d => d.id));
   GROUPS.forEach(g => S.picks[g.key] = (S.picks[g.key] || []).filter(id => known.has(id)));
 }
@@ -435,7 +435,7 @@ function render() {
       return `<div class="dance${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${on}" tabindex="0">
         <span class="box">${on ? '✓' : ''}</span>
         <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}${d.singer ? ' · מבצע: ' + esc(d.singer) : ''}</div></span>
-        <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && c.yt ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
+        <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && (c.yt || c.audio) ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
       </div>`;
     }).join('') : `<div class="empty">${q ? 'אין תוצאות בחיפוש' : ''}</div>`;
   });
@@ -503,7 +503,7 @@ function showDone() {
 }
 
 // ---- music clips (YouTube, a few seconds from the chorus) ----
-let ytPlayer = null, ytReady = null, playing = '', clipTimer = null;
+let ytPlayer = null, ytReady = null, playing = '', clipTimer = null, audioEl = null;
 function loadYT() {
   if (ytReady) return ytReady;
   ytReady = new Promise((ok, fail) => {
@@ -516,9 +516,17 @@ function loadYT() {
 async function playClip(id) {
   if (playing === id) { stopClip(); return; }
   const c = clips[id], d = dances.find(x => x.id === id);
-  if (!c || !c.yt || !d) return;
+  if (!c || !(c.yt || c.audio) || !d) return;
   stopClip(); playing = id; render();
   $('player-t').textContent = 'מתנגן: ' + d.name; $('player').hidden = false;
+  if (c.audio) {   // ready-cut clip on our site
+    audioEl = audioEl || new Audio();
+    audioEl.src = c.audio; audioEl.currentTime = Math.max(0, Number(c.s) || 0);
+    audioEl.onended = stopClip; audioEl.onerror = () => { stopClip(); toast('קטע השיר לא זמין כרגע'); };
+    audioEl.play().catch(() => { stopClip(); toast('לא הצלחנו לנגן — נסו שוב'); });
+    clearTimeout(clipTimer); clipTimer = setTimeout(stopClip, CLIP_SECONDS * 1000 + 1500);
+    return;
+  }
   try { await loadYT(); } catch (e) { stopClip(); toast('לא הצלחנו לטעון את קטע השיר'); return; }
   if (playing !== id) return;
   const start = Math.max(0, Number(c.s) || 0);
@@ -531,6 +539,7 @@ async function playClip(id) {
 function stopClip() {
   clearTimeout(clipTimer);
   try { ytPlayer && ytPlayer.pauseVideo && ytPlayer.pauseVideo(); } catch (e) {}
+  try { audioEl && audioEl.pause(); } catch (e) {}
   $('player').hidden = true;
   if (playing) { playing = ''; if (!$('s-pick').hidden) render(); }
 }
