@@ -440,11 +440,18 @@ service cloud.firestore {
       allow read: if contestBot() || contestAdmin();
       allow write: if contestBot()
         && phone.matches('^05[0-9]{8}$')
-        && request.resource.data.keys().hasOnly(['name', 'city', 'verifiedAt', 'picks', 'votedAt'])
+        && request.resource.data.keys().hasOnly(['name', 'city', 'verifiedAt', 'picks', 'votedAt', 'test'])
         && request.resource.data.name is string && request.resource.data.name.size() <= 80
         && request.resource.data.city is string && request.resource.data.city.size() <= 60
         && (!('picks' in request.resource.data) || (request.resource.data.picks is map
             && request.resource.data.picks.keys().hasOnly(['circle', 'couple', 'line'])));
+      allow delete: if contestAdmin();
+    }
+    // Test phones for the vote: no real SMS (code shown on screen), votes marked test.
+    match /contestVoteTesters/{phone} {
+      allow read: if contestBot() || contestAdmin();
+      allow write: if (contestBot() || contestAdmin()) && phone.matches('^05[0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['name']) && request.resource.data.name is string && request.resource.data.name.size() < 80;
       allow delete: if contestAdmin();
     }
     match /contestVoteOtps/{phone} {

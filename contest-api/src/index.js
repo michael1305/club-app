@@ -13,7 +13,8 @@
 //   POST /api/vote/verify   {phone, code}            → {token, voted, picks}
 //   POST /api/vote/submit   (Bearer vote token) {picks:{circle:[],couple:[],line:[]}} → final, once
 // Voters live in contestVoters/{phone}. Open/closed = contestConfig/vote.open (admin page);
-// phones in contestInstructors with type "בדיקה" may test while it's closed.
+// Testers = contestVoteTesters/{phone}: NO SMS is sent (the code comes back on screen), they may
+// vote while it's closed and vote again; their votes are marked test:true and left out of results.
 //
 // After login the page reads/writes contestPicks/{phone} straight in Firestore (Google), so it
 // works on networks that block *.workers.dev. The Worker creates one Firebase user per
@@ -164,11 +165,10 @@ const VOTE_LIMITS = { circle: 3, couple: 3, line: 1 };
 const VOTE_DAILY_SMS_CAP = 3000;       // safety net against SMS abuse (Micropay costs money)
 const VOTE_IP_PER_HOUR = 6;
 
-async function voteOpenFor(ctx, phone) {
+async function isTester(ctx, phone) { return !!(await ctx.fsGet('contestVoteTesters/' + phone)); }
+async function voteIsOpen(ctx) {
   const cfg = await ctx.fsGet('contestConfig/vote', { asBot: false });
-  if (cfg && cfg.open === true) return true;
-  const inst = await ctx.fsGet('contestInstructors/' + phone);
-  return !!(inst && inst.type === 'בדיקה');
+  return !!(cfg && cfg.open === true);
 }
 
 function cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
@@ -179,11 +179,17 @@ async function voteSendOtp(ctx, req, b) {
   const name = cleanText(b.name, 80), city = cleanText(b.city, 60);
   if (name.length < 2) throw new HttpError(400, 'נא למלא שם מלא');
   if (city.length < 2) throw new HttpError(400, 'נא למלא עיר מגורים');
-  if (!(await voteOpenFor(ctx, phone))) throw new HttpError(403, 'ההצבעה עדיין לא נפתחה');
+  const tester = await isTester(ctx, phone);
+  if (!tester && !(await voteIsOpen(ctx))) throw new HttpError(403, 'ההצבעה עדיין לא נפתחה');
   const voter = await ctx.fsGet('contestVoters/' + phone);
-  if (voter && voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה! נתראה במצעד');
+  if (!tester && voter && voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה! נתראה במצעד');
 
   const now = Date.now();
+  if (tester) {   // test phone: no SMS, no limits — the code is shown on screen
+    const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
+    await ctx.fsSet('contestVoteOtps/' + phone, { codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city, expiresAt: now + 10 * 60e3, attempts: 0, sentAt: 0, sendCount: 0, windowStart: now });
+    return { ok: true, testCode: code };
+  }
   // Per-IP limit (hashed, never stored raw) and a daily cap for the whole vote.
   const ip = req.headers.get('CF-Connecting-IP') || 'none';
   const ipKey = 'contestVoteLimits/ip-' + (await ctx.hmac('ip:' + ip)).replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
@@ -231,18 +237,23 @@ async function voteVerify(ctx, b) {
     throw new HttpError(400, 'קוד שגוי');
   }
   await ctx.fsSet('contestVoteOtps/' + phone, { ...otp, codeHash: '', attempts: 5 });
+  const tester = await isTester(ctx, phone);
   const voter = (await ctx.fsGet('contestVoters/' + phone)) || {};
-  if (!voter.votedAt) await ctx.fsSet('contestVoters/' + phone, { name: otp.name || '', city: otp.city || '', verifiedAt: new Date().toISOString() });
-  return { token: await ctx.makeToken(phone, 'v'), voted: !!voter.votedAt, picks: voter.picks || null, name: voter.name || otp.name || '' };
+  if (tester || !voter.votedAt) {
+    await ctx.fsSet('contestVoters/' + phone, { name: otp.name || '', city: otp.city || '', verifiedAt: new Date().toISOString(), ...(tester ? { test: true } : {}) });
+    return { token: await ctx.makeToken(phone, 'v'), voted: false, picks: null, name: otp.name || '', test: tester };
+  }
+  return { token: await ctx.makeToken(phone, 'v'), voted: true, picks: voter.picks || null, name: voter.name || '' };
 }
 
 async function voteSubmit(ctx, req, b) {
   const phone = await ctx.readToken(req, 'v');
   if (!phone) throw new HttpError(401, 'יש להתחבר מחדש');
-  if (!(await voteOpenFor(ctx, phone))) throw new HttpError(403, 'ההצבעה נסגרה');
+  const tester = await isTester(ctx, phone);
+  if (!tester && !(await voteIsOpen(ctx))) throw new HttpError(403, 'ההצבעה נסגרה');
   const voter = await ctx.fsGet('contestVoters/' + phone);
   if (!voter) throw new HttpError(401, 'יש להתחבר מחדש');
-  if (voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה!');
+  if (!tester && voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה!');
   const main = (await ctx.fsGet('contestConfig/main', { asBot: false })) || {};
   const allowed = Array.isArray(main.finalists) && main.finalists.length ? new Set(main.finalists) : null;
   const picks = {};
@@ -254,7 +265,7 @@ async function voteSubmit(ctx, req, b) {
   }
   if (!total) throw new HttpError(400, 'לא נבחר אף ריקוד');
   const votedAt = new Date().toISOString();
-  await ctx.fsSet('contestVoters/' + phone, { name: voter.name || '', city: voter.city || '', verifiedAt: voter.verifiedAt || votedAt, picks, votedAt });
+  await ctx.fsSet('contestVoters/' + phone, { name: voter.name || '', city: voter.city || '', verifiedAt: voter.verifiedAt || votedAt, picks, votedAt, ...(tester ? { test: true } : {}) });
   return { ok: true, picks, votedAt };
 }
 

@@ -223,6 +223,7 @@
     <h2 class="gold">הקלידו את הקוד</h2>
     <div class="card">
       <p class="muted" style="margin:0 0 10px">שלחנו קוד בן 4 ספרות ב-SMS למספר <b id="code-phone" dir="ltr"></b>. אם הוא לא מגיע תוך דקה, בדקו ב"שולחים לא מוכרים".</p>
+      <div id="test-code" class="prize" style="margin:0 0 12px" hidden></div>
       <input id="f-code" class="in code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" required>
       <div id="code-err" class="err"></div>
     </div>
@@ -261,6 +262,7 @@
       <a id="cal-ics" class="btn ghost" download="מצעד-ריקודי-העם-2026.ics">📅 הוספה ליומן (אייפון / אאוטלוק)</a>
     </div>
     <div class="card" id="done-sum-card" hidden><div id="done-sum"></div></div>
+    <button id="again" class="btn ghost" type="button" hidden>🧪 הצבעה נוספת (מספר בדיקה)</button>
   </section>
 
   <footer>gadibitton · מצעד ריקודי העם הארצי 2026</footer>
@@ -367,9 +369,12 @@ $('send-code').onclick = async () => {
   const b = $('send-code');
   b.disabled = true; b.textContent = 'שולח קוד…'; $('confirm-err').textContent = '';
   try {
-    await call('/send-otp', { phone: S.phone, name: S.name, city: S.city, ios: IS_IOS });
+    const r = await call('/send-otp', { phone: S.phone, name: S.name, city: S.city, ios: IS_IOS });
     $('code-phone').textContent = prettyPhone(S.phone); $('f-code').value = ''; $('code-err').textContent = '';
+    $('test-code').hidden = !r.testCode;
+    if (r.testCode) { $('test-code').textContent = '🧪 מספר בדיקה — לא נשלח SMS. הקוד: ' + r.testCode; $('f-code').value = r.testCode; }
     show('s-code'); $('f-code').focus();
+    if (r.testCode) return;
     if ('OTPCredential' in window) {   // Android Chrome fills the code from the SMS by itself
       navigator.credentials.get({ otp: { transport: ['sms'] } }).then(o => { if (o && o.code) { $('f-code').value = o.code; $('s-code').requestSubmit(); } }).catch(() => {});
     }
@@ -384,7 +389,7 @@ $('s-code').addEventListener('submit', async e => {
   b.disabled = true; b.textContent = 'בודק…'; $('code-err').textContent = '';
   try {
     const j = await call('/verify',{ phone: S.phone, code: $('f-code').value });
-    S.token = j.token;
+    S.token = j.token; S.test = !!j.test;
     if (j.voted) { S.voted = true; if (j.picks) S.picks = { circle: [], couple: [], line: [], ...j.picks }; keep(); showDone(); return; }
     keep(); openPick();
   } catch (err) { $('code-err').textContent = err.message; }
@@ -474,7 +479,9 @@ $('cal-ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
   'SUMMARY:' + EV.title, 'LOCATION:' + EV.where.replace(/,/g, '\\,'), 'DESCRIPTION:' + EV.details,
   'BEGIN:VALARM', 'TRIGGER:-PT3H', 'ACTION:DISPLAY', 'DESCRIPTION:' + EV.title, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
 ].join('\r\n'));
+$('again').onclick = () => { S = { name: S.name, phone: S.phone, city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); show('s-welcome'); };
 function showDone() {
+  $('again').hidden = !S.test;
   const has = total() > 0;
   $('done-sum-card').hidden = !has;
   if (has) { renderSummary($('done-sum')); $('done-sum').insertAdjacentHTML('afterbegin', '<b class="gold display" style="font-size:20px">ההצבעה שלך</b>'); }

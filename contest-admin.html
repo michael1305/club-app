@@ -74,7 +74,7 @@
       <button id="vote-btn" class="switch">…</button>
       <span class="muted">קישור לקהל: <a href="vote.html" target="_blank">club.gadibitton.co.il/vote.html</a> · <a href="vote.html?test=1" target="_blank">תצוגת בדיקה</a></span>
     </div>
-    <p class="muted" style="margin:10px 0 4px">אימתו טלפון: <b id="v-verified">0</b> · הצביעו: <b id="v-voted">0</b></p>
+    <p class="muted" style="margin:10px 0 4px">אימתו טלפון: <b id="v-verified">0</b> · הצביעו: <b id="v-voted">0</b> <span id="v-test"></span></p>
     <div class="row" style="margin-top:8px">
       <button id="draw" class="bigbtn gold">🎁 הגרלת זוכה מבין המצביעים</button>
     </div>
@@ -122,7 +122,7 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let db, instructors = [], picksBy = {}, finalists = new Set(), stage1Open = true, dirty = false;
-let voters = [], voteCfg = { open: false, clips: {} };
+let voters = [], allVoters = [], voteCfg = { open: false, clips: {} };
 const status = t => $('status').textContent = t;
 
 requireAdmin(async d => {
@@ -137,7 +137,8 @@ requireAdmin(async d => {
       db.collection('contestVoters').get()
     ]);
     voteCfg = { open: false, clips: {}, ...(vcfg.exists ? vcfg.data() : {}) };
-    voters = vts.docs.map(x => ({ phone: x.id, ...x.data() }));
+    allVoters = vts.docs.map(x => ({ phone: x.id, ...x.data() }));
+    voters = allVoters.filter(v => !v.test);   // test phones don't count
     instructors = inst.docs.map(x => ({ phone: x.id, ...x.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     picks.docs.forEach(x => picksBy[x.id] = x.data());
     const c = cfg.exists ? cfg.data() : {};
@@ -218,6 +219,8 @@ function renderVote() {
   vb.className = 'switch ' + (voteCfg.open ? 'on' : 'off');
   $('v-verified').textContent = voters.length;
   $('v-voted').textContent = voters.filter(v => v.votedAt).length;
+  const nt = allVoters.filter(v => v.test && v.votedAt).length;
+  $('v-test').textContent = nt ? '(+ ' + nt + ' הצבעות בדיקה, לא נספרות)' : '';
   const ds = stageDances().slice().sort((a, b) => a.style.localeCompare(b.style, 'he') || a.name.localeCompare(b.name, 'he'));
   const clips = voteCfg.clips || {};
   $('clips-of').textContent = ds.length;
@@ -353,7 +356,7 @@ $('csv').onclick = async () => {
     XLSX.utils.book_append_sheet(wb, s4, 'הצבעת הקהל');
     const dn = id => (CONTEST_DANCES.find(d => d.id === id) || {}).name || id;
     const s5 = XLSX.utils.aoa_to_sheet([['שם', 'טלפון', 'עיר', 'הצביע', 'מעגלים', 'זוגות', 'שורות'],
-      ...voters.map(v => [v.name, v.phone, v.city, v.votedAt ? new Date(v.votedAt).toLocaleString('he-IL') : 'לא סיים',
+      ...allVoters.map(v => [v.name + (v.test ? ' (בדיקה)' : ''), v.phone, v.city, v.votedAt ? new Date(v.votedAt).toLocaleString('he-IL') : 'לא סיים',
         ...['circle', 'couple', 'line'].map(k => ((v.picks && v.picks[k]) || []).map(dn).join(', '))])]);
     s5['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 40 }, { wch: 40 }, { wch: 24 }];
     XLSX.utils.book_append_sheet(wb, s5, 'מצביעים');
