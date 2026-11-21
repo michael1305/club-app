@@ -82,7 +82,7 @@
 
     <details class="box" style="margin-top:12px">
       <summary>🎵 קטעי שירים להשמעה (<span id="clips-n">0</span> מתוך <span id="clips-of">0</span>)</summary>
-      <p class="muted" style="margin:4px 0 8px">לכל ריקוד בתחרות: מדביקים קישור מיוטיוב ושנייה שממנה מתחיל הפזמון. הקהל ישמע 15 שניות מהנקודה הזו. (אם עוד לא סומנו ריקודים לתחרות — מוצגים כל הריקודים.)</p>
+      <p class="muted" style="margin:4px 0 8px">מילאתי מראש קטע לרוב הריקודים (נמצא אוטומטית ביוטיוב — כדאי להאזין ב-▶ ולתקן אם צריך). לכל ריקוד: קישור מיוטיוב ושנייה שממנה מתחיל הפזמון. הקהל ישמע 15 שניות מהנקודה הזו. (אם עוד לא סומנו ריקודים לתחרות — מוצגים כל הריקודים.)</p>
       <table><thead><tr><th>ריקוד</th><th>קישור יוטיוב</th><th>שנייה</th><th></th></tr></thead><tbody id="clip-rows"></tbody></table>
       <button id="save-clips" class="bigbtn" style="margin-top:10px">💾 שמור קטעי שירים</button>
     </details>
@@ -117,7 +117,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
 <script src="admin-auth.js"></script>
-<script src="contest-dances.js?v=4"></script>
+<script src="contest-dances.js?v=5"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -224,11 +224,11 @@ function renderVote() {
   const ds = stageDances().slice().sort((a, b) => a.style.localeCompare(b.style, 'he') || a.name.localeCompare(b.name, 'he'));
   const clips = voteCfg.clips || {};
   $('clips-of').textContent = ds.length;
-  $('clips-n').textContent = ds.filter(d => clips[d.id] && clips[d.id].yt).length;
+  $('clips-n').textContent = ds.filter(d => (clips[d.id] && clips[d.id].yt) || d.yt).length;
   if (!$('clip-rows').dataset.built || $('clip-rows').dataset.built !== ds.map(d => d.id).join()) {
     $('clip-rows').dataset.built = ds.map(d => d.id).join();
     $('clip-rows').innerHTML = ds.map(d => {
-      const c = clips[d.id] || {};
+      const c = clips[d.id] || (d.yt ? { yt: d.yt, s: d.s } : {});
       return `<tr data-id="${d.id}"><td><b>${esc(d.name)}</b><div class="muted">${esc(d.singer)} · ${esc(d.style)}</div></td>
         <td><input class="clip-in clip-yt" placeholder="https://youtu.be/..." value="${c.yt ? 'https://youtu.be/' + esc(c.yt) : ''}"></td>
         <td><input class="clip-in clip-s" type="number" min="0" max="900" placeholder="0" value="${c.s != null ? esc(c.s) : ''}"></td>

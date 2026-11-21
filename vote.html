@@ -150,12 +150,13 @@
   <section id="s-welcome" class="screen">
     <img class="logo" src="contest-logo-2026.webp" alt="מצעד ריקודי העם השנתי" width="1254" height="1254">
     <div class="ribbon" style="font-size:clamp(15px,4.2vw,19px);padding:6px 30px">ברוכים הבאים</div>
-    <h1 class="gold">מצעד ריקודי העם הארצי</h1>
-    <div class="rule">לשנת 2026</div>
-    <div class="ribbon">מציינים <b>30</b> שנים למצעד הריקודים</div>
-    <div class="when"><span>31.12.2026</span><span>חמישי</span><span>20:00</span></div>
-    <div class="where">במרכז הספורט באוניברסיטת ת"א</div>
-    <p class="lead">בחרו את הריקודים האהובים עליכם — ותוכלו לזכות בפרס יקר ערך!</p>
+    <h1 class="gold">להצבעה במצעד ריקודי העם הארצי</h1>
+    <div class="rule">2026</div>
+    <div class="card" style="text-align:center">
+      <p style="margin:0;font-size:19px;font-weight:700;color:#fff">אתם בוחרים את ריקודי השנה!</p>
+      <p class="muted" style="margin:8px 0 0">הצביעו לריקודי המעגל, הזוגות והשורות שהכי אהבתם לרקוד השנה, ועזרו לנו לקבוע מי יגיע לראש המצעד.</p>
+      <div class="prize">🎁 בין כל המצביעים יוגרל פרס יקר ערך</div>
+    </div>
     <div id="closed-note" class="card" style="text-align:center" hidden>
       <b class="gold display" style="font-size:22px">ההצבעה תיפתח בקרוב</b>
       <p class="muted" style="margin:6px 0 0">שמרו את הקישור וחזרו אלינו בהמשך.</p>
@@ -203,7 +204,7 @@
   <!-- 2c. confirm -->
   <section id="s-confirm" class="screen" hidden>
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
-    <h2 class="gold">הפרטים נכונים?</h2>
+    <h2 class="gold"><span class="nm"></span>הפרטים נכונים?</h2>
     <div class="card">
       <dl class="details">
         <dt>שם</dt><dd id="c-name"></dd>
@@ -220,7 +221,7 @@
   <!-- 2d. code -->
   <form id="s-code" class="screen" hidden novalidate>
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
-    <h2 class="gold">הקלידו את הקוד</h2>
+    <h2 class="gold"><span class="nm"></span>הקלד/י את הקוד</h2>
     <div class="card">
       <p class="muted" style="margin:0 0 10px">שלחנו קוד בן 4 ספרות ב-SMS למספר <b id="code-phone" dir="ltr"></b>. אם הוא לא מגיע תוך דקה, בדקו ב"שולחים לא מוכרים".</p>
       <div id="test-code" class="prize" style="margin:0 0 12px" hidden></div>
@@ -234,8 +235,7 @@
   <!-- 3. pick -->
   <section id="s-pick" class="screen" hidden>
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
-    <h2 class="gold">בחרו את הריקודים שלכם</h2>
-    <div id="hello" class="hello"></div>
+    <h2 class="gold"><span class="nm"></span>בחר/י את הריקודים שלך</h2>
     <p class="lead" style="margin-top:0">עד 3 ריקודי מעגל · עד 3 ריקודי זוגות · ריקוד שורות אחד. לחצו ▶ כדי לשמוע קטע מהשיר.</p>
     <input id="search" class="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד, יוצר או מבצע">
     <div id="list"></div>
@@ -244,7 +244,7 @@
   <!-- 4. summary -->
   <section id="s-summary" class="screen" hidden>
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
-    <h2 class="gold">ההצבעה שלך</h2>
+    <h2 class="gold"><span class="nm"></span>זו ההצבעה שלך</h2>
     <div class="card"><div id="summary"></div><div id="sum-left" class="muted" style="margin-top:12px"></div><div id="submit-err" class="err"></div></div>
     <button id="submit" class="btn">שליחת ההצבעה ✓</button>
     <button class="btn ghost" data-back="s-pick">חזרה לשינוי הבחירה</button>
@@ -253,7 +253,8 @@
   <!-- 5. done -->
   <section id="s-done" class="screen" hidden>
     <img class="logo" src="contest-logo-2026.webp" alt="">
-    <h1 class="gold">תודה שהצבעת!</h1>
+    <h1 class="gold">תודה<span class="nm-done"></span>!</h1>
+    <p class="lead" style="margin-top:4px">ההצבעה שלך התקבלה.</p>
     <div class="ribbon">נתראה במצעד!</div>
     <div class="when"><span>31.12.2026</span><span>חמישי</span><span>20:00</span></div>
     <div class="where">במרכז הספורט באוניברסיטת ת"א</div>
@@ -280,7 +281,7 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="contest-dances.js?v=4"></script>
+<script src="contest-dances.js?v=5"></script>
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api/vote';
 const FS = 'https://firestore.googleapis.com/v1/projects/club-app-8f954/databases/(default)/documents/contestConfig/';
@@ -303,7 +304,11 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(STATE_KEY)) || {}); } cat
 function keep() { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} }
 let dances = CONTEST_DANCES, clips = {}, voteOpen = false;
 
+function first() { return String(S.name || '').trim().split(/\s+/)[0] || ''; }
 function show(id) {
+  const f = first();
+  document.querySelectorAll('.nm').forEach(el => el.textContent = f ? f + ', ' : '');
+  document.querySelectorAll('.nm-done').forEach(el => el.textContent = f ? ' ' + f : '');
   document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
   $('bar').hidden = id !== 's-pick';
   if (id !== 's-pick') stopClip();
@@ -340,8 +345,9 @@ async function loadSettings() {
     const fin = new Set(main.finalists || []);
     if (fin.size) dances = CONTEST_DANCES.filter(d => fin.has(d.id));
     clips = vote.clips || {};
+    CONTEST_DANCES.forEach(d => { if (!clips[d.id] && d.yt) clips[d.id] = { yt: d.yt, s: d.s || 0 }; });
     voteOpen = vote.open === true;
-  } catch (e) { console.warn(e); }
+  } catch (e) { console.warn(e); CONTEST_DANCES.forEach(d => { if (!clips[d.id] && d.yt) clips[d.id] = { yt: d.yt, s: d.s || 0 }; }); }
   const known = new Set(dances.map(d => d.id));
   GROUPS.forEach(g => S.picks[g.key] = (S.picks[g.key] || []).filter(id => known.has(id)));
 }
@@ -442,7 +448,7 @@ $('list').addEventListener('click', e => {
 });
 $('list').addEventListener('keydown', e => { const el = e.target.closest('.dance'); if (el && e.target === el && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); toggle(el.dataset.id); } });
 $('search').oninput = render;
-function openPick() { $('hello').textContent = S.name ? 'שלום ' + S.name.split(' ')[0] + ' 👋' : ''; render(); show('s-pick'); }
+function openPick() { render(); show('s-pick'); }
 $('finish').onclick = () => {
   if (!total()) { toast('עוד לא בחרת אף ריקוד'); return; }
   renderSummary($('summary')); $('sum-left').textContent = total() < 7 ? leftText() + ' — אפשר לשלוח גם כך.' : ''; $('submit-err').textContent = '';
