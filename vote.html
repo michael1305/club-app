@@ -435,7 +435,7 @@ function render() {
       return `<div class="dance${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${on}" tabindex="0">
         <span class="box">${on ? '✓' : ''}</span>
         <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}${d.singer ? ' · מבצע: ' + esc(d.singer) : ''}</div></span>
-        <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && (c.yt || c.audio) ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
+        <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && (c.yt || c.audio || c.file) ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
       </div>`;
     }).join('') : `<div class="empty">${q ? 'אין תוצאות בחיפוש' : ''}</div>`;
   });
@@ -516,10 +516,15 @@ function loadYT() {
 async function playClip(id) {
   if (playing === id) { stopClip(); return; }
   const c = clips[id], d = dances.find(x => x.id === id);
-  if (!c || !(c.yt || c.audio) || !d) return;
+  if (!c || !(c.yt || c.audio || c.file) || !d) return;
   stopClip(); playing = id; render();
   $('player-t').textContent = 'מתנגן: ' + d.name; $('player').hidden = false;
-  if (c.audio) {   // ready-cut clip on our site
+  if (c.file && !c.audio) {   // clip uploaded in the back office (stored in Firestore)
+    try { const doc = await fsDoc('../contestClips/' + id); if (!doc.data) throw 0; c.audio = 'data:audio/mpeg;base64,' + doc.data; }
+    catch (e) { stopClip(); toast('קטע השיר לא זמין כרגע'); return; }
+    if (playing !== id) return;
+  }
+  if (c.audio) {   // ready-cut clip (our site, or uploaded)
     audioEl = audioEl || new Audio();
     audioEl.src = c.audio; audioEl.currentTime = Math.max(0, Number(c.s) || 0);
     audioEl.onended = stopClip; audioEl.onerror = () => { stopClip(); toast('קטע השיר לא זמין כרגע'); };

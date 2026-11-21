@@ -82,7 +82,7 @@
 
     <details class="box" style="margin-top:12px">
       <summary>🎵 קטעי שירים להשמעה (<span id="clips-n">0</span> מתוך <span id="clips-of">0</span>)</summary>
-      <p class="muted" style="margin:4px 0 8px">מילאתי מראש קטע לרוב הריקודים (נמצא אוטומטית ביוטיוב — כדאי להאזין ב-▶ ולתקן אם צריך). לכל ריקוד: קישור מיוטיוב ושנייה שממנה מתחיל הפזמון. הקהל ישמע 15 שניות מהנקודה הזו. (אם עוד לא סומנו ריקודים לתחרות — מוצגים כל הריקודים.)</p>
+      <p class="muted" style="margin:4px 0 8px"><b>אפשר גם להעלות קובץ שמע</b> (mp3 / m4a / וידאו) בכפתור 📁 — המערכת מוצאת לבד את 15 השניות של הפזמון, ואפשר לתקן את השנייה. מילאתי מראש קטע לרוב הריקודים (נמצא אוטומטית ביוטיוב — כדאי להאזין ב-▶ ולתקן אם צריך). לכל ריקוד: קישור מיוטיוב ושנייה שממנה מתחיל הפזמון. הקהל ישמע 15 שניות מהנקודה הזו. (אם עוד לא סומנו ריקודים לתחרות — מוצגים כל הריקודים.)</p>
       <table><thead><tr><th>ריקוד</th><th>קישור יוטיוב</th><th>שנייה</th><th></th></tr></thead><tbody id="clip-rows"></tbody></table>
       <button id="save-clips" class="bigbtn" style="margin-top:10px">💾 שמור קטעי שירים</button>
     </details>
@@ -224,16 +224,17 @@ function renderVote() {
   const ds = stageDances().slice().sort((a, b) => a.style.localeCompare(b.style, 'he') || a.name.localeCompare(b.name, 'he'));
   const clips = voteCfg.clips || {};
   $('clips-of').textContent = ds.length;
-  $('clips-n').textContent = ds.filter(d => (clips[d.id] && clips[d.id].yt) || d.yt || d.audio).length;
+  $('clips-n').textContent = ds.filter(d => (clips[d.id] && (clips[d.id].yt || clips[d.id].file)) || d.yt || d.audio).length;
   if (!$('clip-rows').dataset.built || $('clip-rows').dataset.built !== ds.map(d => d.id).join()) {
     $('clip-rows').dataset.built = ds.map(d => d.id).join();
     $('clip-rows').innerHTML = ds.map(d => {
       const c = clips[d.id] || (d.yt && !d.audio ? { yt: d.yt, s: d.s } : {});
-      const file = !clips[d.id] && d.audio ? `<div class="muted" style="margin-bottom:4px">🎵 קובץ שמע מוכן <a href="${esc(d.audio)}" target="_blank">▶ השמעה</a> — אפשר להדביק כאן קישור יוטיוב במקומו</div>` : '';
+      const up = c.file ? `<div class="muted" style="margin-bottom:4px">📁 קובץ שהועלה <a href="#" class="clip-up-play">▶ השמעה</a> · <a href="#" class="clip-up-del">הסרה</a></div>` : '';
+      const file = up || (!clips[d.id] && d.audio ? `<div class="muted" style="margin-bottom:4px">🎵 קובץ שמע מוכן <a href="${esc(d.audio)}" target="_blank">▶ השמעה</a> — אפשר להדביק כאן קישור יוטיוב במקומו</div>` : '');
       return `<tr data-id="${d.id}"><td><b>${esc(d.name)}</b><div class="muted">${esc(d.singer)} · ${esc(d.style)}</div></td>
         <td>${file}<input class="clip-in clip-yt" placeholder="https://youtu.be/..." value="${c.yt ? 'https://youtu.be/' + esc(c.yt) : ''}"></td>
         <td><input class="clip-in clip-s" type="number" min="0" max="900" placeholder="0" value="${c.s != null ? esc(c.s) : ''}"></td>
-        <td><a class="clip-test" href="#" title="בדיקה">▶</a></td></tr>`;
+        <td style="white-space:nowrap"><a class="clip-test" href="#" title="בדיקה ביוטיוב">▶</a> <a class="clip-up" href="#" title="העלאת קובץ שמע">📁</a></td></tr>`;
     }).join('');
   }
   const n = voteCounts();
@@ -241,6 +242,10 @@ function renderVote() {
     .map(({ d, n }) => `<tr><td class="n">${n || ''}</td><td><b>${esc(d.name)}</b><div class="muted">${esc(d.by)}</div></td><td>${esc(d.style)}</td></tr>`).join('');
 }
 $('clip-rows').addEventListener('click', e => {
+  const tr0 = e.target.closest('tr');
+  if (e.target.closest('.clip-up')) { e.preventDefault(); pickClipFile(tr0.dataset.id); return; }
+  if (e.target.closest('.clip-up-play')) { e.preventDefault(); playUploaded(tr0.dataset.id); return; }
+  if (e.target.closest('.clip-up-del')) { e.preventDefault(); removeUploaded(tr0.dataset.id); return; }
   const a = e.target.closest('.clip-test'); if (!a) return;
   e.preventDefault();
   const tr = a.closest('tr'), id = ytId(tr.querySelector('.clip-yt').value), s = Number(tr.querySelector('.clip-s').value) || 0;
@@ -250,7 +255,9 @@ $('clip-rows').addEventListener('click', e => {
 $('save-clips').onclick = async () => {
   const clips = {}; let bad = 0;
   $('clip-rows').querySelectorAll('tr').forEach(tr => {
-    const raw = tr.querySelector('.clip-yt').value.trim(); if (!raw) return;
+    const raw = tr.querySelector('.clip-yt').value.trim();
+    const old = (voteCfg.clips || {})[tr.dataset.id];
+    if (!raw) { if (old && old.file) clips[tr.dataset.id] = { file: true }; return; }
     const yt = ytId(raw); if (!yt) { bad++; tr.style.background = '#fdecec'; return; }
     tr.style.background = '';
     clips[tr.dataset.id] = { yt, s: Math.max(0, Math.min(900, Math.round(Number(tr.querySelector('.clip-s').value) || 0))) };
@@ -260,6 +267,80 @@ $('save-clips').onclick = async () => {
   try { await saveVoteCfg({ clips }); status('✓ קטעי השירים נשמרו (' + Object.keys(clips).length + ')'); }
   catch (e) { status('שגיאה בשמירה: ' + e.message); }
 };
+// ---- uploaded audio clips: cut 15s in the browser, encode mp3 (lamejs), store in contestClips/{id} ----
+const CLIP_LEN = 16;   // 15s + fades
+function loadLame() {
+  if (window.lamejs) return Promise.resolve();
+  return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js'; s.onload = ok; s.onerror = () => fail(new Error('טעינת רכיב השמע נכשלה')); document.head.appendChild(s); });
+}
+function loudestStart(buf) {
+  const ch = buf.getChannelData(0), sr = buf.sampleRate, secs = Math.floor(buf.duration), rms = [];
+  for (let t = 0; t < secs; t++) { let s = 0; for (let i = t * sr; i < (t + 1) * sr; i += 4) s += ch[i] * ch[i]; rms.push(s); }
+  const from = buf.duration > 45 ? 15 : 0;
+  let best = -1, at = from;
+  for (let t = from; t + 15 <= secs - (buf.duration > 45 ? 3 : 0); t++) { let v = 0; for (let k = t; k < t + 15; k++) v += rms[k]; if (v > best) { best = v; at = t; } }
+  return at;
+}
+async function cutMp3(buf, start) {
+  const sr = 44100, oc = new OfflineAudioContext(1, sr * CLIP_LEN, sr);
+  const src = oc.createBufferSource(); src.buffer = buf;
+  const g = oc.createGain(); g.gain.setValueAtTime(0, 0); g.gain.linearRampToValueAtTime(1, 0.6); g.gain.setValueAtTime(1, CLIP_LEN - 1.2); g.gain.linearRampToValueAtTime(0, CLIP_LEN);
+  src.connect(g); g.connect(oc.destination); src.start(0, start, CLIP_LEN);
+  const out = (await oc.startRendering()).getChannelData(0);
+  const pcm = new Int16Array(out.length); for (let i = 0; i < out.length; i++) pcm[i] = Math.max(-1, Math.min(1, out[i])) * 32767;
+  const enc = new lamejs.Mp3Encoder(1, sr, 96), parts = [];
+  for (let i = 0; i < pcm.length; i += 1152) { const b = enc.encodeBuffer(pcm.subarray(i, i + 1152)); if (b.length) parts.push(b); }
+  const end = enc.flush(); if (end.length) parts.push(end);
+  return new Blob(parts, { type: 'audio/mpeg' });
+}
+const blobToB64 = b => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(String(fr.result).split(',')[1]); fr.readAsDataURL(b); });
+let upAudio = null;
+function playBlobUrl(url) { if (upAudio) upAudio.pause(); upAudio = new Audio(url); upAudio.play().catch(() => status('לא הצלחנו לנגן')); }
+function pickClipFile(id) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'audio/*,video/*,.mp3,.m4a,.wav,.mp4';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const d = CONTEST_DANCES.find(x => x.id === id);
+    try {
+      status('מעבד את הקובץ…');
+      if (f.size > 150e6) throw new Error('הקובץ גדול מדי');
+      await loadLame();
+      const ac = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ac.decodeAudioData(await f.arrayBuffer());
+      ac.close();
+      let start = loudestStart(buf);
+      const ans = prompt(`"${d.name}": אורך השיר ${Math.round(buf.duration)} שניות. הפזמון זוהה בשנייה ${start}.\nאפשר לשנות את השנייה, ואז אישור:`, String(start));
+      if (ans === null) { status(''); return; }
+      start = Math.max(0, Math.min(Math.floor(buf.duration - 5), Math.round(Number(ans) || 0)));
+      const mp3 = await cutMp3(buf, start);
+      playBlobUrl(URL.createObjectURL(mp3));
+      if (!confirm('מתנגן עכשיו הקטע שנחתך (15 שניות). לשמור אותו?')) { upAudio && upAudio.pause(); status(''); return; }
+      upAudio && upAudio.pause();
+      status('שומר…');
+      await db.collection('contestClips').doc(id).set({ data: await blobToB64(mp3), name: String(f.name).slice(0, 120), updatedAt: new Date().toISOString() });
+      const clips = { ...(voteCfg.clips || {}), [id]: { file: true } };
+      $('clip-rows').dataset.built = '';
+      await saveVoteCfg({ clips });
+      status('✓ הקטע של "' + d.name + '" נשמר');
+    } catch (e) { status('שגיאה: ' + (e.message || 'לא הצלחנו לקרוא את הקובץ')); }
+  };
+  inp.click();
+}
+async function playUploaded(id) {
+  try { const doc = await db.collection('contestClips').doc(id).get(); if (!doc.exists) { status('הקובץ לא נמצא'); return; } playBlobUrl('data:audio/mpeg;base64,' + doc.data().data); }
+  catch (e) { status('שגיאה: ' + e.message); }
+}
+async function removeUploaded(id) {
+  if (!confirm('להסיר את הקובץ שהועלה לריקוד הזה?')) return;
+  try {
+    const clips = { ...(voteCfg.clips || {}) }; delete clips[id];
+    $('clip-rows').dataset.built = '';
+    await saveVoteCfg({ clips });
+    await db.collection('contestClips').doc(id).delete().catch(() => {});
+    status('הקובץ הוסר');
+  } catch (e) { status('שגיאה: ' + e.message); }
+}
+
 async function saveVoteCfg(patch) {
   const next = { open: !!voteCfg.open, clips: voteCfg.clips || {}, ...patch, updatedAt: new Date().toISOString() };
   await db.collection('contestConfig').doc('vote').set(next);

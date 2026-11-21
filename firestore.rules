@@ -454,6 +454,15 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['name']) && request.resource.data.name is string && request.resource.data.name.size() < 80;
       allow delete: if contestAdmin();
     }
+    // Song clips uploaded in contest-admin (15s mp3, base64). Public so vote.html can play them.
+    match /contestClips/{danceId} {
+      allow read: if true;
+      allow write: if contestAdmin() && danceId.matches('^d[0-9]{2,3}$')
+        && request.resource.data.keys().hasOnly(['data', 'name', 'updatedAt'])
+        && request.resource.data.data is string && request.resource.data.data.size() < 900000
+        && request.resource.data.name is string && request.resource.data.name.size() <= 120;
+      allow delete: if contestAdmin();
+    }
     match /contestVoteOtps/{phone} {
       allow read, write: if contestBot() && phone.matches('^05[0-9]{8}$');
     }
