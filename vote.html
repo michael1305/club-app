@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070d24">
+<title>מצעד ריקודי העם הארצי 2026 | הצבעה</title>
+<meta name="description" content="הצביעו לריקודים האהובים עליכם במצעד ריקודי העם הארצי 2026 — 30 שנים למצעד הריקודים.">
+<link rel="icon" href="contest-logo-2026.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Secular+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070d24; --bg2: #0e1838; --card: rgba(255,255,255,.055); --card-b: rgba(242,199,92,.28);
+    --gold: #f2c75c; --gold-l: #fff1c2; --gold-d: #b8862b; --ink: #f6f1e4; --soft: #b9b3a3; --dark-ink: #1d1404;
+    --circle: #5b8def; --couple: #ef5b5b; --line-s: #f5cf3a; --bad: #ff8a80; --ok: #7be0a0;
+    --gold-grad: linear-gradient(180deg, #fff6d0 0%, #f6d27a 38%, #d9a43a 70%, #a8761c 100%);
+    --ribbon: linear-gradient(90deg, #8a5a14 0%, #d9a43a 14%, #fbe3a0 32%, #e2b24e 52%, #fbe3a0 72%, #d9a43a 88%, #8a5a14 100%);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--ink); background: var(--bg);
+    font-family: 'Assistant', Arial, sans-serif; font-size: 17px; line-height: 1.55;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* stage lights + curtain + gold sparkles, like the poster */
+  .stage { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+    background:
+      radial-gradient(ellipse 60% 45% at 50% -8%, rgba(255,214,120,.22), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 3px, transparent 3px 46px),
+      linear-gradient(180deg, #0b1533 0%, #070d24 55%, #050916 100%); }
+  .stage::before, .stage::after { content: ''; position: absolute; top: -10%; width: 70%; height: 75%;
+    background: linear-gradient(180deg, rgba(255,222,140,.42), rgba(255,210,110,.06) 65%, transparent);
+    filter: blur(14px); opacity: .55; }
+  .stage::before { left: -22%; transform: rotate(-28deg); transform-origin: top left; clip-path: polygon(0 0, 22% 0, 100% 100%, 55% 100%); }
+  .stage::after { right: -22%; transform: rotate(28deg); transform-origin: top right; clip-path: polygon(78% 0, 100% 0, 45% 100%, 0 100%); }
+  .sparkle { position: absolute; inset: 0 0 45% 0;
+    background-image: radial-gradient(circle, rgba(255,220,130,.9) 0 1.2px, transparent 1.8px), radial-gradient(circle, rgba(255,235,170,.7) 0 .9px, transparent 1.4px);
+    background-size: 53px 47px, 31px 37px; background-position: 0 0, 17px 11px;
+    -webkit-mask-image: linear-gradient(180deg, #000, transparent); mask-image: linear-gradient(180deg, #000, transparent);
+    animation: twinkle 5s ease-in-out infinite alternate; }
+  @keyframes twinkle { from { opacity: .35; } to { opacity: .8; } }
+  @media (prefers-reduced-motion: reduce) { .sparkle { animation: none; } }
+
+  main { max-width: 640px; margin: 0 auto; padding: 18px 16px 120px; }
+  .screen[hidden], [hidden] { display: none !important; }
+  .logo { display: block; width: min(150px, 40vw); height: auto; margin: 6px auto 4px; border-radius: 50%; box-shadow: 0 0 40px rgba(242,199,92,.35); }
+  .logo.sm { width: 74px; margin: 0 auto 6px; }
+  .gold { background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1, h2, .display { font-family: 'Secular One', 'Assistant', sans-serif; font-weight: 400; margin: 0; letter-spacing: .2px; }
+  h1 { font-size: clamp(32px, 9vw, 50px); line-height: 1.08; text-align: center; filter: drop-shadow(0 3px 0 rgba(0,0,0,.45)); }
+  h2 { font-size: clamp(24px, 6.5vw, 32px); text-align: center; line-height: 1.15; margin-bottom: 12px; }
+  .ribbon { position: relative; display: block; width: fit-content; max-width: 100%; margin: 14px auto; padding: 8px 34px; background: var(--ribbon); color: var(--dark-ink);
+    font-family: 'Secular One', sans-serif; font-size: clamp(17px, 4.8vw, 22px); text-align: center;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 50%, 100% 100%, 0 100%, 14px 50%); box-shadow: 0 6px 18px rgba(0,0,0,.35); }
+  .ribbon b { font-size: 1.5em; line-height: .8; vertical-align: -3px; margin: 0 4px; }
+  .rule { display: flex; align-items: center; gap: 12px; justify-content: center; margin: 12px 0; color: var(--gold); font-family: 'Secular One', sans-serif; font-size: clamp(20px, 5.6vw, 26px); }
+  .rule::before, .rule::after { content: ''; flex: 1; max-width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+  .when { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; font-family: 'Secular One', sans-serif; font-size: clamp(20px, 6vw, 28px); color: #fff; }
+  .when span + span::before { content: '|'; color: var(--gold); margin-left: 10px; }
+  .where { text-align: center; color: var(--gold-l); font-size: 17px; margin-top: 4px; }
+  .lead { text-align: center; color: var(--soft); margin: 10px auto 0; max-width: 460px; }
+
+  .card { background: var(--card); border: 1px solid var(--card-b); border-radius: 18px; padding: 20px 18px; margin-top: 16px;
+    -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .btn { display: block; width: 100%; font: inherit; font-weight: 800; font-size: 19px; padding: 15px 18px; border: 0; border-radius: 14px; cursor: pointer;
+    background: var(--gold-grad); color: var(--dark-ink); box-shadow: 0 6px 18px rgba(217,164,58,.35), inset 0 1px 0 rgba(255,255,255,.6); margin-top: 16px; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--gold-l); border: 1px solid var(--card-b); box-shadow: none; font-weight: 600; font-size: 17px; }
+  .link { background: none; border: 0; color: var(--gold); font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; padding: 8px; display: block; margin: 8px auto 0; }
+
+  ol.steps { list-style: none; padding: 0; margin: 4px 0 0; counter-reset: s; }
+  ol.steps li { counter-increment: s; position: relative; padding: 10px 52px 10px 0; border-bottom: 1px solid rgba(242,199,92,.14); }
+  ol.steps li:last-child { border-bottom: 0; }
+  ol.steps li::before { content: counter(s); position: absolute; right: 0; top: 8px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--gold-grad); color: var(--dark-ink); font-family: 'Secular One', sans-serif; font-size: 18px; }
+  ol.steps b { color: var(--gold-l); }
+  .prize { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, rgba(242,199,92,.18), rgba(242,199,92,.05)); border: 1px dashed rgba(242,199,92,.5); text-align: center; color: var(--gold-l); font-weight: 700; }
+
+  label.f { display: block; font-weight: 700; color: var(--gold-l); margin: 14px 0 6px; font-size: 16px; }
+  input.in { width: 100%; font: inherit; font-size: 19px; padding: 13px 14px; border-radius: 12px; border: 1px solid rgba(242,199,92,.35); background: rgba(5,9,22,.65); color: #fff; outline: none; }
+  input.in:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(242,199,92,.2); }
+  input.code { text-align: center; letter-spacing: 12px; font-size: 30px; font-weight: 800; direction: ltr; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 15px; color: var(--soft); cursor: pointer; }
+  .check input { width: 22px; height: 22px; flex: none; accent-color: var(--gold); margin-top: 1px; }
+  .err { color: var(--bad); font-size: 15px; min-height: 20px; margin-top: 8px; text-align: center; }
+  .muted { color: var(--soft); font-size: 15px; }
+  dl.details { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 10px 16px; font-size: 18px; }
+  dl.details dt { color: var(--soft); }
+  dl.details dd { margin: 0; font-weight: 700; color: #fff; word-break: break-word; }
+
+  /* dance list */
+  .hello { text-align: center; color: var(--gold-l); font-weight: 700; margin-bottom: 4px; }
+  .search { width: 100%; font: inherit; font-size: 16px; padding: 11px 14px; border-radius: 12px; border: 1px solid rgba(242,199,92,.3); background: rgba(5,9,22,.65); color: #fff; margin: 10px 0 4px; }
+  .grp { margin-top: 18px; }
+  .grp-h { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: rgba(7,13,36,.92);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid var(--card-b); font-family: 'Secular One', sans-serif; font-size: 20px; }
+  .grp-h .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .grp-h small { margin-inline-start: auto; font-family: 'Assistant', sans-serif; font-size: 15px; font-weight: 700; color: var(--gold-l); }
+  .grp.circle .dot { background: var(--circle); } .grp.couple .dot { background: var(--couple); } .grp.line .dot { background: var(--line-s); }
+  .grp.circle .grp-h { border-inline-start: 5px solid var(--circle); } .grp.couple .grp-h { border-inline-start: 5px solid var(--couple); } .grp.line .grp-h { border-inline-start: 5px solid var(--line-s); }
+  .dance { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 12px; border-radius: 14px; background: var(--card); border: 1.5px solid rgba(255,255,255,.06); cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .dance.on { border-color: var(--gold); background: linear-gradient(135deg, rgba(242,199,92,.2), rgba(242,199,92,.05)); }
+  .dance.full { opacity: .5; }
+  .box { flex: none; width: 28px; height: 28px; border-radius: 8px; border: 2px solid rgba(242,199,92,.5); display: grid; place-items: center; font-weight: 800; color: var(--dark-ink); font-size: 18px; }
+  .dance.on .box { background: var(--gold-grad); border-color: transparent; }
+  .info { flex: 1; min-width: 0; }
+  .info .name { font-weight: 800; font-size: 18px; color: #fff; }
+  .info .by { font-size: 14px; color: var(--soft); }
+  .play { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--card-b); background: rgba(242,199,92,.12); color: var(--gold); font-size: 18px; cursor: pointer; display: grid; place-items: center; }
+  .play.on { background: var(--gold-grad); color: var(--dark-ink); }
+  .play:disabled { opacity: .25; cursor: default; }
+  .empty { color: var(--soft); padding: 12px; font-size: 15px; }
+
+  .bar { position: fixed; inset: auto 0 0 0; z-index: 10; background: rgba(5,9,22,.94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--card-b); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .bar .in { max-width: 640px; margin: 0 auto; display: flex; align-items: center; gap: 10px; }
+  .bar .left { flex: 1; font-size: 14px; color: var(--soft); line-height: 1.35; }
+  .bar .left b { color: var(--gold-l); font-size: 16px; }
+  .bar .btn { width: auto; margin: 0; padding: 12px 20px; font-size: 17px; white-space: nowrap; }
+
+  .sum-g { margin-top: 14px; }
+  .sum-g h3 { margin: 0 0 6px; font-size: 17px; display: flex; align-items: center; gap: 8px; color: var(--gold-l); }
+  .sum-g ul { margin: 0; padding: 0; list-style: none; }
+  .sum-g li { padding: 8px 12px; border-radius: 10px; background: rgba(255,255,255,.04); margin-top: 6px; }
+  .sum-g li small { color: var(--soft); }
+  .sum-g .none { color: var(--soft); font-size: 15px; }
+
+  .player { position: fixed; z-index: 15; left: 12px; bottom: calc(86px + env(safe-area-inset-bottom)); width: 200px; border-radius: 12px; overflow: hidden; border: 1px solid var(--gold); background: #000; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .player .ph { aspect-ratio: 16 / 9; width: 100%; }
+  .player .ph iframe { width: 100%; height: 100%; display: block; }
+  .player .cap { font-size: 12px; padding: 5px 8px; color: var(--gold-l); display: flex; gap: 6px; align-items: center; }
+  .player .cap span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player .cap button { background: none; border: 0; color: var(--gold); font-size: 16px; cursor: pointer; padding: 0 2px; }
+  .toast { position: fixed; z-index: 30; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom)); width: min(440px, calc(100% - 32px));
+    background: #fff8e1; color: var(--dark-ink); border-radius: 12px; padding: 12px 14px; text-align: center; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+  .cal { display: grid; gap: 10px; margin-top: 16px; }
+  .cal a { text-decoration: none; text-align: center; }
+  footer { text-align: center; margin-top: 26px; color: rgba(255,255,255,.45); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="stage" aria-hidden="true"><div class="sparkle"></div></div>
+
+<main>
+  <!-- 1. welcome -->
+  <section id="s-welcome" class="screen">
+    <img class="logo" src="contest-logo-2026.webp" alt="מצעד ריקודי העם השנתי" width="1254" height="1254">
+    <div class="ribbon" style="font-size:clamp(15px,4.2vw,19px);padding:6px 30px">ברוכים הבאים</div>
+    <h1 class="gold">מצעד ריקודי העם הארצי</h1>
+    <div class="rule">לשנת 2026</div>
+    <div class="ribbon">מציינים <b>30</b> שנים למצעד הריקודים</div>
+    <div class="when"><span>31.12.2026</span><span>חמישי</span><span>20:00</span></div>
+    <div class="where">במרכז הספורט באוניברסיטת ת"א</div>
+    <p class="lead">בחרו את הריקודים האהובים עליכם — ותוכלו לזכות בפרס יקר ערך!</p>
+    <div id="closed-note" class="card" style="text-align:center" hidden>
+      <b class="gold display" style="font-size:22px">ההצבעה תיפתח בקרוב</b>
+      <p class="muted" style="margin:6px 0 0">שמרו את הקישור וחזרו אלינו בהמשך.</p>
+    </div>
+    <button id="go-howto" class="btn">להצבעה ←</button>
+  </section>
+
+  <!-- 2. instructions -->
+  <section id="s-howto" class="screen" hidden>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">איך מצביעים?</h2>
+    <div class="card">
+      <ol class="steps">
+        <li><b>ממלאים פרטים</b> — שם, טלפון ועיר, כדי שנוכל ליצור קשר אם זכיתם בפרס.</li>
+        <li><b>מאשרים את הפרטים</b> שמילאתם.</li>
+        <li><b>מקלידים את הקוד</b> שנשלח אליכם ב-SMS.</li>
+        <li><b>בוחרים ריקודים:</b> עד 3 ריקודי מעגל, עד 3 ריקודי זוגות ו-ריקוד שורות אחד. אפשר לשמוע קטע מכל שיר ▶.</li>
+        <li><b>שולחים</b> — וזהו, נתראה במצעד!</li>
+      </ol>
+      <div class="prize">🎁 בין כל המצביעים יוגרל פרס יקר ערך</div>
+    </div>
+    <button id="go-details" class="btn">מתחילים ←</button>
+    <button class="link" data-back="s-welcome">חזרה</button>
+  </section>
+
+  <!-- 2b. details -->
+  <form id="s-details" class="screen" hidden novalidate>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">הפרטים שלך</h2>
+    <div class="card">
+      <p class="muted" style="margin:0">יש למלא את הפרטים כדי שתוכלו לזכות בפרס יקר ערך.</p>
+      <label class="f" for="f-name">שם מלא</label>
+      <input id="f-name" class="in" autocomplete="name" maxlength="80" required>
+      <label class="f" for="f-phone">טלפון נייד</label>
+      <input id="f-phone" class="in" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-0000000" required>
+      <label class="f" for="f-city">עיר מגורים</label>
+      <input id="f-city" class="in" autocomplete="address-level2" maxlength="60" required>
+      <label class="check"><input id="f-ok" type="checkbox"> אני מאשר/ת שיצרו איתי קשר בנוגע לפרס, אם אזכה.</label>
+      <div id="details-err" class="err"></div>
+    </div>
+    <button class="btn" type="submit">המשך ←</button>
+    <button class="link" type="button" data-back="s-howto">חזרה</button>
+  </form>
+
+  <!-- 2c. confirm -->
+  <section id="s-confirm" class="screen" hidden>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">הפרטים נכונים?</h2>
+    <div class="card">
+      <dl class="details">
+        <dt>שם</dt><dd id="c-name"></dd>
+        <dt>טלפון</dt><dd id="c-phone" dir="ltr" style="text-align:right"></dd>
+        <dt>עיר</dt><dd id="c-city"></dd>
+      </dl>
+      <p class="muted" style="margin:14px 0 0">נשלח קוד אימות ב-SMS למספר הזה.</p>
+      <div id="confirm-err" class="err"></div>
+    </div>
+    <button id="send-code" class="btn">כן, שלחו לי קוד ←</button>
+    <button class="btn ghost" data-back="s-details">לא, אני רוצה לתקן</button>
+  </section>
+
+  <!-- 2d. code -->
+  <form id="s-code" class="screen" hidden novalidate>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">הקלידו את הקוד</h2>
+    <div class="card">
+      <p class="muted" style="margin:0 0 10px">שלחנו קוד בן 4 ספרות ב-SMS למספר <b id="code-phone" dir="ltr"></b>. אם הוא לא מגיע תוך דקה, בדקו ב"שולחים לא מוכרים".</p>
+      <input id="f-code" class="in code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="4" placeholder="••••" required>
+      <div id="code-err" class="err"></div>
+    </div>
+    <button id="code-btn" class="btn" type="submit">אישור ←</button>
+    <button class="link" type="button" data-back="s-confirm">לא קיבלתי / שליחה מחדש</button>
+  </form>
+
+  <!-- 3. pick -->
+  <section id="s-pick" class="screen" hidden>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">בחרו את הריקודים שלכם</h2>
+    <div id="hello" class="hello"></div>
+    <p class="lead" style="margin-top:0">עד 3 ריקודי מעגל · עד 3 ריקודי זוגות · ריקוד שורות אחד. לחצו ▶ כדי לשמוע קטע מהשיר.</p>
+    <input id="search" class="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד, יוצר או מבצע">
+    <div id="list"></div>
+  </section>
+
+  <!-- 4. summary -->
+  <section id="s-summary" class="screen" hidden>
+    <img class="logo sm" src="contest-logo-2026.webp" alt="">
+    <h2 class="gold">ההצבעה שלך</h2>
+    <div class="card"><div id="summary"></div><div id="sum-left" class="muted" style="margin-top:12px"></div><div id="submit-err" class="err"></div></div>
+    <button id="submit" class="btn">שליחת ההצבעה ✓</button>
+    <button class="btn ghost" data-back="s-pick">חזרה לשינוי הבחירה</button>
+  </section>
+
+  <!-- 5. done -->
+  <section id="s-done" class="screen" hidden>
+    <img class="logo" src="contest-logo-2026.webp" alt="">
+    <h1 class="gold">תודה שהצבעת!</h1>
+    <div class="ribbon">נתראה במצעד!</div>
+    <div class="when"><span>31.12.2026</span><span>חמישי</span><span>20:00</span></div>
+    <div class="where">במרכז הספורט באוניברסיטת ת"א</div>
+    <div class="cal">
+      <a id="cal-google" class="btn" target="_blank" rel="noopener">📅 הוספה ליומן Google</a>
+      <a id="cal-ics" class="btn ghost" download="מצעד-ריקודי-העם-2026.ics">📅 הוספה ליומן (אייפון / אאוטלוק)</a>
+    </div>
+    <div class="card" id="done-sum-card" hidden><div id="done-sum"></div></div>
+  </section>
+
+  <footer>gadibitton · מצעד ריקודי העם הארצי 2026</footer>
+</main>
+
+<div id="bar" class="bar" hidden>
+  <div class="in">
+    <div class="left"><b id="picked-n">0</b> נבחרו<br><span id="left-txt"></span></div>
+    <button id="finish" class="btn" type="button">סיימתי ←</button>
+  </div>
+</div>
+<div id="player" class="player" hidden>
+  <div class="ph"><div id="yt"></div></div>
+  <div class="cap"><span id="player-t"></span><button id="player-x" type="button" aria-label="סגירה">✕</button></div>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="contest-dances.js?v=4"></script>
+<script>
+const API = 'https://club-contest-api.contest-api.workers.dev/api/vote';
+const FS = 'https://firestore.googleapis.com/v1/projects/club-app-8f954/databases/(default)/documents/contestConfig/';
+const STATE_KEY = 'vote_state_' + CONTEST_YEAR;
+const CLIP_SECONDS = 15;
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const TEST = new URLSearchParams(location.search).has('test');
+const GROUPS = [
+  { style: 'מעגל', key: 'circle', title: 'מעגלים', max: 3, one: 'ריקוד מעגל', many: 'ריקודי מעגל' },
+  { style: 'זוגות', key: 'couple', title: 'זוגות', max: 3, one: 'ריקוד זוגות', many: 'ריקודי זוגות' },
+  { style: 'שורות', key: 'line', title: 'שורות', max: 1, one: 'ריקוד שורות', many: 'ריקודי שורות' }
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const byName = (a, b) => a.name.localeCompare(b.name, 'he');
+
+// ---- state (kept on the phone, so a reload continues where you were) ----
+let S = { name: '', phone: '', city: '', token: '', picks: { circle: [], couple: [], line: [] }, voted: false };
+try { Object.assign(S, JSON.parse(localStorage.getItem(STATE_KEY)) || {}); } catch (e) {}
+function keep() { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} }
+let dances = CONTEST_DANCES, clips = {}, voteOpen = false;
+
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.hidden = s.id !== id);
+  $('bar').hidden = id !== 's-pick';
+  if (id !== 's-pick') stopClip();
+  scrollTo(0, 0);
+}
+document.querySelectorAll('[data-back]').forEach(b => b.onclick = () => show(b.dataset.back));
+let toastT; function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 3200); }
+
+async function call(path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (S.token) headers.Authorization = 'Bearer ' + S.token;
+  let r;
+  try { r = await fetch(API + path, { method: 'POST', headers, body: JSON.stringify(body || {}), signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined }); }
+  catch (e) { throw new Error(e && e.name === 'TimeoutError' ? 'השרת לא ענה — נסו שוב, או עברו לגלישה סלולרית' : 'אין חיבור לאינטרנט — נסו שוב'); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { const e = new Error(j.error || 'שגיאה, נסו שוב'); e.status = r.status; throw e; }
+  return j;
+}
+
+// ---- settings: finalists (admin), clips + open/closed — public, read straight from Google ----
+function fv(v) {
+  if (!v) return undefined;
+  if ('stringValue' in v) return v.stringValue;
+  if ('integerValue' in v) return Number(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fv);
+  if ('mapValue' in v) return Object.fromEntries(Object.entries(v.mapValue.fields || {}).map(([k, x]) => [k, fv(x)]));
+}
+async function fsDoc(id) { const r = await fetch(FS + id); if (!r.ok) return {}; return fv({ mapValue: await r.json() }) || {}; }
+async function loadSettings() {
+  try {
+    const [main, vote] = await Promise.all([fsDoc('main'), fsDoc('vote')]);
+    const fin = new Set(main.finalists || []);
+    if (fin.size) dances = CONTEST_DANCES.filter(d => fin.has(d.id));
+    clips = vote.clips || {};
+    voteOpen = vote.open === true;
+  } catch (e) { console.warn(e); }
+  const known = new Set(dances.map(d => d.id));
+  GROUPS.forEach(g => S.picks[g.key] = (S.picks[g.key] || []).filter(id => known.has(id)));
+}
+
+// ---- 1-2: welcome, instructions, details ----
+$('go-howto').onclick = () => show('s-howto');
+$('go-details').onclick = () => { $('f-name').value = S.name; $('f-phone').value = S.phone; $('f-city').value = S.city; show('s-details'); };
+function normPhone(p) { let d = String(p || '').replace(/\D/g, ''); if (d.startsWith('972')) d = '0' + d.slice(3); return /^05\d{8}$/.test(d) ? d : ''; }
+const prettyPhone = p => p.slice(0, 3) + '-' + p.slice(3);
+$('s-details').addEventListener('submit', e => {
+  e.preventDefault();
+  const name = $('f-name').value.trim(), phone = normPhone($('f-phone').value), city = $('f-city').value.trim();
+  const err = !name || name.length < 2 ? 'נא למלא שם מלא' : !phone ? 'נא למלא מספר טלפון נייד תקין' : city.length < 2 ? 'נא למלא עיר מגורים' : !$('f-ok').checked ? 'נא לסמן את האישור' : '';
+  $('details-err').textContent = err;
+  if (err) return;
+  if (phone !== S.phone) { S.token = ''; S.voted = false; }
+  Object.assign(S, { name, phone, city }); keep();
+  $('c-name').textContent = name; $('c-phone').textContent = prettyPhone(phone); $('c-city').textContent = city;
+  $('confirm-err').textContent = '';
+  show('s-confirm');
+});
+
+// ---- 2c-2d: SMS code ----
+$('send-code').onclick = async () => {
+  const b = $('send-code');
+  b.disabled = true; b.textContent = 'שולח קוד…'; $('confirm-err').textContent = '';
+  try {
+    await call('/send-otp', { phone: S.phone, name: S.name, city: S.city, ios: IS_IOS });
+    $('code-phone').textContent = prettyPhone(S.phone); $('f-code').value = ''; $('code-err').textContent = '';
+    show('s-code'); $('f-code').focus();
+    if ('OTPCredential' in window) {   // Android Chrome fills the code from the SMS by itself
+      navigator.credentials.get({ otp: { transport: ['sms'] } }).then(o => { if (o && o.code) { $('f-code').value = o.code; $('s-code').requestSubmit(); } }).catch(() => {});
+    }
+  } catch (e) {
+    $('confirm-err').textContent = e.message;
+    if (e.status === 409) { S.voted = true; keep(); setTimeout(() => showDone(), 1500); }
+  } finally { b.disabled = false; b.textContent = 'כן, שלחו לי קוד ←'; }
+};
+$('s-code').addEventListener('submit', async e => {
+  e.preventDefault();
+  const b = $('code-btn');
+  b.disabled = true; b.textContent = 'בודק…'; $('code-err').textContent = '';
+  try {
+    const j = await call('/verify',{ phone: S.phone, code: $('f-code').value });
+    S.token = j.token;
+    if (j.voted) { S.voted = true; if (j.picks) S.picks = { circle: [], couple: [], line: [], ...j.picks }; keep(); showDone(); return; }
+    keep(); openPick();
+  } catch (err) { $('code-err').textContent = err.message; }
+  finally { b.disabled = false; b.textContent = 'אישור ←'; }
+});
+
+// ---- 3: pick ----
+const G = k => GROUPS.find(g => g.key === k);
+function groupOf(d) { return GROUPS.find(g => g.style === d.style); }
+function total() { return GROUPS.reduce((n, g) => n + S.picks[g.key].length, 0); }
+function leftText() {
+  const parts = GROUPS.map(g => ({ g, n: g.max - S.picks[g.key].length })).filter(x => x.n > 0)
+    .map(({ g, n }) => n === 1 ? g.one + ' אחד' : n + ' ' + g.many);
+  return parts.length ? 'נשאר לבחור: ' + parts.join(' · ') : 'בחרת את כל הריקודים ✓';
+}
+function norm(s) { return String(s).replace(/["'״׳\-]/g, '').toLowerCase(); }
+$('list').innerHTML = GROUPS.map(g => `<section class="grp ${g.key}" data-key="${g.key}"><h3 class="grp-h"><span class="dot"></span>${g.title}<small></small></h3><div class="items"></div></section>`).join('');
+function render() {
+  const q = norm($('search').value.trim());
+  GROUPS.forEach(g => {
+    const sec = $('list').querySelector(`.grp[data-key="${g.key}"]`);
+    const all = dances.filter(d => d.style === g.style).sort(byName);
+    const rows = all.filter(d => !q || [d.name, d.by, d.singer].some(x => norm(x).includes(q)));
+    const sel = S.picks[g.key], full = sel.length >= g.max;
+    sec.hidden = !all.length;
+    sec.querySelector('small').textContent = `נבחרו ${sel.length} מתוך ${g.max}`;
+    sec.querySelector('.items').innerHTML = rows.length ? rows.map(d => {
+      const on = sel.includes(d.id), c = clips[d.id];
+      return `<div class="dance${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${on}" tabindex="0">
+        <span class="box">${on ? '✓' : ''}</span>
+        <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}${d.singer ? ' · מבצע: ' + esc(d.singer) : ''}</div></span>
+        <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && c.yt ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
+      </div>`;
+    }).join('') : `<div class="empty">${q ? 'אין תוצאות בחיפוש' : ''}</div>`;
+  });
+  $('picked-n').textContent = total();
+  $('left-txt').textContent = leftText();
+}
+function toggle(id) {
+  const d = dances.find(x => x.id === id); if (!d) return;
+  const g = groupOf(d), sel = S.picks[g.key], i = sel.indexOf(id);
+  if (i >= 0) sel.splice(i, 1);
+  else if (sel.length >= g.max) { toast(g.max === 1 ? `אפשר לבחור ${g.one} אחד בלבד — בטלו את הבחירה כדי להחליף` : `אפשר לבחור עד ${g.max} ${g.many} — בטלו בחירה כדי להחליף`); return; }
+  else sel.push(id);
+  keep(); render();
+}
+$('list').addEventListener('click', e => {
+  const p = e.target.closest('[data-play]'); if (p) { e.stopPropagation(); playClip(p.dataset.play); return; }
+  const el = e.target.closest('.dance'); if (el) toggle(el.dataset.id);
+});
+$('list').addEventListener('keydown', e => { const el = e.target.closest('.dance'); if (el && e.target === el && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); toggle(el.dataset.id); } });
+$('search').oninput = render;
+function openPick() { $('hello').textContent = S.name ? 'שלום ' + S.name.split(' ')[0] + ' 👋' : ''; render(); show('s-pick'); }
+$('finish').onclick = () => {
+  if (!total()) { toast('עוד לא בחרת אף ריקוד'); return; }
+  renderSummary($('summary')); $('sum-left').textContent = total() < 7 ? leftText() + ' — אפשר לשלוח גם כך.' : ''; $('submit-err').textContent = '';
+  show('s-summary');
+};
+
+// ---- 4: summary + send ----
+function renderSummary(el) {
+  el.innerHTML = GROUPS.map(g => {
+    const ds = S.picks[g.key].map(id => dances.find(d => d.id === id) || CONTEST_DANCES.find(d => d.id === id)).filter(Boolean);
+    return `<div class="sum-g ${g.key}"><h3><span class="dot" style="width:10px;height:10px;border-radius:50%;background:var(--${g.key === 'line' ? 'line-s' : g.key})"></span>${g.title} (${ds.length}/${g.max})</h3>`
+      + (ds.length ? '<ul>' + ds.map(d => `<li><b>${esc(d.name)}</b> <small>— ${esc(d.by)}</small></li>`).join('') + '</ul>' : '<div class="none">לא נבחר</div>') + '</div>';
+  }).join('');
+}
+$('submit').onclick = async () => {
+  const b = $('submit');
+  b.disabled = true; b.textContent = 'שולח…'; $('submit-err').textContent = '';
+  try {
+    await call('/submit', { picks: S.picks });
+    S.voted = true; keep(); showDone();
+  } catch (e) {
+    if (e.status === 409) { S.voted = true; keep(); showDone(); return; }
+    if (e.status === 401) { S.token = ''; keep(); $('submit-err').textContent = 'צריך לאמת שוב את הטלפון — הבחירות שלך נשמרו.'; setTimeout(() => $('go-details').click(), 1800); return; }
+    $('submit-err').textContent = e.message;
+  } finally { b.disabled = false; b.textContent = 'שליחת ההצבעה ✓'; }
+};
+
+// ---- 5: done + calendar ----
+const EV = { title: 'מצעד ריקודי העם הארצי 2026', where: 'מרכז הספורט, אוניברסיטת תל אביב', start: '20261231T180000Z', end: '20261231T213000Z', details: 'מציינים 30 שנים למצעד הריקודים. נתראה!' };
+$('cal-google').href = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(EV.title) + '&dates=' + EV.start + '/' + EV.end + '&location=' + encodeURIComponent(EV.where) + '&details=' + encodeURIComponent(EV.details + ' ' + location.origin + location.pathname) + '&ctz=Asia/Jerusalem';
+$('cal-ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
+  'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//gadibitton//matzad//HE', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+  'UID:matzad-2026@club.gadibitton.co.il', 'DTSTAMP:20261120T000000Z', 'DTSTART:' + EV.start, 'DTEND:' + EV.end,
+  'SUMMARY:' + EV.title, 'LOCATION:' + EV.where.replace(/,/g, '\\,'), 'DESCRIPTION:' + EV.details,
+  'BEGIN:VALARM', 'TRIGGER:-PT3H', 'ACTION:DISPLAY', 'DESCRIPTION:' + EV.title, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
+].join('\r\n'));
+function showDone() {
+  const has = total() > 0;
+  $('done-sum-card').hidden = !has;
+  if (has) { renderSummary($('done-sum')); $('done-sum').insertAdjacentHTML('afterbegin', '<b class="gold display" style="font-size:20px">ההצבעה שלך</b>'); }
+  show('s-done');
+}
+
+// ---- music clips (YouTube, a few seconds from the chorus) ----
+let ytPlayer = null, ytReady = null, playing = '', clipTimer = null;
+function loadYT() {
+  if (ytReady) return ytReady;
+  ytReady = new Promise((ok, fail) => {
+    window.onYouTubeIframeAPIReady = ok;
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; s.onerror = () => { ytReady = null; fail(new Error('yt')); };
+    document.head.appendChild(s);
+  });
+  return ytReady;
+}
+async function playClip(id) {
+  if (playing === id) { stopClip(); return; }
+  const c = clips[id], d = dances.find(x => x.id === id);
+  if (!c || !c.yt || !d) return;
+  stopClip(); playing = id; render();
+  $('player-t').textContent = '♪ ' + d.name; $('player').hidden = false;
+  try { await loadYT(); } catch (e) { stopClip(); toast('לא הצלחנו לטעון את קטע השיר'); return; }
+  if (playing !== id) return;
+  const start = Math.max(0, Number(c.s) || 0);
+  const begin = () => { clearTimeout(clipTimer); clipTimer = setTimeout(stopClip, CLIP_SECONDS * 1000 + 800); };
+  if (!ytPlayer) {
+    ytPlayer = new YT.Player('yt', { videoId: c.yt, playerVars: { start, end: start + CLIP_SECONDS, autoplay: 1, playsinline: 1, controls: 0, rel: 0, modestbranding: 1 },
+      events: { onReady: ev => { ev.target.playVideo(); begin(); }, onStateChange: ev => { if (ev.data === 0) stopClip(); }, onError: () => { stopClip(); toast('קטע השיר לא זמין כרגע'); } } });
+  } else { ytPlayer.loadVideoById({ videoId: c.yt, startSeconds: start, endSeconds: start + CLIP_SECONDS }); begin(); }
+}
+function stopClip() {
+  clearTimeout(clipTimer);
+  try { ytPlayer && ytPlayer.pauseVideo && ytPlayer.pauseVideo(); } catch (e) {}
+  $('player').hidden = true;
+  if (playing) { playing = ''; if (!$('s-pick').hidden) render(); }
+}
+$('player-x').onclick = stopClip;
+
+// ---- start ----
+(async () => {
+  await loadSettings();
+  if (S.voted) { showDone(); return; }
+  if (!voteOpen && !TEST) { $('closed-note').hidden = false; $('go-howto').hidden = true; }
+  if (S.token && (voteOpen || TEST)) { openPick(); return; }
+  show('s-welcome');
+})();
+</script>
+</body>
+</html>

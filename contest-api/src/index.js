@@ -8,6 +8,13 @@
 //   POST /api/picks      (Bearer token) {picks:[ids]} → saves contestPicks/{phone}
 //   POST /api/fb-login   (Bearer token) → {email, password} of the instructor's own Firebase user
 //
+// Stage 2 — public voting (vote.html), any phone:
+//   POST /api/vote/send-otp {phone, name, city, ios} → SMS code (limits: per phone, per IP, per day)
+//   POST /api/vote/verify   {phone, code}            → {token, voted, picks}
+//   POST /api/vote/submit   (Bearer vote token) {picks:{circle:[],couple:[],line:[]}} → final, once
+// Voters live in contestVoters/{phone}. Open/closed = contestConfig/vote.open (admin page);
+// phones in contestInstructors with type "בדיקה" may test while it's closed.
+//
 // After login the page reads/writes contestPicks/{phone} straight in Firestore (Google), so it
 // works on networks that block *.workers.dev. The Worker creates one Firebase user per
 // instructor (email/password derived from SESSION_SECRET, unguessable) and records
@@ -53,6 +60,9 @@ export default {
       if (path === '/api/send-otp' && req.method === 'POST') return json(200, await sendOtp(ctx, await body(req)));
       if (path === '/api/verify-otp' && req.method === 'POST') return json(200, await verifyOtp(ctx, await body(req)));
       if (path === '/api/picks' && req.method === 'GET') return json(200, await getPicks(ctx, req));
+      if (path === '/api/vote/send-otp' && req.method === 'POST') return json(200, await voteSendOtp(ctx, req, await body(req)));
+      if ((path === '/api/vote/verify' || path === '/api/vote/verify-otp') && req.method === 'POST') return json(200, await voteVerify(ctx, await body(req)));
+      if (path === '/api/vote/submit' && req.method === 'POST') return json(200, await voteSubmit(ctx, req, await body(req)));
       if (path === '/api/fb-login' && req.method === 'POST') return json(200, await fbLogin(ctx, req));
       if (path === '/api/picks' && req.method === 'POST') return json(200, await savePicks(ctx, req, await body(req)));
       return json(404, { error: 'not found' });
@@ -147,6 +157,118 @@ async function auth(ctx, req) {
   const inst = phone && await ctx.fsGet('contestInstructors/' + phone);
   if (!inst) throw new HttpError(401, 'יש להתחבר מחדש');
   return { phone, inst };
+}
+
+// ---------------- stage 2: public voting ----------------
+const VOTE_LIMITS = { circle: 3, couple: 3, line: 1 };
+const VOTE_DAILY_SMS_CAP = 3000;       // safety net against SMS abuse (Micropay costs money)
+const VOTE_IP_PER_HOUR = 6;
+
+async function voteOpenFor(ctx, phone) {
+  const cfg = await ctx.fsGet('contestConfig/vote', { asBot: false });
+  if (cfg && cfg.open === true) return true;
+  const inst = await ctx.fsGet('contestInstructors/' + phone);
+  return !!(inst && inst.type === 'בדיקה');
+}
+
+function cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max); }
+
+async function voteSendOtp(ctx, req, b) {
+  const phone = normalizePhone(b.phone);
+  if (!phone) throw new HttpError(400, 'מספר טלפון לא תקין');
+  const name = cleanText(b.name, 80), city = cleanText(b.city, 60);
+  if (name.length < 2) throw new HttpError(400, 'נא למלא שם מלא');
+  if (city.length < 2) throw new HttpError(400, 'נא למלא עיר מגורים');
+  if (!(await voteOpenFor(ctx, phone))) throw new HttpError(403, 'ההצבעה עדיין לא נפתחה');
+  const voter = await ctx.fsGet('contestVoters/' + phone);
+  if (voter && voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה! נתראה במצעד');
+
+  const now = Date.now();
+  // Per-IP limit (hashed, never stored raw) and a daily cap for the whole vote.
+  const ip = req.headers.get('CF-Connecting-IP') || 'none';
+  const ipKey = 'contestVoteLimits/ip-' + (await ctx.hmac('ip:' + ip)).replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
+  const ipRec = (await ctx.fsGet(ipKey)) || {};
+  const ipFresh = ipRec.windowStart && now - ipRec.windowStart < 3600e3;
+  const ipCount = ipFresh ? (ipRec.count || 0) : 0;
+  if (ipCount >= VOTE_IP_PER_HOUR) throw new HttpError(429, 'יותר מדי בקשות מהרשת הזו — נסו שוב בעוד שעה');
+  const day = new Date(now + 2 * 3600e3).toISOString().slice(0, 10);
+  const dayKey = 'contestVoteLimits/day-' + day;
+  const dayRec = (await ctx.fsGet(dayKey)) || {};
+  if ((dayRec.count || 0) >= VOTE_DAILY_SMS_CAP) throw new HttpError(429, 'המערכת עמוסה כרגע — נסו שוב מחר');
+
+  const prev = (await ctx.fsGet('contestVoteOtps/' + phone)) || {};
+  if (prev.sentAt && now - prev.sentAt < 60e3) throw new HttpError(429, 'קוד נשלח לפני רגע — אפשר לבקש חדש בעוד דקה');
+  const inWindow = prev.windowStart && now - prev.windowStart < 3600e3;
+  const sendCount = inWindow ? (prev.sendCount || 0) : 0;
+  if (sendCount >= 5) throw new HttpError(429, 'יותר מדי בקשות קוד — נסו שוב בעוד שעה');
+
+  const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
+  const rec = {
+    codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city,
+    expiresAt: now + 10 * 60e3, attempts: 0, sentAt: now,
+    sendCount: sendCount + 1, windowStart: inWindow ? prev.windowStart : now
+  };
+  await ctx.fsSet('contestVoteOtps/' + phone, rec);
+  await ctx.fsSet(ipKey, { count: ipCount + 1, windowStart: ipFresh ? ipRec.windowStart : now });
+  await ctx.fsSet(dayKey, { count: (dayRec.count || 0) + 1 });
+  const unblock = () => ctx.fsSet('contestVoteOtps/' + phone, { ...rec, sentAt: 0 }).catch(() => {});
+
+  const msg = b.ios
+    ? `מצעד ריקודי העם – קוד ההצבעה שלך: ${code}\nYour Dance Vote code is ${code}`
+    : `מצעד ריקודי העם הארצי\nקוד ההצבעה שלך: ${code}\nתקף ל-10 דקות\n\n@club.gadibitton.co.il #${code}`;
+  await sendSms(ctx, phone, msg, unblock);
+  return { ok: true };
+}
+
+async function voteVerify(ctx, b) {
+  const phone = normalizePhone(b.phone);
+  const code = String(b.code || '').replace(/\D/g, '');
+  if (!phone || code.length !== 4) throw new HttpError(400, 'קוד לא תקין');
+  const otp = await ctx.fsGet('contestVoteOtps/' + phone);
+  if (!otp || !otp.codeHash || otp.expiresAt < Date.now() || (otp.attempts || 0) >= 5) throw new HttpError(400, 'הקוד פג תוקף — בקשו קוד חדש');
+  if (!safeEqual(otp.codeHash, await ctx.hmac('v:' + phone + ':' + code))) {
+    await ctx.fsSet('contestVoteOtps/' + phone, { ...otp, attempts: (otp.attempts || 0) + 1 });
+    throw new HttpError(400, 'קוד שגוי');
+  }
+  await ctx.fsSet('contestVoteOtps/' + phone, { ...otp, codeHash: '', attempts: 5 });
+  const voter = (await ctx.fsGet('contestVoters/' + phone)) || {};
+  if (!voter.votedAt) await ctx.fsSet('contestVoters/' + phone, { name: otp.name || '', city: otp.city || '', verifiedAt: new Date().toISOString() });
+  return { token: await ctx.makeToken(phone, 'v'), voted: !!voter.votedAt, picks: voter.picks || null, name: voter.name || otp.name || '' };
+}
+
+async function voteSubmit(ctx, req, b) {
+  const phone = await ctx.readToken(req, 'v');
+  if (!phone) throw new HttpError(401, 'יש להתחבר מחדש');
+  if (!(await voteOpenFor(ctx, phone))) throw new HttpError(403, 'ההצבעה נסגרה');
+  const voter = await ctx.fsGet('contestVoters/' + phone);
+  if (!voter) throw new HttpError(401, 'יש להתחבר מחדש');
+  if (voter.votedAt) throw new HttpError(409, 'כבר הצבעת מהמספר הזה — תודה!');
+  const main = (await ctx.fsGet('contestConfig/main', { asBot: false })) || {};
+  const allowed = Array.isArray(main.finalists) && main.finalists.length ? new Set(main.finalists) : null;
+  const picks = {};
+  let total = 0;
+  for (const [k, max] of Object.entries(VOTE_LIMITS)) {
+    const ids = [...new Set(((b.picks && b.picks[k]) || []).map(String))].filter(id => ID_RE.test(id) && (!allowed || allowed.has(id)));
+    if (ids.length > max) throw new HttpError(400, 'נבחרו יותר ריקודים מהמותר');
+    picks[k] = ids; total += ids.length;
+  }
+  if (!total) throw new HttpError(400, 'לא נבחר אף ריקוד');
+  const votedAt = new Date().toISOString();
+  await ctx.fsSet('contestVoters/' + phone, { name: voter.name || '', city: voter.city || '', verifiedAt: voter.verifiedAt || votedAt, picks, votedAt });
+  return { ok: true, picks, votedAt };
+}
+
+async function sendSms(ctx, phone, msg, unblock) {
+  const url = 'https://www.micropay.co.il/extApi/scheduleSms.php?get=1'
+    + '&token=' + encodeURIComponent(ctx.env.MICROPAY_TOKEN || '')
+    + '&msg=' + encodeURIComponent(msg)
+    + '&list=' + phone
+    + '&from=' + encodeURIComponent(ctx.env.MICROPAY_FROM || '');
+  let txt;
+  try { txt = await (await fetch(url, { signal: AbortSignal.timeout(12000) })).text(); }
+  catch (e) { console.error('micropay fetch', phone, e && e.name, e && e.message); await unblock(); throw new HttpError(504, 'שירות ה-SMS לא ענה, נסו שוב בעוד רגע'); }
+  console.log('sms', phone, txt.slice(0, 80));
+  if (!txt.startsWith('OK')) { console.error('micropay', txt); await unblock(); throw new HttpError(502, 'שליחת ה-SMS נכשלה, נסו שוב'); }
 }
 
 // The instructor's own Firebase user (created on first use) + the contestAuth mapping doc.
@@ -245,16 +367,16 @@ class Ctx {
   async hmac(data) { return b64url(await crypto.subtle.sign('HMAC', await this.key(), new TextEncoder().encode(data))); }
 
   // Session token: base64url(JSON{p,e}).sig
-  async makeToken(phone) {
-    const b = b64urlText(JSON.stringify({ p: phone, e: Date.now() + SESSION_DAYS * 864e5 }));
+  async makeToken(phone, kind = '') {
+    const b = b64urlText(JSON.stringify(kind ? { p: phone, k: kind, e: Date.now() + 2 * 864e5 } : { p: phone, e: Date.now() + SESSION_DAYS * 864e5 }));
     return b + '.' + await this.hmac('s:' + b);
   }
-  async readToken(req) {
+  async readToken(req, kind = '') {
     const m = /^Bearer\s+(.+)$/.exec(req.headers.get('Authorization') || '');
     if (!m) return '';
     const [b, sig] = m[1].split('.');
     if (!b || !sig || !safeEqual(sig, await this.hmac('s:' + b))) return '';
-    try { const { p, e } = JSON.parse(fromB64urlText(b)); return e > Date.now() ? normalizePhone(p) : ''; }
+    try { const { p, k, e } = JSON.parse(fromB64urlText(b)); return e > Date.now() && (k || '') === kind ? normalizePhone(p) : ''; }
     catch (e) { return ''; }
   }
 

@@ -38,6 +38,12 @@
   .tools button, .tools select { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; background: #fff; cursor: pointer; }
   input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); }
   @media (max-width: 560px) { td.who { display: none; } th.who { display: none; } }
+  .clip-in { font: inherit; font-size: 13px; border: 1px solid var(--line); border-radius: 6px; padding: 5px 7px; width: 100%; direction: ltr; }
+  .clip-s { width: 64px; }
+  .bigbtn { font: inherit; font-size: 14px; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; background: var(--p); color: #fff; }
+  .bigbtn.gold { background: var(--gold); color: var(--p); font-weight: bold; }
+  .winner { margin-top: 10px; padding: 12px; border-radius: 10px; background: #fff7e0; border: 1px dashed var(--gold); font-size: 15px; }
+  details.box > summary { cursor: pointer; font-weight: bold; color: var(--p); margin: 6px 0; }
 </style>
 </head>
 <body>
@@ -59,6 +65,32 @@
     </div>
     <p class="muted" style="margin:10px 0 4px">מרקידים שבחרו (<span id="voted-n">0</span> מתוך <span id="inst-n">0</span>):</p>
     <div id="voters"></div>
+  </div>
+
+  <div class="sec">
+    <h2>שלב ב׳ — הצבעת הקהל</h2>
+    <div class="row">
+      <span>מצב:</span>
+      <button id="vote-btn" class="switch">…</button>
+      <span class="muted">קישור לקהל: <a href="vote.html" target="_blank">club.gadibitton.co.il/vote.html</a> · <a href="vote.html?test=1" target="_blank">תצוגת בדיקה</a></span>
+    </div>
+    <p class="muted" style="margin:10px 0 4px">אימתו טלפון: <b id="v-verified">0</b> · הצביעו: <b id="v-voted">0</b></p>
+    <div class="row" style="margin-top:8px">
+      <button id="draw" class="bigbtn gold">🎁 הגרלת זוכה מבין המצביעים</button>
+    </div>
+    <div id="winner"></div>
+
+    <details class="box" style="margin-top:12px">
+      <summary>🎵 קטעי שירים להשמעה (<span id="clips-n">0</span> מתוך <span id="clips-of">0</span>)</summary>
+      <p class="muted" style="margin:4px 0 8px">לכל ריקוד בתחרות: מדביקים קישור מיוטיוב ושנייה שממנה מתחיל הפזמון. הקהל ישמע 15 שניות מהנקודה הזו. (אם עוד לא סומנו ריקודים לתחרות — מוצגים כל הריקודים.)</p>
+      <table><thead><tr><th>ריקוד</th><th>קישור יוטיוב</th><th>שנייה</th><th></th></tr></thead><tbody id="clip-rows"></tbody></table>
+      <button id="save-clips" class="bigbtn" style="margin-top:10px">💾 שמור קטעי שירים</button>
+    </details>
+
+    <details class="box" style="margin-top:8px" open>
+      <summary>📊 תוצאות הצבעת הקהל</summary>
+      <table><thead><tr><th>קולות</th><th>ריקוד</th><th>צורה</th></tr></thead><tbody id="vote-rows"></tbody></table>
+    </details>
   </div>
 
   <div class="sec">
@@ -90,17 +122,22 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let db, instructors = [], picksBy = {}, finalists = new Set(), stage1Open = true, dirty = false;
+let voters = [], voteCfg = { open: false, clips: {} };
 const status = t => $('status').textContent = t;
 
 requireAdmin(async d => {
   db = d;
   status('טוען…');
   try {
-    const [inst, picks, cfg] = await Promise.all([
+    const [inst, picks, cfg, vcfg, vts] = await Promise.all([
       db.collection('contestInstructors').get(),
       db.collection('contestPicks').get(),
-      db.collection('contestConfig').doc('main').get()
+      db.collection('contestConfig').doc('main').get(),
+      db.collection('contestConfig').doc('vote').get(),
+      db.collection('contestVoters').get()
     ]);
+    voteCfg = { open: false, clips: {}, ...(vcfg.exists ? vcfg.data() : {}) };
+    voters = vts.docs.map(x => ({ phone: x.id, ...x.data() }));
     instructors = inst.docs.map(x => ({ phone: x.id, ...x.data() })).sort((a, b) => a.name.localeCompare(b.name, 'he'));
     picks.docs.forEach(x => picksBy[x.id] = x.data());
     const c = cfg.exists ? cfg.data() : {};
@@ -159,7 +196,86 @@ function render() {
       + '</tbody></table>'
     : '<p class="muted">עדיין אין</p>';
   $('save').disabled = !dirty;
+  renderVote();
 }
+
+// ---------------- stage 2 ----------------
+const STYLE_KEY = { 'מעגל': 'circle', 'זוגות': 'couple', 'שורות': 'line' };
+function stageDances() { return finalists.size ? CONTEST_DANCES.filter(d => finalists.has(d.id)) : CONTEST_DANCES; }
+function voteCounts() {
+  const n = {};
+  voters.filter(v => v.votedAt && v.picks).forEach(v => Object.values(v.picks).flat().forEach(id => n[id] = (n[id] || 0) + 1));
+  return n;
+}
+function ytId(s) {
+  s = String(s || '').trim();
+  const m = s.match(/(?:youtu\.be\/|v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : (/^[A-Za-z0-9_-]{11}$/.test(s) ? s : '');
+}
+function renderVote() {
+  const vb = $('vote-btn');
+  vb.textContent = voteCfg.open ? '🟢 ההצבעה פתוחה (לחצו לסגירה)' : '🔴 ההצבעה סגורה (לחצו לפתיחה)';
+  vb.className = 'switch ' + (voteCfg.open ? 'on' : 'off');
+  $('v-verified').textContent = voters.length;
+  $('v-voted').textContent = voters.filter(v => v.votedAt).length;
+  const ds = stageDances().slice().sort((a, b) => a.style.localeCompare(b.style, 'he') || a.name.localeCompare(b.name, 'he'));
+  const clips = voteCfg.clips || {};
+  $('clips-of').textContent = ds.length;
+  $('clips-n').textContent = ds.filter(d => clips[d.id] && clips[d.id].yt).length;
+  if (!$('clip-rows').dataset.built || $('clip-rows').dataset.built !== ds.map(d => d.id).join()) {
+    $('clip-rows').dataset.built = ds.map(d => d.id).join();
+    $('clip-rows').innerHTML = ds.map(d => {
+      const c = clips[d.id] || {};
+      return `<tr data-id="${d.id}"><td><b>${esc(d.name)}</b><div class="muted">${esc(d.singer)} · ${esc(d.style)}</div></td>
+        <td><input class="clip-in clip-yt" placeholder="https://youtu.be/..." value="${c.yt ? 'https://youtu.be/' + esc(c.yt) : ''}"></td>
+        <td><input class="clip-in clip-s" type="number" min="0" max="900" placeholder="0" value="${c.s != null ? esc(c.s) : ''}"></td>
+        <td><a class="clip-test" href="#" title="בדיקה">▶</a></td></tr>`;
+    }).join('');
+  }
+  const n = voteCounts();
+  $('vote-rows').innerHTML = ds.map(d => ({ d, n: n[d.id] || 0 })).sort((a, b) => b.n - a.n || a.d.name.localeCompare(b.d.name, 'he'))
+    .map(({ d, n }) => `<tr><td class="n">${n || ''}</td><td><b>${esc(d.name)}</b><div class="muted">${esc(d.by)}</div></td><td>${esc(d.style)}</td></tr>`).join('');
+}
+$('clip-rows').addEventListener('click', e => {
+  const a = e.target.closest('.clip-test'); if (!a) return;
+  e.preventDefault();
+  const tr = a.closest('tr'), id = ytId(tr.querySelector('.clip-yt').value), s = Number(tr.querySelector('.clip-s').value) || 0;
+  if (!id) { status('קישור יוטיוב לא תקין'); return; }
+  window.open('https://www.youtube.com/watch?v=' + id + '&t=' + s + 's', '_blank');
+});
+$('save-clips').onclick = async () => {
+  const clips = {}; let bad = 0;
+  $('clip-rows').querySelectorAll('tr').forEach(tr => {
+    const raw = tr.querySelector('.clip-yt').value.trim(); if (!raw) return;
+    const yt = ytId(raw); if (!yt) { bad++; tr.style.background = '#fdecec'; return; }
+    tr.style.background = '';
+    clips[tr.dataset.id] = { yt, s: Math.max(0, Math.min(900, Math.round(Number(tr.querySelector('.clip-s').value) || 0))) };
+  });
+  if (bad) { status('יש ' + bad + ' קישורים לא תקינים (מסומנים באדום)'); return; }
+  status('שומר…');
+  try { await saveVoteCfg({ clips }); status('✓ קטעי השירים נשמרו (' + Object.keys(clips).length + ')'); }
+  catch (e) { status('שגיאה בשמירה: ' + e.message); }
+};
+async function saveVoteCfg(patch) {
+  const next = { open: !!voteCfg.open, clips: voteCfg.clips || {}, ...patch, updatedAt: new Date().toISOString() };
+  await db.collection('contestConfig').doc('vote').set(next);
+  voteCfg = next; renderVote();
+}
+$('vote-btn').onclick = async () => {
+  const next = !voteCfg.open;
+  if (next && !finalists.size && !confirm('עוד לא סומנו ריקודים לתחרות — הקהל יראה את כל הריקודים. לפתוח בכל זאת?')) return;
+  if (!confirm(next ? 'לפתוח את ההצבעה לקהל?' : 'לסגור את ההצבעה? לא ניתן יהיה להצביע יותר.')) return;
+  status('שומר…');
+  try { await saveVoteCfg({ open: next }); status(next ? 'ההצבעה פתוחה לקהל' : 'ההצבעה נסגרה'); }
+  catch (e) { status('שגיאה: ' + e.message); }
+};
+$('draw').onclick = () => {
+  const pool = voters.filter(v => v.votedAt);
+  if (!pool.length) { $('winner').innerHTML = '<div class="winner">עדיין אין מצביעים</div>'; return; }
+  const r = new Uint32Array(1); crypto.getRandomValues(r);
+  const w = pool[r[0] % pool.length];
+  $('winner').innerHTML = `<div class="winner">🎉 הזוכה: <b>${esc(w.name)}</b> · ${esc(w.city)} · <span dir="ltr">${esc(w.phone)}</span><div class="muted">הוגרל מתוך ${pool.length} מצביעים, ${new Date().toLocaleString('he-IL')}</div></div>`;
+};
 
 $('rows').addEventListener('change', e => {
   const id = e.target.dataset.id; if (!id) return;
@@ -230,6 +346,17 @@ $('csv').onclick = async () => {
     const s3 = XLSX.utils.aoa_to_sheet([['צורה', 'ריקוד (כפי שנכתב)', 'מרקיד'], ...extraRows().map(r => [r.style, r.text, r.who])]);
     s3['!cols'] = [{ wch: 8 }, { wch: 40 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, s3, 'נוספו ידנית');
+    const vn = voteCounts();
+    const s4 = XLSX.utils.aoa_to_sheet([['קולות', 'ריקוד', 'יוצר', 'מבצע', 'צורה'],
+      ...stageDances().map(d => [vn[d.id] || 0, d.name, d.by, d.singer, d.style]).sort((a, b) => b[0] - a[0])]);
+    s4['!cols'] = [{ wch: 8 }, { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, s4, 'הצבעת הקהל');
+    const dn = id => (CONTEST_DANCES.find(d => d.id === id) || {}).name || id;
+    const s5 = XLSX.utils.aoa_to_sheet([['שם', 'טלפון', 'עיר', 'הצביע', 'מעגלים', 'זוגות', 'שורות'],
+      ...voters.map(v => [v.name, v.phone, v.city, v.votedAt ? new Date(v.votedAt).toLocaleString('he-IL') : 'לא סיים',
+        ...['circle', 'couple', 'line'].map(k => ((v.picks && v.picks[k]) || []).map(dn).join(', '))])]);
+    s5['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 40 }, { wch: 40 }, { wch: 24 }];
+    XLSX.utils.book_append_sheet(wb, s5, 'מצביעים');
     XLSX.writeFile(wb, 'מצעד-הריקודים-2026-תוצאות.xlsx');
     status('');
   } catch (e) { status('שגיאה: ' + e.message); }

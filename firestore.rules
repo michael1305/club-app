@@ -421,11 +421,37 @@ service cloud.firestore {
     // stage1Open (bool), finalists (dance ids chosen by the admin for stage 2).
     match /contestConfig/{docId} {
       allow read: if true;
+      // 'vote': stage-2 public voting — open (bool) + clips {danceId: {yt, s}} (YouTube id + start second)
+      allow write: if contestAdmin() && docId == 'vote'
+        && request.resource.data.keys().hasOnly(['open', 'clips', 'updatedAt'])
+        && (!('open' in request.resource.data) || request.resource.data.open is bool)
+        && (!('clips' in request.resource.data) || (request.resource.data.clips is map && request.resource.data.clips.size() <= 200))
+        && (!('updatedAt' in request.resource.data) || isDateishBounded(request.resource.data.updatedAt, 40));
       allow write: if contestAdmin() && docId == 'main'
         && request.resource.data.keys().hasOnly(['stage1Open', 'finalists', 'updatedAt'])
         && (!('stage1Open' in request.resource.data) || request.resource.data.stage1Open is bool)
         && (!('finalists' in request.resource.data) || (request.resource.data.finalists is list && request.resource.data.finalists.size() <= 200))
         && (!('updatedAt' in request.resource.data) || isDateishBounded(request.resource.data.updatedAt, 40));
+    }
+
+    // Stage 2 voters (vote.html). Doc id = phone, verified by SMS in the Worker. Bot writes,
+    // admin reads (results, prize draw).
+    match /contestVoters/{phone} {
+      allow read: if contestBot() || contestAdmin();
+      allow write: if contestBot()
+        && phone.matches('^05[0-9]{8}$')
+        && request.resource.data.keys().hasOnly(['name', 'city', 'verifiedAt', 'picks', 'votedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.city is string && request.resource.data.city.size() <= 60
+        && (!('picks' in request.resource.data) || (request.resource.data.picks is map
+            && request.resource.data.picks.keys().hasOnly(['circle', 'couple', 'line'])));
+      allow delete: if contestAdmin();
+    }
+    match /contestVoteOtps/{phone} {
+      allow read, write: if contestBot() && phone.matches('^05[0-9]{8}$');
+    }
+    match /contestVoteLimits/{id} {
+      allow read, write: if contestBot();
     }
 
     // ---------------- settings (single 'main' doc: prices, days, terminals) ----------------
