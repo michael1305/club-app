@@ -144,6 +144,7 @@ function requireEditor(onReady) {
 }
 </script>
 <script src="https://dance.gadibitton.co.il/js/landing-defaults.js?v=6"></script>
+<script src="https://dance.gadibitton.co.il/js/landing-en.js?v=4"></script>
 <script>
 // Back office for the dance-site landing pages (dance.gadibitton.co.il/beginners.html, harkadot.html).
 // Content is saved as one JSON string in sitePages/<page>; uploaded pictures go to siteImages/<id>
@@ -387,10 +388,45 @@ async function load(id) {
   status(snap.exists ? 'נטען מהגרסה השמורה' + (snap.data().updatedAt ? ' · עודכן ' + new Date(snap.data().updatedAt).toLocaleString('he-IL') : '') : 'עדיין לא נשמר — מוצג התוכן הנוכחי של העמוד');
 }
 
+// English page: Hebrew texts the site can't translate by itself (landing-en.js) are translated
+// automatically on save and stored in data.en { hebrew: english }. Kept translations are reused.
+async function autoTranslate(d) {
+  const EN = window.LANDING_EN;
+  if (!EN) return;
+  const HEB = /[֐-׿]/, norm = s => String(s ?? '').replace(/\s+/g, ' ').trim();
+  const SKIP = new Set(['day', 'image', 'photo', 'color', 'waze', 'whatsapp', 'ytCircles', 'ytCouples', 'phone', 'time', 'start']);
+  const old = d.en || {}, next = {}, todo = new Set();
+  const walk = (v, k) => {
+    if (typeof v === 'string') {
+      if (SKIP.has(k)) return;
+      const n = norm(v);
+      if (!HEB.test(n)) return;
+      if (old[n]) next[n] = old[n];
+      else if (HEB.test(EN.tr(n, true))) todo.add(n);
+    } else if (Array.isArray(v)) v.forEach(x => walk(x, k));
+    else if (v && typeof v === 'object') Object.keys(v).forEach(kk => { if (kk !== 'en') walk(v[kk], kk); });
+  };
+  walk(d);
+  let i = 0;
+  for (const n of todo) {
+    status(`מתרגם לאנגלית... (${++i}/${todo.size})`);
+    try {
+      const q = n.replace(/\{day\}/g, '[1]').replace(/\{time\}/g, '[2]').replace(/\{place\}/g, '[3]');
+      const r = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl=iw&tl=en&dt=t&q=' + encodeURIComponent(q));
+      const j = await r.json();
+      const out = (j[0] || []).map(x => x[0]).join('').replace(/\[1\]/g, '{day}').replace(/\[2\]/g, '{time}').replace(/\[3\]/g, '{place}').trim();
+      if (out && !HEB.test(out)) next[n] = out;
+    } catch (e) { /* translation unavailable — that text stays Hebrew on the English page */ }
+  }
+  d.en = next;
+}
+
 async function save() {
   const bad = data.groups.find(g => !/^\d{1,2}:\d{2}$/.test(g.time || ''));
   if (bad) return status(`שעת ההתחלה של יום ${bad.day} לא תקינה (לדוגמה 20:00)`, true);
   $('save').disabled = true;
+  status('שומר...');
+  await autoTranslate(data);
   status('שומר...');
   try {
     await db.collection('sitePages').doc(pageId).set({
