@@ -161,7 +161,7 @@ async function auth(ctx, req) {
 }
 
 // ---------------- stage 2: public voting ----------------
-const VOTE_LIMITS = { circle: 3, couple: 3, line: 1 };
+const VOTE_LIMITS = { circle: 4, couple: 4, line: 1 };
 const VOTE_DAILY_SMS_CAP = 3000;       // safety net against SMS abuse (Micropay costs money)
 const VOTE_IP_PER_HOUR = 6;
 

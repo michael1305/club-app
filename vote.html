@@ -218,7 +218,7 @@
       <ol class="steps">
         <li><b>ממלאים פרטים.</b></li>
         <li><b>מקלידים את הקוד</b> שנשלח אליכם ב-SMS.</li>
-        <li><b>בוחרים ריקודים:</b><br><span style="white-space:nowrap">3 מעגלים, 3 זוגות ושורות אחד.</span></li>
+        <li><b>בוחרים ריקודים:</b><br><span style="white-space:nowrap">4 מעגלים, 4 זוגות ושורות אחד.</span></li>
         <li><b>שולחים</b> — וזהו, נתראה במצעד!</li>
       </ol>
       <div class="prize">🎁 בין כל המצביעים יוגרל פרס יקר ערך</div>
@@ -284,7 +284,7 @@
   <section id="s-pick" class="screen" hidden>
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
     <h2 class="gold"><span class="nm"></span>בחר/י את הריקודים שלך</h2>
-    <p class="lead" style="margin-top:0">עד 3 ריקודי מעגל · עד 3 ריקודי זוגות · ריקוד שורות אחד. לחצו ▶ כדי לשמוע קטע מהשיר.</p>
+    <p class="lead" style="margin-top:0">עד 4 ריקודי מעגל · עד 4 ריקודי זוגות · ריקוד שורות אחד. לחצו ▶ כדי לשמוע קטע מהשיר.</p>
     <input id="search" class="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד או מבצע">
     <div id="list"></div>
   </section>
@@ -341,8 +341,8 @@ const CLIP_SECONDS = 15;
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const TEST = new URLSearchParams(location.search).has('test');
 const GROUPS = [
-  { style: 'מעגל', key: 'circle', title: 'מעגלים', max: 3, one: 'ריקוד מעגל', many: 'ריקודי מעגל' },
-  { style: 'זוגות', key: 'couple', title: 'זוגות', max: 3, one: 'ריקוד זוגות', many: 'ריקודי זוגות' },
+  { style: 'מעגל', key: 'circle', title: 'מעגלים', max: 4, one: 'ריקוד מעגל', many: 'ריקודי מעגל' },
+  { style: 'זוגות', key: 'couple', title: 'זוגות', max: 4, one: 'ריקוד זוגות', many: 'ריקודי זוגות' },
   { style: 'שורות', key: 'line', title: 'שורות', max: 1, one: 'ריקוד שורות', many: 'ריקודי שורות' }
 ];
 const $ = id => document.getElementById(id);
@@ -504,7 +504,7 @@ $('search').oninput = render;
 function openPick() { render(); show('s-pick'); }
 $('finish').onclick = () => {
   if (!total()) { toast('עוד לא בחרת אף ריקוד'); return; }
-  renderSummary($('summary')); $('sum-left').textContent = total() < 7 ? leftText() + ' — אפשר לשלוח גם כך.' : ''; $('submit-err').textContent = '';
+  renderSummary($('summary')); $('sum-left').textContent = total() < 9 ? leftText() + ' — אפשר לשלוח גם כך.' : ''; $('submit-err').textContent = '';
   show('s-summary');
 };
 
