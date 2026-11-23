@@ -552,6 +552,8 @@ $('player-x').onclick = stopClip;
 // ---- start ----
 (async () => {
   await loadSettings();
+  // test phones: always walk the whole flow again (no SMS is sent to them anyway)
+  if (S.test) { S = { name: S.name, phone: S.phone, city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); }
   if (S.voted) { showDone(); return; }
   if (!voteOpen && !TEST) { $('closed-note').hidden = false; $('go-howto').hidden = true; }
   if (S.token && (voteOpen || TEST)) { openPick(); return; }
