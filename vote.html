@@ -97,6 +97,22 @@
   #s-details .err { min-height: 0; margin-top: 4px; }
   #s-details .btn { margin-top: 12px; padding: 13px 18px; }
   #s-details .link { margin-top: 2px; }
+  /* done screen: compact so it fits one phone screen */
+  #s-done .logo { width: 84px; margin-bottom: 0; }
+  #s-done h1 { font-size: clamp(28px, 8vw, 40px); }
+  #s-done .lead { margin-top: 2px; }
+  #s-done .ribbon { margin: 8px auto; padding: 5px 28px; }
+  #s-done .when { font-size: clamp(18px, 5.4vw, 26px); }
+  #s-done .where { font-size: 15px; margin-top: 0; }
+  #s-done .cal { grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  #s-done .cal .btn { font-size: 14px; padding: 10px 6px; line-height: 1.25; }
+  #s-done .card { padding: 10px 14px; margin-top: 10px; }
+  #s-done .sum-g { margin-top: 6px; font-size: 14px; line-height: 1.4; }
+  #s-done .sum-g h3 { display: inline-flex; font-size: 14px; margin: 0 0 0 6px; }
+  #s-done .sum-g ul, #s-done .sum-g li, #s-done .sum-g .none { display: inline; padding: 0; margin: 0; background: none; }
+  #s-done .sum-g li + li::before { content: '· '; color: var(--gold); }
+  #s-done .sum-g li small { display: none; }
+  #s-done #again { margin-top: 10px; padding: 10px; }
   #s-details .card > p.muted { font-size: 14px; line-height: 1.4; }
   @media (max-height: 760px) { #s-details .logo.sm { display: none; } #s-details label.f { margin: 6px 0 3px; } #s-details input.in { padding: 8px 12px; } }
   .muted { color: var(--soft); font-size: 15px; }
@@ -278,8 +294,8 @@
     <div class="when"><span>31.12.2026</span><span>חמישי</span><span>20:00</span></div>
     <div class="where">במרכז הספורט באוניברסיטת ת"א</div>
     <div class="cal">
-      <a id="cal-google" class="btn" target="_blank" rel="noopener">📅 הוספה ליומן Google</a>
-      <a id="cal-ics" class="btn ghost" download="מצעד-ריקודי-העם-2026.ics">📅 הוספה ליומן (אייפון / אאוטלוק)</a>
+      <a id="cal-google" class="btn" target="_blank" rel="noopener">📅 יומן Google</a>
+      <a id="cal-ics" class="btn ghost" download="מצעד-ריקודי-העם-2026.ics">📅 אייפון / אאוטלוק</a>
     </div>
     <div class="card" id="done-sum-card" hidden><div id="done-sum"></div></div>
     <button id="again" class="btn ghost" type="button" hidden>🧪 הצבעה נוספת (מספר בדיקה)</button>
