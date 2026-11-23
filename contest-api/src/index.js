@@ -9,7 +9,7 @@
 //   POST /api/fb-login   (Bearer token) → {email, password} of the instructor's own Firebase user
 //
 // Stage 2 — public voting (vote.html), any phone:
-//   POST /api/vote/send-otp {phone, name, city, ios} → SMS code (limits: per phone, per IP, per day)
+//   POST /api/vote/send-otp {phone, name, email?, city, ios} → SMS code (limits: per phone, per IP, per day)
 //   POST /api/vote/verify   {phone, code}            → {token, voted, picks}
 //   POST /api/vote/submit   (Bearer vote token) {picks:{circle:[],couple:[],line:[]}} → final, once
 // Voters live in contestVoters/{phone}. Open/closed = contestConfig/vote.open (admin page);
@@ -176,9 +176,10 @@ function cleanText(s, max) { return String(s || '').replace(/[\u0000-\u001f<>]/g
 async function voteSendOtp(ctx, req, b) {
   const phone = normalizePhone(b.phone);
   if (!phone) throw new HttpError(400, 'מספר טלפון לא תקין');
-  const name = cleanText(b.name, 80), city = cleanText(b.city, 60);
+  const name = cleanText(b.name, 80), city = cleanText(b.city, 60), email = cleanText(b.email, 120).toLowerCase();
   if (name.length < 2) throw new HttpError(400, 'נא למלא שם מלא');
-  if (city.length < 2) throw new HttpError(400, 'נא למלא עיר מגורים');
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) throw new HttpError(400, 'כתובת האימייל לא תקינה');
+  if (city.length < 2) throw new HttpError(400, 'נא למלא יישוב מגורים');
   const tester = await isTester(ctx, phone);
   if (!tester && !(await voteIsOpen(ctx))) throw new HttpError(403, 'ההצבעה עדיין לא נפתחה');
   const voter = await ctx.fsGet('contestVoters/' + phone);
@@ -187,7 +188,7 @@ async function voteSendOtp(ctx, req, b) {
   const now = Date.now();
   if (tester) {   // test phone: no SMS, no limits — the code is shown on screen
     const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
-    await ctx.fsSet('contestVoteOtps/' + phone, { codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city, expiresAt: now + 10 * 60e3, attempts: 0, sentAt: 0, sendCount: 0, windowStart: now });
+    await ctx.fsSet('contestVoteOtps/' + phone, { codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city, email, expiresAt: now + 10 * 60e3, attempts: 0, sentAt: 0, sendCount: 0, windowStart: now });
     return { ok: true, testCode: code };
   }
   // Per-IP limit (hashed, never stored raw) and a daily cap for the whole vote.
@@ -210,7 +211,7 @@ async function voteSendOtp(ctx, req, b) {
 
   const code = String(1000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 9000));
   const rec = {
-    codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city,
+    codeHash: await ctx.hmac('v:' + phone + ':' + code), name, city, email,
     expiresAt: now + 10 * 60e3, attempts: 0, sentAt: now,
     sendCount: sendCount + 1, windowStart: inWindow ? prev.windowStart : now
   };
@@ -240,7 +241,7 @@ async function voteVerify(ctx, b) {
   const tester = await isTester(ctx, phone);
   const voter = (await ctx.fsGet('contestVoters/' + phone)) || {};
   if (tester || !voter.votedAt) {
-    await ctx.fsSet('contestVoters/' + phone, { name: otp.name || '', city: otp.city || '', verifiedAt: new Date().toISOString(), ...(tester ? { test: true } : {}) });
+    await ctx.fsSet('contestVoters/' + phone, { name: otp.name || '', city: otp.city || '', email: otp.email || '', verifiedAt: new Date().toISOString(), ...(tester ? { test: true } : {}) });
     return { token: await ctx.makeToken(phone, 'v'), voted: false, picks: null, name: otp.name || '', test: tester };
   }
   return { token: await ctx.makeToken(phone, 'v'), voted: true, picks: voter.picks || null, name: voter.name || '' };
@@ -265,7 +266,7 @@ async function voteSubmit(ctx, req, b) {
   }
   if (!total) throw new HttpError(400, 'לא נבחר אף ריקוד');
   const votedAt = new Date().toISOString();
-  await ctx.fsSet('contestVoters/' + phone, { name: voter.name || '', city: voter.city || '', verifiedAt: voter.verifiedAt || votedAt, picks, votedAt, ...(tester ? { test: true } : {}) });
+  await ctx.fsSet('contestVoters/' + phone, { name: voter.name || '', city: voter.city || '', email: voter.email || '', verifiedAt: voter.verifiedAt || votedAt, picks, votedAt, ...(tester ? { test: true } : {}) });
   return { ok: true, picks, votedAt };
 }
 

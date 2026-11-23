@@ -194,11 +194,13 @@
       <p class="muted" style="margin:0">יש למלא את הפרטים כדי שתוכלו לזכות בפרס יקר ערך.</p>
       <label class="f" for="f-name">שם מלא</label>
       <input id="f-name" class="in" autocomplete="name" maxlength="80" required>
-      <label class="f" for="f-phone">טלפון נייד</label>
-      <input id="f-phone" class="in" type="tel" inputmode="tel" autocomplete="tel" placeholder="050-0000000" required>
-      <label class="f" for="f-city">עיר מגורים</label>
+      <label class="f" for="f-phone">טלפון נייד <small class="muted">(נייד ישראלי בלבד)</small></label>
+      <input id="f-phone" class="in" type="tel" inputmode="numeric" autocomplete="tel-national" placeholder="050-0000000" maxlength="12" required>
+      <label class="f" for="f-email">אימייל <small class="muted">(רשות)</small></label>
+      <input id="f-email" class="in" type="email" inputmode="email" autocomplete="email" maxlength="120" dir="ltr" placeholder="name@example.com">
+      <label class="f" for="f-city">יישוב מגורים</label>
       <input id="f-city" class="in" autocomplete="address-level2" maxlength="60" required>
-      <label class="check"><input id="f-ok" type="checkbox"> אני מאשר/ת שיצרו איתי קשר בנוגע לפרס, אם אזכה.</label>
+      <label class="check"><input id="f-ok" type="checkbox"> אני מאשר/ת שיצרו איתי קשר בנוגע לפרס, במידה ואזכה בהגרלה ולקבל תכנים נוספים בהמשך.</label>
       <div id="details-err" class="err"></div>
     </div>
     <button class="btn" type="submit">המשך ←</button>
@@ -213,7 +215,8 @@
       <dl class="details">
         <dt>שם</dt><dd id="c-name"></dd>
         <dt>טלפון</dt><dd id="c-phone" dir="ltr" style="text-align:right"></dd>
-        <dt>עיר</dt><dd id="c-city"></dd>
+        <dt>אימייל</dt><dd id="c-email" dir="ltr" style="text-align:right"></dd>
+        <dt>יישוב</dt><dd id="c-city"></dd>
       </dl>
       <p class="muted" style="margin:14px 0 0">נשלח קוד אימות ב-SMS למספר הזה.</p>
       <div id="confirm-err" class="err"></div>
@@ -241,7 +244,7 @@
     <img class="logo sm" src="contest-logo-2026.webp" alt="">
     <h2 class="gold"><span class="nm"></span>בחר/י את הריקודים שלך</h2>
     <p class="lead" style="margin-top:0">עד 3 ריקודי מעגל · עד 3 ריקודי זוגות · ריקוד שורות אחד. לחצו ▶ כדי לשמוע קטע מהשיר.</p>
-    <input id="search" class="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד, יוצר או מבצע">
+    <input id="search" class="search" type="search" placeholder="🔍 חיפוש לפי שם ריקוד או מבצע">
     <div id="list"></div>
   </section>
 
@@ -288,7 +291,7 @@
 </div>
 <div id="toast" class="toast" hidden></div>
 
-<script src="contest-dances.js?v=6"></script>
+<script src="contest-dances.js?v=7"></script>
 <script>
 const API = 'https://club-contest-api.contest-api.workers.dev/api/vote';
 const FS = 'https://firestore.googleapis.com/v1/projects/club-app-8f954/databases/(default)/documents/contestConfig/';
@@ -306,7 +309,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 const byName = (a, b) => a.name.localeCompare(b.name, 'he');
 
 // ---- state (kept on the phone, so a reload continues where you were) ----
-let S = { name: '', phone: '', city: '', token: '', picks: { circle: [], couple: [], line: [] }, voted: false };
+let S = { name: '', phone: '', email: '', city: '', token: '', picks: { circle: [], couple: [], line: [] }, voted: false };
 try { Object.assign(S, JSON.parse(localStorage.getItem(STATE_KEY)) || {}); } catch (e) {}
 function keep() { try { localStorage.setItem(STATE_KEY, JSON.stringify(S)); } catch (e) {} }
 let dances = CONTEST_DANCES, clips = {}, voteOpen = false;
@@ -361,18 +364,20 @@ async function loadSettings() {
 
 // ---- 1-2: welcome, instructions, details ----
 $('go-howto').onclick = () => show('s-howto');
-$('go-details').onclick = () => { $('f-name').value = S.name; $('f-phone').value = S.phone; $('f-city').value = S.city; show('s-details'); };
+$('go-details').onclick = () => { $('f-name').value = S.name; $('f-phone').value = S.phone; $('f-email').value = S.email || ''; $('f-city').value = S.city; show('s-details'); };
 function normPhone(p) { let d = String(p || '').replace(/\D/g, ''); if (d.startsWith('972')) d = '0' + d.slice(3); return /^05\d{8}$/.test(d) ? d : ''; }
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+$('f-phone').addEventListener('input', e => { const v = e.target.value.replace(/[^\d-]/g, ''); if (v !== e.target.value) e.target.value = v; });
 const prettyPhone = p => p.slice(0, 3) + '-' + p.slice(3);
 $('s-details').addEventListener('submit', e => {
   e.preventDefault();
-  const name = $('f-name').value.trim(), phone = normPhone($('f-phone').value), city = $('f-city').value.trim();
-  const err = !name || name.length < 2 ? 'נא למלא שם מלא' : !phone ? 'נא למלא מספר טלפון נייד תקין' : city.length < 2 ? 'נא למלא עיר מגורים' : !$('f-ok').checked ? 'נא לסמן את האישור' : '';
+  const name = $('f-name').value.trim(), phone = normPhone($('f-phone').value), city = $('f-city').value.trim(), email = $('f-email').value.trim().toLowerCase();
+  const err = !name || name.length < 2 ? 'נא למלא שם מלא' : !phone ? 'נא למלא מספר טלפון נייד ישראלי (מתחיל ב-05, 10 ספרות)' : email && !EMAIL_RE.test(email) ? 'כתובת האימייל לא תקינה (אפשר גם להשאיר ריק)' : city.length < 2 ? 'נא למלא יישוב מגורים' : !$('f-ok').checked ? 'נא לסמן את האישור' : '';
   $('details-err').textContent = err;
   if (err) return;
   if (phone !== S.phone) { S.token = ''; S.voted = false; }
-  Object.assign(S, { name, phone, city }); keep();
-  $('c-name').textContent = name; $('c-phone').textContent = prettyPhone(phone); $('c-city').textContent = city;
+  Object.assign(S, { name, phone, email, city }); keep();
+  $('c-name').textContent = name; $('c-phone').textContent = prettyPhone(phone); $('c-city').textContent = city; $('c-email').textContent = email || '—';
   $('confirm-err').textContent = '';
   show('s-confirm');
 });
@@ -382,7 +387,7 @@ $('send-code').onclick = async () => {
   const b = $('send-code');
   b.disabled = true; b.textContent = 'שולח קוד…'; $('confirm-err').textContent = '';
   try {
-    const r = await call('/send-otp', { phone: S.phone, name: S.name, city: S.city, ios: IS_IOS });
+    const r = await call('/send-otp', { phone: S.phone, name: S.name, email: S.email || '', city: S.city, ios: IS_IOS });
     $('code-phone').textContent = prettyPhone(S.phone); $('f-code').value = ''; $('code-err').textContent = '';
     $('test-code').hidden = !r.testCode;
     if (r.testCode) { $('test-code').textContent = '🧪 מספר בדיקה — לא נשלח SMS. הקוד: ' + r.testCode; $('f-code').value = r.testCode; }
@@ -425,7 +430,7 @@ function render() {
   GROUPS.forEach(g => {
     const sec = $('list').querySelector(`.grp[data-key="${g.key}"]`);
     const all = dances.filter(d => d.style === g.style).sort(byName);
-    const rows = all.filter(d => !q || [d.name, d.by, d.singer].some(x => norm(x).includes(q)));
+    const rows = all.filter(d => !q || [d.name, d.singer].some(x => norm(x).includes(q)));
     const sel = S.picks[g.key], full = sel.length >= g.max;
     sec.hidden = !all.length;
     sec.querySelector('small').textContent = `נבחרו ${sel.length} מתוך ${g.max}`;
@@ -433,7 +438,7 @@ function render() {
       const on = sel.includes(d.id), c = clips[d.id];
       return `<div class="dance${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${d.id}" role="checkbox" aria-checked="${on}" tabindex="0">
         <span class="box">${on ? '✓' : ''}</span>
-        <span class="info"><div class="name">${esc(d.name)}</div><div class="by">יוצר: ${esc(d.by)}${d.singer ? ' · מבצע: ' + esc(d.singer) : ''}</div></span>
+        <span class="info"><div class="name">${esc(d.name)}</div>${d.singer ? '<div class="by">' + esc(d.singer) + '</div>' : ''}</span>
         <button class="play${playing === d.id ? ' on' : ''}" type="button" data-play="${d.id}" ${c && (c.yt || c.audio || c.file) ? '' : 'disabled'} aria-label="השמעת קטע מהשיר ${esc(d.name)}">${playing === d.id ? '⏸' : '▶'}</button>
       </div>`;
     }).join('') : `<div class="empty">${q ? 'אין תוצאות בחיפוש' : ''}</div>`;
@@ -467,7 +472,7 @@ function renderSummary(el) {
   el.innerHTML = GROUPS.map(g => {
     const ds = S.picks[g.key].map(id => dances.find(d => d.id === id) || CONTEST_DANCES.find(d => d.id === id)).filter(Boolean);
     return `<div class="sum-g ${g.key}"><h3><span class="dot" style="width:10px;height:10px;border-radius:50%;background:var(--${g.key === 'line' ? 'line-s' : g.key})"></span>${g.title} (${ds.length}/${g.max})</h3>`
-      + (ds.length ? '<ul>' + ds.map(d => `<li><b>${esc(d.name)}</b> <small>— ${esc(d.by)}</small></li>`).join('') + '</ul>' : '<div class="none">לא נבחר</div>') + '</div>';
+      + (ds.length ? '<ul>' + ds.map(d => `<li><b>${esc(d.name)}</b> ${d.singer ? '<small>— ' + esc(d.singer) + '</small>' : ''}</li>`).join('') + '</ul>' : '<div class="none">לא נבחר</div>') + '</div>';
   }).join('');
 }
 $('submit').onclick = async () => {
@@ -492,7 +497,7 @@ $('cal-ics').href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
   'SUMMARY:' + EV.title, 'LOCATION:' + EV.where.replace(/,/g, '\\,'), 'DESCRIPTION:' + EV.details,
   'BEGIN:VALARM', 'TRIGGER:-PT3H', 'ACTION:DISPLAY', 'DESCRIPTION:' + EV.title, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'
 ].join('\r\n'));
-$('again').onclick = () => { S = { name: S.name, phone: S.phone, city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); show('s-welcome'); };
+$('again').onclick = () => { S = { name: S.name, phone: S.phone, email: S.email || '', city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); show('s-welcome'); };
 function showDone() {
   $('again').hidden = !S.test;
   const has = total() > 0;
@@ -553,7 +558,7 @@ $('player-x').onclick = stopClip;
 (async () => {
   await loadSettings();
   // test phones: always walk the whole flow again (no SMS is sent to them anyway)
-  if (S.test) { S = { name: S.name, phone: S.phone, city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); }
+  if (S.test) { S = { name: S.name, phone: S.phone, email: S.email || '', city: S.city, token: '', picks: { circle: [], couple: [], line: [] }, voted: false }; keep(); }
   if (S.voted) { showDone(); return; }
   if (!voteOpen && !TEST) { $('closed-note').hidden = false; $('go-howto').hidden = true; }
   if (S.token && (voteOpen || TEST)) { openPick(); return; }

@@ -117,7 +117,7 @@
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js" integrity="sha384-NyS+76PC8Zd+8ZXc1NXFxTHo1EJ5Y+grz8BQwehM4fFwD2ZgZKzGIZrezfZAeb6s" crossorigin="anonymous"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js" integrity="sha384-ynIEJh/LF4vc94kBn86PdxiRZ74YxQohjabfR2wcK6IJ1FGNQEuOMAAOn8RTiXVQ" crossorigin="anonymous"></script>
 <script src="admin-auth.js"></script>
-<script src="contest-dances.js?v=6"></script>
+<script src="contest-dances.js?v=7"></script>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -359,7 +359,7 @@ $('draw').onclick = () => {
   if (!pool.length) { $('winner').innerHTML = '<div class="winner">עדיין אין מצביעים</div>'; return; }
   const r = new Uint32Array(1); crypto.getRandomValues(r);
   const w = pool[r[0] % pool.length];
-  $('winner').innerHTML = `<div class="winner">🎉 הזוכה: <b>${esc(w.name)}</b> · ${esc(w.city)} · <span dir="ltr">${esc(w.phone)}</span><div class="muted">הוגרל מתוך ${pool.length} מצביעים, ${new Date().toLocaleString('he-IL')}</div></div>`;
+  $('winner').innerHTML = `<div class="winner">🎉 הזוכה: <b>${esc(w.name)}</b> · ${esc(w.city)} · <span dir="ltr">${esc(w.phone)}</span>${w.email ? ' · <span dir="ltr">' + esc(w.email) + '</span>' : ''}<div class="muted">הוגרל מתוך ${pool.length} מצביעים, ${new Date().toLocaleString('he-IL')}</div></div>`;
 };
 
 $('rows').addEventListener('change', e => {
@@ -437,10 +437,10 @@ $('csv').onclick = async () => {
     s4['!cols'] = [{ wch: 8 }, { wch: 24 }, { wch: 28 }, { wch: 28 }, { wch: 8 }];
     XLSX.utils.book_append_sheet(wb, s4, 'הצבעת הקהל');
     const dn = id => (CONTEST_DANCES.find(d => d.id === id) || {}).name || id;
-    const s5 = XLSX.utils.aoa_to_sheet([['שם', 'טלפון', 'עיר', 'הצביע', 'מעגלים', 'זוגות', 'שורות'],
-      ...allVoters.map(v => [v.name + (v.test ? ' (בדיקה)' : ''), v.phone, v.city, v.votedAt ? new Date(v.votedAt).toLocaleString('he-IL') : 'לא סיים',
+    const s5 = XLSX.utils.aoa_to_sheet([['שם', 'טלפון', 'אימייל', 'יישוב', 'הצביע', 'מעגלים', 'זוגות', 'שורות'],
+      ...allVoters.map(v => [v.name + (v.test ? ' (בדיקה)' : ''), v.phone, v.email || '', v.city, v.votedAt ? new Date(v.votedAt).toLocaleString('he-IL') : 'לא סיים',
         ...['circle', 'couple', 'line'].map(k => ((v.picks && v.picks[k]) || []).map(dn).join(', '))])]);
-    s5['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 40 }, { wch: 40 }, { wch: 24 }];
+    s5['!cols'] = [{ wch: 20 }, { wch: 12 }, { wch: 24 }, { wch: 14 }, { wch: 18 }, { wch: 40 }, { wch: 40 }, { wch: 24 }];
     XLSX.utils.book_append_sheet(wb, s5, 'מצביעים');
     XLSX.writeFile(wb, 'מצעד-הריקודים-2026-תוצאות.xlsx');
     status('');
