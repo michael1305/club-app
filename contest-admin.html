@@ -448,29 +448,9 @@ $('csv').onclick = async () => {
 };
 addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
 
-// First login for contest-only admins: they set their own password here (no Firebase console
-// needed). Must match contestAdmin() in firestore.rules.
-const CONTEST_ADMINS = ['0528114026@club-admin.local'];
-(function addFirstLogin() {
-  const form = document.getElementById('admin-login-form');
-  if (!form) return;
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.textContent = 'כניסה ראשונה? יצירת סיסמה';
-  b.style.cssText = 'width:100%;margin-top:10px;background:none;border:0;color:#6c5ce7;text-decoration:underline;font-size:14px;cursor:pointer';
-  form.appendChild(b);
-  b.onclick = () => {
-    const err = document.getElementById('admin-login-error');
-    const email = adminLoginEmail(document.getElementById('admin-email').value);
-    const pass = document.getElementById('admin-password').value;
-    if (!CONTEST_ADMINS.includes(email)) { err.textContent = 'המספר הזה לא מורשה ליצור סיסמה כאן'; return; }
-    if (pass.length < 6) { err.textContent = 'נא לבחור סיסמה באורך 6 תווים לפחות (בשדה הסיסמה)'; return; }
-    err.textContent = '';
-    _adminApp().auth().createUserWithEmailAndPassword(email, pass).catch(e => {
-      err.textContent = e.code === 'auth/email-already-in-use' ? 'כבר נוצרה סיסמה למספר הזה — התחברו עם הסיסמה' : 'שגיאה: ' + e.message;
-    });
-  };
-})();
+// No self-service "first login" here: an account must be created by the owner (or confirmed)
+// and its UID added to contestAdmin() in firestore.rules. Self sign-up let anyone claim a listed
+// phone first (removed 2026-11-24).
 </script>
 </body>
 </html>

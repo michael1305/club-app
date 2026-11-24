@@ -47,6 +47,9 @@ const rulesRe = (/function safeId[\s\S]*?matches\('([^']+)'\)/.exec(rulesCode) |
 const appRe = (/const SAFE_ID_RE = \/(.+)\/;/.exec(appJs) || [])[1];
 check('rules safeId() and app.js SAFE_ID_RE are identical', !!rulesRe && rulesRe === appRe);
 
+// --- 2026-11-24: contest-admin self sign-up let anyone claim a listed phone first ---
+check("contest-admin.html has no self sign-up", !/createUserWithEmailAndPassword/.test(read("contest-admin.html")));
+
 // unit test of _safeDocs from app.js
 const start = appJs.indexOf('const SAFE_ID_RE');
 const end = appJs.indexOf('\n}\n', appJs.indexOf('function _safeDocs')) + 3;

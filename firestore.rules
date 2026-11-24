@@ -361,13 +361,13 @@ service cloud.firestore {
 
     // Who may use contest-admin.html: every club admin, plus contest-only admins who get NO
     // access to members/payments/etc. They log in through the same club admin login
-    // (<phone>@club-admin.local). CONTEST_ADMINS in contest-admin.html only picks the login
-    // screen; access itself is decided here, by UID.
+    // (<phone>@club-admin.local). Access is decided only here, by UID.
     function contestAdmin() {
-      // Contest-only admins by UID. Gil (0528114026@club-admin.local) was listed here by email,
-      // but that Auth user was never created, so anyone could have claimed it: removed
-      // 2026-11-23. To restore: create the user first, then put its UID in this list.
-      return isAdmin() || hasUid([]);
+      // Contest-only admins by UID (create the Auth user first, confirm it is really theirs,
+      // then add the UID here).
+      return isAdmin() || hasUid([
+        'llzwbBrU7zO8FhyWmKbiDN7nCuS2'    // Gil, 0528114026@club-admin.local (created 2026-11-24, confirmed by owner)
+      ]);
     }
 
     // Allowlist of instructors who may log in. Doc id = phone (05XXXXXXXX). Holds names + phones,
