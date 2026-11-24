@@ -161,7 +161,7 @@ try {
   const app = firebase.initializeApp({ apiKey: 'AIzaSyCOBQNSRju9Fgxy3_DZAWapzuyv0DoUUCo', authDomain: 'club-app-8f954.firebaseapp.com', projectId: 'club-app-8f954', appId: '1:181296970595:web:6cd7578d10d563f3c73156' }, 'contest');
   fbAuth = app.auth(); db = app.firestore();
 } catch (e) { console.warn('firebase', e); }
-const FBMAP_KEY = 'contest_fb_' + CONTEST_YEAR;   // {uid, phone, name} of the signed-in Firebase user
+const FBMAP_KEY = 'contest_fb_' + CONTEST_YEAR + 'r1';   // {uid, phone, name} of the signed-in Firebase user
 function withTimeout(p, ms) { return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('אין חיבור לשרת, נסו שוב')), ms))]); }
 function fbReady() { return fbAuth ? new Promise(r => { const off = fbAuth.onAuthStateChanged(u => { off(); r(u); }); }) : Promise.resolve(null); }
 async function fbIdentity() {
@@ -193,7 +193,9 @@ async function connect() {
 }
 async function serverGet(ms) {
   if (!fbPhone) return call('/picks', {}, ms);
-  const [p, c] = await withTimeout(Promise.all([db.doc('contestPicks/' + fbPhone).get(), db.doc('contestConfig/main').get()]), ms || 25000);
+  let p, c;
+  try { [p, c] = await withTimeout(Promise.all([db.doc('contestPicks/' + fbPhone).get(), db.doc('contestConfig/main').get()]), ms || 25000); }
+  catch (e) { if (e && e.code === 'permission-denied') { logout(); throw new Error('יש להתחבר מחדש'); } throw e; }
   const d = p.exists ? p.data() : {};
   return { name: myName, picks: d.picks || [], extra: d.extra || {}, open: !(c.exists && c.data().stage1Open === false) };
 }
@@ -266,7 +268,9 @@ $('logout').onclick = logout;
 // ---- picking ----
 // The last known state is kept on the phone, so on a weak network the list opens at once
 // from the copy and syncs with the server in the background.
-const CACHE_KEY = 'contest_cache_' + CONTEST_YEAR;
+// 'r1': picks were reset on 24.11.2026 — copies saved on phones before that are ignored and removed
+const CACHE_KEY = 'contest_cache_' + CONTEST_YEAR + 'r1';
+['contest_cache_', 'contest_fb_'].forEach(k => lsSet(k + CONTEST_YEAR, ''));
 let myName = '';
 function readCache() { try { return JSON.parse(lsGet(CACHE_KEY)) || null; } catch (e) { return null; } }
 function writeCache() { lsSet(CACHE_KEY, JSON.stringify({ name: myName, picks: [...picks], extra, open, pending: dirty })); }
