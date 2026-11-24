@@ -59,32 +59,32 @@ function _initFirebase() {
         }, () => {});
 
         _db.collection('members').onSnapshot(snap => {
-            _members = snap.docs.map(d => d.data());
+            _members = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
         _db.collection('payments').onSnapshot(snap => {
-            _payments = snap.docs.map(d => d.data());
+            _payments = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
         _db.collection('checkins').onSnapshot(snap => {
-            _checkins = snap.docs.map(d => d.data());
+            _checkins = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
         _db.collection('guests').onSnapshot(snap => {
-            _guests = snap.docs.map(d => d.data());
+            _guests = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
         _db.collection('guestcheckins').onSnapshot(snap => {
-            _guestCheckins = snap.docs.map(d => d.data());
+            _guestCheckins = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
         _db.collection('memberLog').onSnapshot(snap => {
-            _memberLog = snap.docs.map(d => d.data());
+            _memberLog = _safeDocs(snap);
             _onDataChange();
         }, () => {});
 
@@ -2501,6 +2501,29 @@ function escJsAttr(str) {
         .replace(/'/g, "\\'")
         .replace(/[\r\n]/g, ' ')
         .replace(/"/g, '&quot;');
+}
+
+// SECURITY (stored XSS, fixed 2026-11-23): ids are embedded raw in many inline
+// onclick="fn('${m.id}')" handlers. Public pages can create member docs, so a doc whose
+// key or `id` field holds quotes/brackets/spaces could run script in the admin app.
+// Every Firestore snapshot the admin app renders goes through here: such docs are dropped
+// (and logged), never displayed. Keep in sync with safeId() in firestore.rules.
+const SAFE_ID_RE = /^[A-Za-z0-9_.-]{1,100}$/;
+function isSafeId(id) {
+    return (typeof id === 'string' && SAFE_ID_RE.test(id)) || (typeof id === 'number' && Number.isFinite(id));
+}
+// optional reference field: missing/empty is fine, otherwise it must be a safe id
+function _optSafeId(v) { return v === undefined || v === null || v === '' || isSafeId(v); }
+function _safeDocs(snap) {
+    const out = [];
+    snap.docs.forEach(d => {
+        const data = d.data();
+        const ok = isSafeId(d.id) && _optSafeId(data.id)
+            && _optSafeId(data.memberId) && _optSafeId(data.refId);
+        if (ok) out.push(data);
+        else console.warn('Skipped a document with an unsafe id:', JSON.stringify(d.id).slice(0, 80));
+    });
+    return out;
 }
 
 // Coerces a Firestore field to a safe display number, since Firestore has no schema —

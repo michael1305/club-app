@@ -421,7 +421,7 @@
             document.getElementById('marathon-picker-list').innerHTML = '<p style="color:var(--text-light);text-align:center;padding:14px">טוען...</p>';
             try {
                 const snap = await db.collection('members').orderBy('name').get();
-                _marathonMembers = snap.docs.map(d => d.data());
+                _marathonMembers = snap.docs.filter(d => /^[A-Za-z0-9_.-]{1,100}$/.test(d.id)).map(d => d.data()); // unsafe ids never rendered (see app.js _safeDocs)
                 renderMarathonPicker();
             } catch (e) {
                 document.getElementById('marathon-picker-list').innerHTML = '<p style="color:var(--danger);text-align:center;padding:14px">שגיאה בטעינת רשימת החברים — נסה שוב</p>';

@@ -34,23 +34,36 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Club admins: signed in with email/password (not anonymous) as one of these
-    // addresses. Phone-number admins use <phone>@club-admin.local (see admin-auth.js).
-    // The list is deliberate: anyone can sign up a new email/password account, so
-    // access must be granted by exact address, never by domain or pattern.
-    // To add an admin: add their address here, republish, and create the user in
-    // Firebase console -> Authentication -> Users.
-    function isAdmin() {
+    // SECURITY: every allowlist below is by Firebase Auth UID, never by email.
+    // Anyone can sign up a new email/password account through the public API key, so an
+    // email-based allowlist lets a stranger claim any listed address that has no Auth user
+    // yet (this was actually open for one contest-admin address until 2026-11-23).
+    // A UID only exists once the real user was created, so it cannot be claimed.
+    // To add someone: create the user FIRST (Firebase console -> Authentication -> Users),
+    // copy its "User UID", add it to the list with a comment saying who it is, deploy rules.
+    function hasUid(uids) {
       return request.auth != null
         && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email in [
-          'info@av.co.il',
-          '0523536536@club-admin.local',
-          '0524444500@club-admin.local',
-          '0547448240@club-admin.local',
-          '0528588408@club-admin.local',
-          'google-review@club-admin.local'   // TEMPORARY: Google Play reviewer - remove after approval
-        ];
+        && request.auth.uid in uids;
+    }
+
+    // Club admins (admin.html). Phone-number admins log in as <phone>@club-admin.local.
+    function isAdmin() {
+      return hasUid([
+        '3RdIeBqefGeVKvkE1H7JoG31hK12',   // info@av.co.il
+        'HO0dyP1wtaP2FH4ymmH77idoHCy2',   // 0523536536@club-admin.local
+        'EhAQXpFKXgaf9HDeKlyy5BbPgym1',   // 0524444500@club-admin.local
+        'EMVUf7TXgMga31DjgRu5zECpXS92',   // 0547448240@club-admin.local
+        'gTOX6beyRGQr0n7TS41YqpU8CZw2',   // 0528588408@club-admin.local
+        'F7VHcyKWTIZ4snKIOVuWhA4002C2'    // TEMPORARY google-review@club-admin.local (store reviewers) - REMOVE right after Google Play production approval (~2026-11-26), then delete that Auth user
+      ]);
+    }
+
+    // Ids the app generates (generateId / genId) are lowercase base36; old ids may also hold
+    // '_', '-' or '.'. Ids are embedded in inline onclick JS in the admin app, so a doc key
+    // with quotes, brackets or spaces would be a stored-XSS vector: never allow one.
+    function safeId(id) {
+      return id is string && id.matches('^[A-Za-z0-9_.-]{1,100}$');
     }
 
     // The app always writes dates as plain JS strings (new Date().toISOString()),
@@ -110,12 +123,12 @@ service cloud.firestore {
       allow get: if signedIn();
       allow list: if isAdmin();
       allow delete: if isAdmin() || (signedIn() && resource.data.get('balance', 0) == 0);
-      allow create: if isAdmin() && memberCreateOk(request.resource.data, memberId)
+      allow create: if safeId(memberId) && (isAdmin() && memberCreateOk(request.resource.data, memberId)
         || signedIn() && memberCreateOk(request.resource.data, memberId)
            && request.resource.data.registeredSelf == true
            && request.resource.data.get('balance', 0) == 0
            && !('vipSlots' in request.resource.data)
-           && !('nfcTag' in request.resource.data);
+           && !('nfcTag' in request.resource.data));
       allow update: if isAdmin() && memberUpdateOk(request.resource.data, resource.data, memberId)
         || signedIn() && memberUpdateOk(request.resource.data, resource.data, memberId)
            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photo']);
@@ -133,7 +146,7 @@ service cloud.firestore {
     // A member with a remaining balance cannot self-delete; they send a request that the
     // team reviews in the back office (settings). Doc id = the member id.
     match /deletionRequests/{reqId} {
-      allow create, update: if signedIn()
+      allow create, update: if signedIn() && safeId(reqId)
         && request.resource.data.keys().hasOnly(['memberId','createdAt'])
         && request.resource.data.memberId is string && request.resource.data.memberId == reqId
         && isDateishBounded(request.resource.data.createdAt, 40)
@@ -149,7 +162,7 @@ service cloud.firestore {
     // never lead to a member profile); only the admin can change or remove entries.
     match /phones/{phoneKey} {
       allow get: if signedIn();
-      allow create: if signedIn() && phoneKey.size() <= 20
+      allow create: if signedIn() && phoneKey.matches('^[0-9]{1,20}$')
         && request.resource.data.keys().hasOnly(['createdAt']);
       allow list, update: if isAdmin();
       allow delete: if signedIn();   // removed when a member deletes their own account
@@ -305,16 +318,14 @@ service cloud.firestore {
     // (the pages fetch it anonymously over REST). Editing is a SEPARATE login from the club:
     // only these site editors, and club admins are deliberately NOT included. Editors sign in
     // with a phone number mapped to <phone>@site-editor.local (see site-admin.html).
-    // To add an editor: add the address here, deploy rules, then create the user in
-    // Firebase console -> Authentication -> Users (create the user BEFORE relying on it).
+    // To add an editor: create the user in Firebase console -> Authentication -> Users,
+    // then add its UID below and deploy rules.
     function siteEditor() {
-      return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email in [
-          '0528114026@site-editor.local',
-          '0547448240@site-editor.local',
-          '0524444500@site-editor.local'
-        ];
+      return hasUid([
+        '2WDjPCdfDDbMgKmJpjw3wmadFPA3',   // 0528114026@site-editor.local
+        '1cX8A1nCaLYPsqo0bd8zTUkc68y2',   // 0547448240@site-editor.local
+        'ifY1wNdS7getKaqDpVMDfghEZpH2'    // 0524444500@site-editor.local
+      ]);
     }
 
     match /sitePages/{pageId} {
@@ -345,20 +356,18 @@ service cloud.firestore {
     // in as ONE dedicated bot user. After login, instructors also read/write their own contestPicks
     // doc directly (contestOwner below), so the page works on networks that block workers.dev.
     function contestBot() {
-      return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email == 'contest-bot@club-contest.local';
+      return hasUid(['JGlxshuLiZQfF9mEzCITSFkhr983']);   // contest-bot@club-contest.local
     }
 
     // Who may use contest-admin.html: every club admin, plus contest-only admins who get NO
     // access to members/payments/etc. They log in through the same club admin login
-    // (<phone>@club-admin.local). Keep in sync with CONTEST_ADMINS in contest-admin.html.
+    // (<phone>@club-admin.local). CONTEST_ADMINS in contest-admin.html only picks the login
+    // screen; access itself is decided here, by UID.
     function contestAdmin() {
-      return isAdmin() || (request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'password'
-        && request.auth.token.email in [
-          '0528114026@club-admin.local'   // גיל (added 2026-11-16)
-        ]);
+      // Contest-only admins by UID. Gil (0528114026@club-admin.local) was listed here by email,
+      // but that Auth user was never created, so anyone could have claimed it: removed
+      // 2026-11-23. To restore: create the user first, then put its UID in this list.
+      return isAdmin() || hasUid([]);
     }
 
     // Allowlist of instructors who may log in. Doc id = phone (05XXXXXXXX). Holds names + phones,
