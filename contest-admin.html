@@ -68,6 +68,24 @@
   </div>
 
   <div class="sec">
+    <h2>ריקודים שהמרקידים הוסיפו ידנית (<span id="extra-n">0</span>)</h2>
+    <p class="muted" style="margin:0 0 8px">ריקודים שלא היו ברשימה. אם רוצים להכניס אחד מהם לתחרות — צריך להוסיף אותו לרשימת הריקודים.</p>
+    <div id="extras"></div>
+  </div>
+
+  <div class="sec">
+    <h2>תוצאות — סמנו אילו ריקודים עולים לתחרות (<span id="fin-n">0</span> מסומנים)</h2>
+    <div class="tools">
+      <select id="sort"><option value="votes">מיון: הכי נבחרים</option><option value="name">מיון: שם הריקוד</option></select>
+      <button id="mark-voted">סמן את כל מה שנבחר</button>
+      <button id="mark-none">נקה סימון</button>
+    </div>
+    <table>
+      <thead><tr><th></th><th>בחירות</th><th>ריקוד</th><th>יוצר</th><th class="who">מי בחר</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="sec">
     <h2>שלב ב׳ — הצבעת הקהל</h2>
     <div class="row">
       <span>מצב:</span>
@@ -93,24 +111,6 @@
     </details>
   </div>
 
-  <div class="sec">
-    <h2>ריקודים שהמרקידים הוסיפו ידנית (<span id="extra-n">0</span>)</h2>
-    <p class="muted" style="margin:0 0 8px">ריקודים שלא היו ברשימה. אם רוצים להכניס אחד מהם לתחרות — צריך להוסיף אותו לרשימת הריקודים.</p>
-    <div id="extras"></div>
-  </div>
-
-  <div class="sec">
-    <h2>תוצאות — סמנו אילו ריקודים עולים לתחרות (<span id="fin-n">0</span> מסומנים)</h2>
-    <div class="tools">
-      <select id="sort"><option value="votes">מיון: הכי נבחרים</option><option value="name">מיון: שם הריקוד</option></select>
-      <button id="mark-voted">סמן את כל מה שנבחר</button>
-      <button id="mark-none">נקה סימון</button>
-    </div>
-    <table>
-      <thead><tr><th></th><th>בחירות</th><th>ריקוד</th><th>יוצר</th><th class="who">מי בחר</th></tr></thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js" integrity="sha384-tlQhrgxJ7V8OZx+VXHj3tR81OL53pwpHSTPcnSH/OiwNCFBgaP2tHIZBxaaAnmN+" crossorigin="anonymous"></script>
