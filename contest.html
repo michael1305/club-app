@@ -424,7 +424,19 @@ $('load-retry').onclick = startLoad;
 addEventListener('online', () => { if ((token || fbPhone) && dirty) save(); else if ((token || fbPhone) && !$('offline').hidden) loadPicks(15000).catch(() => {}); });
 
 token = lsGet(TOKEN_KEY);
-fbReady().then(u => { if (token || u) startLoad(); else show('step-phone'); });
+// Personal link (#k=...) for an instructor whose network blocks the SMS server: signs straight in to
+// Firebase (Google), which every network lets through. The hash never reaches any server.
+async function linkLogin() {
+  const m = location.hash.match(/[#&]k=([A-Za-z0-9_-]+)/);
+  if (!m) return false;
+  history.replaceState(null, '', location.pathname + location.search);
+  try {
+    const c = JSON.parse(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')));
+    await fbReady();
+    return await fbSignIn({ email: c.e, password: c.p });
+  } catch (e) { console.warn('link', e); return false; }
+}
+linkLogin().then(ok => ok ? startLoad() : fbReady().then(u => { if (token || u) startLoad(); else show('step-phone'); }));
 </script>
 </body>
 </html>
