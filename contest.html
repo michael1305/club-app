@@ -221,7 +221,7 @@ async function call(path, opts = {}, ms = 25000) {
   if (token) headers.Authorization = 'Bearer ' + token;
   let r;
   try { r = await fetch(API + path, { ...opts, headers, signal: AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined }); }
-  catch (e) { throw new Error(e && e.name === "TimeoutError" ? "השרת לא ענה, נסו שוב בעוד רגע" : "אין חיבור לאינטרנט, נסו שוב"); }
+  catch (e) { throw new Error(e && e.name === "TimeoutError" ? "השרת לא ענה, נסו שוב בעוד רגע" : "אין חיבור לשרת. נסו לפתוח את הקישור בדפדפן Safari או Chrome (לא Brave), או לעבור בין Wi-Fi לגלישה סלולרית"); }
   const j = await r.json().catch(() => ({}));
   if (r.status === 401) { logout(); throw new Error(j.error || 'יש להתחבר מחדש'); }
   if (!r.ok) throw new Error(j.error || 'שגיאה, נסו שוב');
