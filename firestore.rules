@@ -376,8 +376,9 @@ service cloud.firestore {
       allow read: if contestBot() || contestAdmin();
       allow write: if (contestBot() || contestAdmin())
         && phone.matches('^05[0-9]{8}$')
-        && request.resource.data.keys().hasOnly(['name', 'type'])
-        && request.resource.data.name is string && request.resource.data.name.size() < 120;
+        && request.resource.data.keys().hasOnly(['name', 'type', 'excluded'])
+        && request.resource.data.name is string && request.resource.data.name.size() < 120
+        && (!('excluded' in request.resource.data) || request.resource.data.excluded is bool);
       allow delete: if contestAdmin();
     }
 

@@ -24,6 +24,8 @@
   .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 13px; margin: 3px; background: #eee; }
   .pill.done { background: #e3f6ea; color: #126b35; }
   .pill.none { background: #fdecec; color: #9b1c1c; }
+  .pill { cursor: pointer; border: 0; font: inherit; font-size: 13px; }
+  .pill.off { background: #eee; color: #888; text-decoration: line-through; }
   .switch { font: inherit; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; background: #fff; }
   .switch.on { background: var(--ok); border-color: var(--ok); color: #fff; }
   .switch.off { background: var(--bad); border-color: var(--bad); color: #fff; }
@@ -63,7 +65,7 @@
       <button id="open-btn" class="switch">…</button>
       <span class="muted">קישור למרקידים: <a href="contest.html" target="_blank">club.gadibitton.co.il/contest.html</a></span>
     </div>
-    <p class="muted" style="margin:10px 0 4px">מרקידים שבחרו (<span id="voted-n">0</span> מתוך <span id="inst-n">0</span>):</p>
+    <p class="muted" style="margin:10px 0 4px">מרקידים שבחרו (<span id="voted-n">0</span> מתוך <span id="inst-n">0</span>). לחיצה על שם מנטרלת אותו — הבחירות שלו לא ייספרו בתוצאות (לחיצה נוספת מחזירה):</p>
     <div id="voters"></div>
   </div>
 
@@ -76,6 +78,7 @@
   <div class="sec">
     <h2>תוצאות — סמנו אילו ריקודים עולים לתחרות (<span id="fin-n">0</span> מסומנים)</h2>
     <div class="tools">
+      <select id="style-f"><option value="">כל הסוגים</option><option>מעגל</option><option>זוגות</option><option>שורות</option></select>
       <select id="sort"><option value="votes">מיון: הכי נבחרים</option><option value="name">מיון: שם הריקוד</option></select>
       <button id="mark-voted">סמן את כל מה שנבחר</button>
       <button id="mark-none">נקה סימון</button>
@@ -160,8 +163,9 @@ function extraRows() {
   }));
   return out;
 }
+// Instructors marked "excluded" (picked out of courtesy, no events of their own) don't count.
 function votesFor(id) {
-  return instructors.filter(i => (picksBy[i.phone]?.picks || []).includes(id)).map(i => i.name);
+  return instructors.filter(i => !i.excluded && (picksBy[i.phone]?.picks || []).includes(id)).map(i => i.name);
 }
 
 function render() {
@@ -174,10 +178,11 @@ function render() {
   $('inst-n').textContent = instructors.length;
   $('voters').innerHTML = instructors.map(i => {
     const n = (picksBy[i.phone]?.picks || []).length;
-    return `<span class="pill ${n ? 'done' : 'none'}">${esc(i.name)}${n ? ' · ' + n : ''}</span>`;
+    return `<button type="button" class="pill ${i.excluded ? 'off' : n ? 'done' : 'none'}" data-ph="${esc(i.phone)}" title="${i.excluded ? 'מנוטרל — לחצו להחזרה' : 'לחצו לנטרול'}">${esc(i.name)}${n ? ' · ' + n : ''}${i.excluded ? ' · מנוטרל' : ''}</button>`;
   }).join('');
 
-  const rows = CONTEST_DANCES.map(d => ({ d, who: votesFor(d.id) }));
+  const sf = $('style-f').value;
+  const rows = CONTEST_DANCES.filter(d => !sf || d.style === sf).map(d => ({ d, who: votesFor(d.id) }));
   if ($('sort').value === 'votes') rows.sort((a, b) => b.who.length - a.who.length || a.d.name.localeCompare(b.d.name, 'he'));
   else rows.sort((a, b) => a.d.name.localeCompare(b.d.name, 'he'));
   $('rows').innerHTML = rows.map(({ d, who }) => `
@@ -368,6 +373,17 @@ $('rows').addEventListener('change', e => {
   dirty = true; render();
 });
 $('sort').onchange = render;
+$('style-f').onchange = render;
+$('voters').addEventListener('click', async e => {
+  const b = e.target.closest('.pill[data-ph]'); if (!b) return;
+  const i = instructors.find(x => x.phone === b.dataset.ph); if (!i) return;
+  const next = !i.excluded;
+  if (!confirm(next ? 'לנטרל את ' + i.name + '? הבחירות שלו לא ייספרו בתוצאות.' : 'להחזיר את ' + i.name + ' לספירה?')) return;
+  status('שומר…');
+  try { await db.collection('contestInstructors').doc(i.phone).update({ excluded: next }); i.excluded = next; status(next ? i.name + ' נוטרל' : i.name + ' הוחזר לספירה'); }
+  catch (err) { status('שגיאה: ' + err.message); }
+  render();
+});
 $('mark-voted').onclick = () => { CONTEST_DANCES.forEach(d => votesFor(d.id).length && finalists.add(d.id)); dirty = true; render(); };
 $('mark-none').onclick = () => { finalists.clear(); dirty = true; render(); };
 
@@ -415,8 +431,9 @@ $('csv').onclick = async () => {
     instructors.forEach(i => {
       const ids = picksBy[i.phone]?.picks || [];
       const ds = CONTEST_DANCES.filter(d => ids.includes(d.id));
-      if (!ds.length) byInst.push([i.name, 0, '— לא בחר —', '', '', '']);
-      ds.forEach((d, k) => byInst.push([k ? '' : i.name, k ? '' : ds.length, d.name, d.by, d.singer, d.style]));
+      const nm = i.name + (i.excluded ? ' (מנוטרל — לא נספר)' : '');
+      if (!ds.length) byInst.push([nm, 0, '— לא בחר —', '', '', '']);
+      ds.forEach((d, k) => byInst.push([k ? '' : nm, k ? '' : ds.length, d.name, d.by, d.singer, d.style]));
     });
 
     const wb = XLSX.utils.book_new();
